@@ -53,12 +53,15 @@ public sealed class InstallerViewModel
     private readonly CancellationTokenSource _lifetime = new();
     private readonly SemaphoreSlim _operationLock = new(1, 1);
     private readonly ReleaseChecker _releaseChecker = new();
+    private readonly AppUpdateService _appUpdater;
     private static readonly Version CurrentVersion =
         typeof(InstallerViewModel).Assembly.GetName().Version ?? new Version(1, 0, 0);
     private bool _checkingUpdates;
+    private bool _appUpdateInProgress;
     private bool _checkingBackendUpdate;
     private bool _backendUpdateInProgress;
     private string? _latestAppTag;
+    private ReleaseCheckResult? _latestAppRelease;
     private BackendUpdateCheck? _backendUpdateCheck;
     private OpenXrRuntimeInfo? _runtimeInfo;
     private DesktopIntegrationStatus? _desktopStatus;
@@ -93,10 +96,13 @@ public sealed class InstallerViewModel
         _steamLocator = new SteamLocator(_paths);
         _steamProcess = new SteamProcessController();
         _steamManager = new SteamShortcutManager(_paths, _steamProcess, line => AddLog(line));
+        _appUpdater = new AppUpdateService(_paths);
         _settings = _settingsStore.Load();
     }
 
     public event EventHandler? Changed;
+    /// <summary>Raised after the detached updater helper is ready and the window should close.</summary>
+    public event EventHandler? RestartRequested;
     public ObservableCollection<string> LogLines { get; } = new();
     public ObservableCollection<string> ChangelogLines { get; } = new();
 
@@ -113,6 +119,12 @@ public sealed class InstallerViewModel
     public bool ConfirmSteamRestart => _settings.ConfirmSteamRestart;
     public string? LatestReleaseUrl { get; private set; }
     public bool UpdateAvailable { get; private set; }
+    public bool AppUpdateInProgress => _appUpdateInProgress;
+    public bool CanInstallAppUpdate => UpdateAvailable
+        && !_appUpdateInProgress
+        && !Busy
+        && _latestAppRelease?.CanAutoUpdate == true
+        && _appUpdater.IsInstalledCopy();
     public string UpdateStatusText { get; private set; } = Loc.Get("updatesNotChecked");
     public string LatestAppVersionText => _latestAppTag ?? Loc.Get("notChecked");
 
@@ -939,6 +951,82 @@ public sealed class InstallerViewModel
         }
     }
 
+    public async Task InstallAppUpdateAsync()
+    {
+        if (_appUpdateInProgress)
+        {
+            return;
+        }
+        if (_latestAppRelease is not { UpdateAvailable: true } release)
+        {
+            UpdateStatusText = Loc.Get("updatesNotChecked");
+            RaiseChanged();
+            return;
+        }
+        if (!release.CanAutoUpdate)
+        {
+            UpdateStatusText = Loc.Get("appUpdatePackageMissing");
+            AddLog("This release does not include the Linux update archive.");
+            RaiseChanged();
+            return;
+        }
+        if (!_appUpdater.IsInstalledCopy())
+        {
+            UpdateStatusText = Loc.Get("appUpdateInstalledOnly");
+            AddLog("Automatic installation is only available from the installed application.");
+            RaiseChanged();
+            return;
+        }
+        if (Busy)
+        {
+            UpdateStatusText = Loc.Get("appUpdateBusy");
+            RaiseChanged();
+            return;
+        }
+
+        _appUpdateInProgress = true;
+        // Keep mod installs and helper updates from starting underneath the
+        // updater, which will close the app before the helper replaces it.
+        Busy = true;
+        UpdateStatusText = Loc.Get("appUpdateDownloading");
+        AddLog("Downloading installer update " + (release.LatestTag ?? string.Empty) + ".");
+        RaiseChanged();
+        try
+        {
+            var package = await _appUpdater.PrepareAsync(
+                release,
+                progress =>
+                {
+                    UpdateStatusText = progress.Fraction is { } fraction
+                        ? Loc.Format("appUpdateDownloadingProgress", (int)Math.Round(fraction * 100))
+                        : Loc.Get("appUpdateDownloading");
+                    RaiseChanged();
+                },
+                _lifetime.Token);
+
+            UpdateStatusText = Loc.Format("appUpdateRestarting", release.LatestTag ?? "");
+            AddLog("Update verified. Restarting into " + (release.LatestTag ?? "the new version") + ".");
+            RaiseChanged();
+            _appUpdater.StartApply(package, Environment.ProcessId);
+            RestartRequested?.Invoke(this, EventArgs.Empty);
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatusText = Loc.Get("appUpdateCanceled");
+        }
+        catch (Exception ex)
+        {
+            UpdateStatusText = Loc.Format("appUpdateFailed", ex.Message);
+            AddLog("Installer update failed: " + ex.Message);
+        }
+        finally
+        {
+            _appUpdateInProgress = false;
+            Busy = false;
+            RaiseChanged();
+        }
+    }
+
     public async Task CheckForUpdatesAsync()
     {
         if (_checkingUpdates)
@@ -951,6 +1039,7 @@ public sealed class InstallerViewModel
         try
         {
             var result = await _releaseChecker.CheckAsync(CurrentVersion, _lifetime.Token);
+            _latestAppRelease = result;
             if (result.Error is not null)
             {
                 LatestReleaseUrl = null;
@@ -964,7 +1053,13 @@ public sealed class InstallerViewModel
                 LatestReleaseUrl = result.ReleaseUrl;
                 _latestAppTag = result.LatestTag;
                 UpdateAvailable = true;
-                UpdateStatusText = Loc.Format("updateAvailable", result.LatestTag);
+                UpdateStatusText = result.CanAutoUpdate
+                    ? Loc.Format("updateAvailable", result.LatestTag)
+                    : Loc.Format("updateAvailableManual", result.LatestTag);
+                if (_settings.CheckForAppUpdates && result.CanAutoUpdate)
+                {
+                    await InstallAppUpdateAsync();
+                }
             }
             else
             {

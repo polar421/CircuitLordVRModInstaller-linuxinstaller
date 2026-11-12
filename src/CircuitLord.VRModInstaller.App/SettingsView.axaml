@@ -79,9 +79,12 @@
               </Grid>
               <TextBlock Name="SettingsUpdateStatus" Text="{loc:Tr Key=updatesNotChecked}" Classes="small"
                          TextWrapping="Wrap" />
+              <ProgressBar Name="SettingsAppUpdateProgress" IsIndeterminate="True" IsVisible="False" Height="3" />
               <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
                 <Button Name="SettingsCheckAppButton" Content="{loc:Tr Key=checkNow}" Classes="ghost" FontSize="11.5" Padding="8,4"
                         Click="CheckUpdates_Click" />
+                <Button Name="SettingsInstallAppUpdateButton" Content="{loc:Tr Key=installAppUpdate}" Classes="ghost"
+                        FontSize="11.5" Padding="8,4" IsVisible="False" IsEnabled="False" Click="InstallAppUpdate_Click" />
                 <Button Name="SettingsOpenReleaseButton" Content="{loc:Tr Key=openRelease}" Classes="ghost"
                         FontSize="11.5" Padding="8,4" IsEnabled="False" Click="OpenRelease_Click" />
               </StackPanel>

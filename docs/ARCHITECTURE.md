@@ -21,6 +21,7 @@ Presentation (Avalonia) → Application services → Domain models → Infrastru
 | `VersionCatalogueService` | Runs `--list-versions`, parses, caches |
 | `CatalogueParser` | Exact token extraction, ordinal assignment, installed/choice markers |
 | `ManifestService` | HTTPS retrieval, ETag revalidation, JSON validation, cache fallback |
+| `AppUpdateService` | Verified release download/extraction and detached apply helper for the installed app |
 | `DesktopEntryManager` | Canonical `tf2vr.desktop`, exact WiVRn category, atomic write, duplicate detection, repair |
 | `BinaryVdf` | Valve binary KeyValues parser/serializer plus CRC32 |
 | `SteamLocator` | Native/Flatpak/custom installations and `userdata` accounts |

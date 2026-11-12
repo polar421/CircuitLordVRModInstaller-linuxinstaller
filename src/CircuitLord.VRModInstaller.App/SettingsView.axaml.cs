@@ -99,6 +99,10 @@ public partial class SettingsView : UserControl
         this.FindControl<TextBlock>("SettingsCurrentAppVersion")!.Text = _vm.CurrentAppVersion;
         this.FindControl<TextBlock>("SettingsLatestAppVersion")!.Text = _vm.LatestAppVersionText;
         this.FindControl<TextBlock>("SettingsUpdateStatus")!.Text = _vm.UpdateStatusText;
+        this.FindControl<ProgressBar>("SettingsAppUpdateProgress")!.IsVisible = _vm.AppUpdateInProgress;
+        this.FindControl<Button>("SettingsCheckAppButton")!.IsEnabled = !_vm.AppUpdateInProgress;
+        this.FindControl<Button>("SettingsInstallAppUpdateButton")!.IsVisible = _vm.UpdateAvailable && !_vm.AppUpdateInProgress;
+        this.FindControl<Button>("SettingsInstallAppUpdateButton")!.IsEnabled = _vm.CanInstallAppUpdate;
         this.FindControl<Button>("SettingsOpenReleaseButton")!.IsEnabled = _vm.LatestReleaseUrl is not null;
 
         this.FindControl<TextBlock>("SettingsBackendCurrent")!.Text = _vm.BackendCurrentCommitText;
@@ -243,6 +247,13 @@ public partial class SettingsView : UserControl
     {
         if (_vm is null) return;
         await _vm.CheckForUpdatesAsync();
+        RefreshAll();
+    }
+
+    private async void InstallAppUpdate_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_vm is null) return;
+        await _vm.InstallAppUpdateAsync();
         RefreshAll();
     }
 

@@ -21,7 +21,7 @@
         <TextBlock Text="CircuitLord's VR Mod Installer" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
         <Border Background="{StaticResource Hover}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
                 CornerRadius="4" Padding="6,1" VerticalAlignment="Center" Margin="0,1,0,0">
-          <TextBlock Name="VersionText" Text="1.0.1 · Linux" FontSize="10.5" Foreground="{StaticResource TextDim}" />
+          <TextBlock Name="VersionText" Text="{Binding AppVersion}" FontSize="10.5" Foreground="{StaticResource TextDim}" />
         </Border>
       </StackPanel>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">

@@ -31,6 +31,9 @@ public partial class MainWindow : Window
         ApplyCornerStyle(_vm.RoundedCorners);
         DataContext = _vm;
         _vm.Changed += (_, _) => RefreshUi();
+        // Auto-update starts a detached helper and then asks the window to close.
+        // The helper waits for this process before swapping the app directory.
+        _vm.RestartRequested += (_, _) => Close();
         Opened += async (_, _) =>
         {
             await _vm.InitializeAsync();

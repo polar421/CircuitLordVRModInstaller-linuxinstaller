@@ -59,7 +59,7 @@ with `Categories=Game;` (no WiVRn category); state at `${XDG_DATA_HOME}/tf2vr` (
 | Add-ons | Not supported by the Linux backend; documented, not shown as installable |
 | EA sign-in step | Not reproduced as a UI step: the backend detects the EA prefix itself and reports it in `--check` |
 | Crash report / campaign-save browser | Not implemented yet |
-| Self-updater | Not implemented yet |
+| Self-updater | Implemented for installed Linux builds: the app verifies a newer release archive and a detached helper replaces and relaunches it; source-run builds are not replaced |
 | WiVRn desktop category | Implemented as a new Linux integration with exact `Categories=Game;X-WiVRn-VR;` |
 | Steam non-Steam shortcut + auto restart | Implemented as a new Linux integration |
 

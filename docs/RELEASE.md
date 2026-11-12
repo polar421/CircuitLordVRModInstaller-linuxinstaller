@@ -64,6 +64,11 @@ with a non-zero exit and a clear message if a checksum mismatches, if the list c
 or `..` path, or if `SHA256SUMS` is missing or empty. Nothing is created in the home directory on
 those failure paths.
 
+The application directory is staged at `app.new` and swapped into place with a rename. If the
+swap or binary check fails, the previous `app` directory is restored. The self-updater uses this
+same installer from a detached helper after the running application has exited, so an interrupted
+download or failed update never leaves a partially replaced install.
+
 Layout (XDG, no root):
 
 | Item | Path |

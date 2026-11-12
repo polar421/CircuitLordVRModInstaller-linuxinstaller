@@ -19,8 +19,8 @@ original but is unavailable on Linux because no backend exists for it.
 > exercised end-to-end against a real Titanfall 2 install, and the Steam integration has only been
 > fixture-tested. See [Status](#status) and [Limitations](#limitations) before relying on it.
 >
-> Native Wayland, the settings screen and update checks are included in the latest
-> `v1.0.1` release.
+> Native Wayland, the settings screen and automatic installer updates are included in the
+> latest `v1.0.2` release.
 
 ## Install the prebuilt release
 
@@ -37,11 +37,11 @@ are needed only for the integrations you use.
 #    https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases
 
 # 2. Verify the download (replace the file name if the version differs).
-sha256sum -c circuitlord-vrmodinstaller-1.0.1-linux-x64.tar.gz.sha256
+sha256sum -c circuitlord-vrmodinstaller-1.0.2-linux-x64.tar.gz.sha256
 
 # 3. Extract and install for the current user.
-tar -xzf circuitlord-vrmodinstaller-1.0.1-linux-x64.tar.gz
-./circuitlord-vrmodinstaller-1.0.1-linux-x64/install.sh
+tar -xzf circuitlord-vrmodinstaller-1.0.2-linux-x64.tar.gz
+./circuitlord-vrmodinstaller-1.0.2-linux-x64/install.sh
 ```
 
 This creates:
@@ -68,7 +68,7 @@ on a mismatch or an unsafe checksum path.
 | Native Wayland with X11 fallback | Implemented on Avalonia 12.1; exercised on KWin Wayland and X11 |
 | Settings screen (appearance, language, updates, VR/Steam integration, diagnostics, About, Restore Defaults) | Implemented; preferences persist in `settings.json` |
 | English / German interface | Implemented; backend and git output remain English |
-| Release update check and automatic helper update | Implemented; the check links to GitHub and never installs the app itself |
+| Automatic installer updates and helper updates | Implemented; release archives are checksum-verified and applied by a detached helper; helper updates remain origin-verified |
 | Managed `tf2vr-linux` checkout with origin verification and safe update | Implemented |
 | Live catalogue from `install.sh --list-versions` | Implemented, exercised against the real backend (19 entries) |
 | Stable/beta mapping (choice 1 → `latest`, 2 → `beta`, other ordinals → exact token) | Implemented and unit tested |
@@ -79,7 +79,7 @@ on a mismatch or an unsafe checksum path.
 | Steam shortcut with graceful close → backup → verified write → reopen | Implemented and fixture tested; not verified against a live Steam client |
 | Manifest release notes | Implemented (HTTPS, cache, validation) |
 | Reproducible self-contained release + user-level installer | Implemented; see `docs/RELEASE.md` |
-| Automated tests | 46 passing |
+| Automated tests | 52 passing |
 
 ## Limitations
 
@@ -89,9 +89,10 @@ on a mismatch or an unsafe checksum path.
 - **Native Wayland is experimental in Avalonia 12.1.** It was exercised on KWin; other
   compositors may expose backend gaps. The app falls back to X11 when no Wayland compositor is
   reachable.
-- **The update check is not a self-updater.** It reports a newer GitHub release and opens its page;
-  it never downloads or replaces the running app. Background downloads and pause/resume are not
-  implemented.
+- **Automatic updates require an installed release.** Running from the build tree or `dotnet run`
+  is never replaced. The updater downloads a newer Linux release archive, verifies its SHA-256 and
+  the archive's internal `SHA256SUMS`, then lets a detached helper wait for the app to exit,
+  install and relaunch it. A failed install leaves the previous app in place.
 - **German covers the interface chrome.** Backend, git and some technical status messages stay in
   English.
 - No first-run wizard, dedicated diagnostics page or installation history UI.

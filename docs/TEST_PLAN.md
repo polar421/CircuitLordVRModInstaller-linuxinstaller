@@ -7,7 +7,7 @@ dotnet test tests/CircuitLord.VRModInstaller.Core.Tests
 dotnet build CircuitLord.VRModInstaller.Linux.slnx
 ```
 
-## Automated (33 tests, all passing on 2026-11-12)
+## Automated (52 tests, all passing on 2026-11-12)
 
 | Area | Coverage |
 |---|---|
@@ -16,13 +16,14 @@ dotnet build CircuitLord.VRModInstaller.Linux.slnx
 | Desktop entry | Exact `Categories=Game;X-WiVRn-VR;`, XDG destination, Exec target, `Terminal=false`, repair after regeneration, missing launcher, spaces in path |
 | VDF | Round trip, unknown-field preservation, idempotent upsert, same-name conflict refusal, owned-only removal |
 | Steam transaction | Running → shutdown → backup → write → verify → reopen; refusal to restart; shutdown timeout writes nothing; write failure still reopens; reopen failure = recovery required; initially-closed stays closed |
+| Installer updater | Release archive/checksum discovery; installed-copy detection including symlinks; SHA-256 validation; safe extraction; verified package staging; mismatched archive rejection |
 
 ## Packaging (verified 2026-11-12)
 
 | Check | Command | Result |
 |---|---|---|
 | Release build | `dotnet build -c Release` | 0 warnings, 0 errors |
-| Release tests | `dotnet test -c Release` | 46/46 |
+| Release tests | `dotnet test -c Release` | 52/52 |
 | Two clean package builds | `packaging/build-release.sh` twice | identical SHA-256 (`6895d52a…`) |
 | No game/mod payload | archive guard in the build script | pass |
 | Menu entry validity | `desktop-file-validate` on the rendered entry | valid |
@@ -92,7 +93,7 @@ render is serif, so the port bundles OFL-licensed Liberation Serif in `Assets/Fo
 
 | Check | Result |
 |---|---|
-| Build after the UI change | succeeds, 0 warnings; 46/46 tests |
+| Build after the UI change | succeeds, 0 warnings; 52/52 tests |
 | 800×740 | icon + name + `1.0.1 · Linux` title bar, serif headings/cards, centred NEW badge, pinned footer |
 | 640×560 and 560×520 (minimum) | footer stays at the bottom, cards and title bar intact, nothing overlaps or clips |
 | Maximise / restore | 1920×1080 and back to 800×740 with content top-aligned and footer pinned |

@@ -65,14 +65,33 @@ install_app() {
   [ -f "$HERE/circuitlord-vrmodinstaller.desktop.in" ] || die "the desktop entry template is missing from the package."
   [ -d "$HERE/icons/hicolor" ] || die "the icon set is missing from the package."
 
-  mkdir -p "$APP_DIR" "$BIN_DIR" "$DESKTOP_DIR"
+  mkdir -p "$APP_ROOT" "$BIN_DIR" "$DESKTOP_DIR"
 
-  # Replace only this application's own directory; the backend checkout and
-  # logs live next to it and are preserved.
-  rm -rf "$APP_DIR"
-  mkdir -p "$APP_DIR"
-  cp -a "$HERE/app/." "$APP_DIR/"
-  chmod 0755 "$APP_DIR/CircuitLordVRModInstaller"
+  # Stage beside the install and swap it in with a rename. If anything fails,
+  # the previous app directory is restored instead of leaving a half-installed
+  # application behind. The backend checkout and logs live next to this
+  # directory and are always preserved.
+  local stage="$APP_ROOT/app.new"
+  local backup="$APP_ROOT/app.previous"
+  rm -rf "$stage" "$backup"
+  mkdir -p "$stage"
+  cp -a "$HERE/app/." "$stage/"
+  chmod 0755 "$stage/CircuitLordVRModInstaller"
+  [ -x "$stage/CircuitLordVRModInstaller" ] || die "the staged application binary is not executable."
+
+  if [ -e "$APP_DIR" ] || [ -L "$APP_DIR" ]; then
+    mv "$APP_DIR" "$backup" || die "could not move the existing application aside."
+  fi
+  if ! mv "$stage" "$APP_DIR"; then
+    [ -e "$backup" ] && mv "$backup" "$APP_DIR"
+    die "could not activate the staged application."
+  fi
+  if [ ! -x "$APP_DIR/CircuitLordVRModInstaller" ]; then
+    rm -rf "$APP_DIR"
+    [ -e "$backup" ] && mv "$backup" "$APP_DIR"
+    die "the installed application binary is missing or not executable."
+  fi
+  rm -rf "$backup" 2>/dev/null || true
   ln -sfn "$APP_DIR/CircuitLordVRModInstaller" "$BIN_LINK"
 
   local size source target
@@ -104,7 +123,7 @@ install_app() {
 }
 
 uninstall_app() {
-  rm -rf "$APP_DIR"
+  rm -rf "$APP_DIR" "$APP_ROOT/app.new" "$APP_ROOT/app.previous"
   rm -f "$BIN_LINK" "$DESKTOP_FILE"
   local icon
   for icon in "$ICON_ROOT"/*/apps/circuitlord-vrmodinstaller.png; do
