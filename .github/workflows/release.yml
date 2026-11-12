@@ -21,13 +21,21 @@ jobs:
       - name: Build release archive
         run: packaging/build-release.sh
 
+      - name: Require an annotated tag
+        run: |
+          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" != "tag" ]; then
+            echo "error: $GITHUB_REF_NAME is a lightweight tag." >&2
+            echo "Push an annotated tag; its message becomes the release notes." >&2
+            exit 1
+          fi
+
       - name: Publish prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --prerelease \
-            --title "CircuitLord's VR Mod Installer — Linux Beta 1" \
-            --notes-file docs/RELEASE_NOTES_BETA.md \
+            --title "$GITHUB_REF_NAME" \
+            --notes-from-tag \
             artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz \
             artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz.sha256
