@@ -129,6 +129,18 @@ git tag -a v1.0.0-beta.2 -m "What changed in this beta"
 git push origin v1.0.0-beta.2
 ```
 
+### Publishing from a release branch
+
+If the environment can push branches but not tags, push a `release/v<version>` branch instead.
+`release-branch.yml` builds the same archive, verifies that the branch matches the packaged
+version and notes, then creates the GitHub Release and its tag with the repository token. The notes
+live in `.github/release-notes/v<version>.md`.
+
+```bash
+git branch release/v1.0.0
+git push origin release/v1.0.0
+```
+
 ## Verified for this release
 
 | Check | Result |
