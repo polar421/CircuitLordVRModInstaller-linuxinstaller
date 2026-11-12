@@ -22,16 +22,19 @@ dotnet build CircuitLord.VRModInstaller.Linux.slnx
 | Check | Command | Result |
 |---|---|---|
 | Release build | `dotnet build -c Release` | 0 warnings, 0 errors |
-| Release tests | `dotnet test -c Release` | 33/33 |
-| Two clean package builds | `packaging/build-release.sh` twice | identical SHA-256 (`136bd95d…`) |
+| Release tests | `dotnet test -c Release` | 40/40 |
+| Two clean package builds | `packaging/build-release.sh` twice | identical SHA-256 (`6895d52a…`) |
 | No game/mod payload | archive guard in the build script | pass |
 | Menu entry validity | `desktop-file-validate` on the rendered entry | valid |
-| Install | packaged `install.sh` with throwaway `HOME` | 232 files verified, app + symlink + 7 icons + entry |
+| Install | packaged `install.sh` with throwaway `HOME` | 236 files verified, app + symlink + 7 icons + entry |
 | Tampered archive | modified byte in a packaged `.dll` | aborted, nothing written |
 | Unsafe checksum list | absolute path added to `SHA256SUMS` | aborted, path rejected |
 | Uninstall | `install.sh --uninstall` | app/icon/entry removed, `backend/` kept |
 | Packaged binary launch | installed entry via `gtk-launch`, see below | window opened; `Exec` and `Icon` resolve |
 | Packaged UI assets | installed archive launched after the UI change | serif font, icon, badge and footer render from the package |
+| Native Wayland | KWin session, packaged binary | rendered without an X11 window; `libwayland-client` loaded |
+| X11 fallback | `WAYLAND_DISPLAY` unset | window rendered through X11 |
+| Settings persistence | toggle corners, restart | `settings.json` schema 2 records the choice and the UI reflects it |
 | Dependency audit | `dotnet list package --vulnerable --include-transitive` | no vulnerable packages |
 
 ### Packaged binary launch (verified 2026-11-12)
@@ -88,7 +91,7 @@ render is serif, so the port bundles OFL-licensed Liberation Serif in `Assets/Fo
 
 | Check | Result |
 |---|---|
-| Build after the UI change | succeeds, 0 warnings; 33/33 tests |
+| Build after the UI change | succeeds, 0 warnings; 40/40 tests |
 | 800×740 | icon + name + `1.0.0 · Linux` title bar, serif headings/cards, centred NEW badge, pinned footer |
 | 640×560 and 560×520 (minimum) | footer stays at the bottom, cards and title bar intact, nothing overlaps or clips |
 | Maximise / restore | 1920×1080 and back to 800×740 with content top-aligned and footer pinned |

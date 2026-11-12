@@ -11,7 +11,7 @@ namespace CircuitLord.VRModInstaller.Core.Settings;
 /// </summary>
 public sealed class AppSettings
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     [JsonPropertyName("schemaVersion")]
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
@@ -21,6 +21,16 @@ public sealed class AppSettings
 
     [JsonPropertyName("autoRefreshCatalogue")]
     public bool AutoRefreshCatalogue { get; set; } = true;
+
+    [JsonPropertyName("roundedCorners")]
+    public bool RoundedCorners { get; set; } = true;
+
+    /// <summary>Interface language; "en" and "de" are bundled, anything else falls back to English.</summary>
+    [JsonPropertyName("language")]
+    public string Language { get; set; } = "en";
+
+    [JsonPropertyName("checkForAppUpdates")]
+    public bool CheckForAppUpdates { get; set; } = true;
 
     [JsonPropertyName("updateBackendAutomatically")]
     public bool UpdateBackendAutomatically { get; set; }
@@ -74,6 +84,15 @@ public sealed class SettingsStore
             {
                 File.Copy(_paths.SettingsFile, _paths.SettingsFile + ".backup-" + DateTimeOffset.Now.ToString("yyyyMMddHHmmss"), overwrite: false);
                 settings.SchemaVersion = AppSettings.CurrentSchemaVersion;
+                try
+                {
+                    // Persist the migration so the backup is not repeated on every start.
+                    Save(settings);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Keep using the migrated in-memory settings even if the file is read-only.
+                }
             }
 
             return settings;

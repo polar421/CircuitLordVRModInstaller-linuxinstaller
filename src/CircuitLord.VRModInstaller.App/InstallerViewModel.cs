@@ -16,6 +16,8 @@ using CircuitLord.VRModInstaller.Core.Process;
 using CircuitLord.VRModInstaller.Core.Runtime;
 using CircuitLord.VRModInstaller.Core.Settings;
 using CircuitLord.VRModInstaller.Core.Steam;
+using CircuitLord.VRModInstaller.Core.Updates;
+using CircuitLord.VRModInstaller.Localization;
 
 namespace CircuitLord.VRModInstaller;
 
@@ -49,6 +51,10 @@ public sealed class InstallerViewModel
     private readonly SteamShortcutManager _steamManager;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly SemaphoreSlim _operationLock = new(1, 1);
+    private readonly ReleaseChecker _releaseChecker = new();
+    private static readonly Version CurrentVersion =
+        typeof(InstallerViewModel).Assembly.GetName().Version ?? new Version(1, 0, 0);
+    private bool _checkingUpdates;
 
     private BackendInstallation? _backendState;
     private AppSettings _settings = new();
@@ -72,6 +78,7 @@ public sealed class InstallerViewModel
         _steamLocator = new SteamLocator(_paths);
         _steamProcess = new SteamProcessController();
         _steamManager = new SteamShortcutManager(_paths, _steamProcess, line => AddLog(line));
+        _settings = _settingsStore.Load();
     }
 
     public event EventHandler? Changed;
@@ -80,6 +87,14 @@ public sealed class InstallerViewModel
 
     public string AppTitle => "CircuitLord's VR Mod Installer";
     public string AppVersion => "1.0.0 · Linux";
+
+    public bool RoundedCorners => _settings.RoundedCorners;
+    public string Language => _settings.Language;
+    public bool AutoCheckForAppUpdates => _settings.CheckForAppUpdates;
+    public bool UpdateBackendAutomatically => _settings.UpdateBackendAutomatically;
+    public string? LatestReleaseUrl { get; private set; }
+    public bool UpdateAvailable { get; private set; }
+    public string UpdateStatusText { get; private set; } = Loc.Get("updatesNotChecked");
 
     public string BackendText { get; private set; } = "Checking the Linux backend...";
     public string CatalogueText { get; private set; } = "Loading version catalogue...";
@@ -106,7 +121,6 @@ public sealed class InstallerViewModel
 
     public async Task InitializeAsync()
     {
-        _settings = _settingsStore.Load();
         SetStage("Checking the Linux backend");
 
         _backendState = await _backend.EnsureAsync(_lifetime.Token);
@@ -119,6 +133,13 @@ public sealed class InstallerViewModel
                 BackendValidationStatus.Incomplete => "Backend checkout is missing install.sh or tf2vr.",
                 _ => "Backend not available yet.",
             };
+
+        if (_settings.UpdateBackendAutomatically &&
+            _backendState.ValidationStatus == BackendValidationStatus.Validated)
+        {
+            AddLog("Automatically updating the tf2vr-linux helper.");
+            await UpdateBackendAsync();
+        }
 
         // Cached catalogue first so the window is useful immediately.
         var cached = _catalogueService.LoadCache();
@@ -136,6 +157,11 @@ public sealed class InstallerViewModel
         RefreshLocalState();
         SetStage("Ready");
         RaiseChanged();
+
+        if (_settings.CheckForAppUpdates)
+        {
+            _ = CheckForUpdatesAsync();
+        }
     }
 
     private async Task LoadManifestAsync()
@@ -519,13 +545,112 @@ public sealed class InstallerViewModel
         RaiseChanged();
     }
 
+    public void SetRoundedCorners(bool enabled)
+    {
+        if (_settings.RoundedCorners == enabled)
+        {
+            return;
+        }
+        _settings.RoundedCorners = enabled;
+        SavePreferences();
+        RaiseChanged();
+    }
+
+    public void SetLanguage(string language)
+    {
+        if (string.Equals(_settings.Language, language, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+        _settings.Language = string.Equals(language, "de", StringComparison.OrdinalIgnoreCase) ? "de" : "en";
+        SavePreferences();
+        RaiseChanged();
+    }
+
+    public void SetAutoCheckForAppUpdates(bool enabled)
+    {
+        if (_settings.CheckForAppUpdates == enabled)
+        {
+            return;
+        }
+        _settings.CheckForAppUpdates = enabled;
+        SavePreferences();
+        RaiseChanged();
+    }
+
+    public void SetUpdateBackendAutomatically(bool enabled)
+    {
+        if (_settings.UpdateBackendAutomatically == enabled)
+        {
+            return;
+        }
+        _settings.UpdateBackendAutomatically = enabled;
+        SavePreferences();
+        RaiseChanged();
+    }
+
+    public async Task CheckForUpdatesAsync()
+    {
+        if (_checkingUpdates)
+        {
+            return;
+        }
+        _checkingUpdates = true;
+        UpdateStatusText = Loc.Get("checkingUpdates");
+        RaiseChanged();
+        try
+        {
+            var result = await _releaseChecker.CheckAsync(CurrentVersion, _lifetime.Token);
+            if (result.Error is not null)
+            {
+                LatestReleaseUrl = null;
+                UpdateAvailable = false;
+                UpdateStatusText = Loc.Format("updateCheckFailed", result.Error);
+                AddLog("Update check failed: " + result.Error);
+            }
+            else if (result.UpdateAvailable)
+            {
+                LatestReleaseUrl = result.ReleaseUrl;
+                UpdateAvailable = true;
+                UpdateStatusText = Loc.Format("updateAvailable", result.LatestTag);
+            }
+            else
+            {
+                LatestReleaseUrl = result.ReleaseUrl;
+                UpdateAvailable = false;
+                UpdateStatusText = Loc.Format("upToDate", result.LatestTag ?? "v" + CurrentVersion.ToString(3));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The window is closing; the update check is not worth reporting.
+        }
+        finally
+        {
+            _checkingUpdates = false;
+            RaiseChanged();
+        }
+    }
+
+    private void SavePreferences()
+    {
+        try
+        {
+            _settingsStore.Save(_settings);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AddLog("Could not save settings: " + ex.Message);
+        }
+    }
+
     public void RefreshLocalState()
     {
         var version = _backend.ReadInstalledVersion();
         IsInstalled = !string.IsNullOrWhiteSpace(version) || _launcher.LauncherExists;
         InstalledText = version is not null
-            ? "Backend state: " + version
-            : (_launcher.LauncherExists ? "Launcher present; version unknown" : "Not installed");
+            ? Loc.Format("backendState", version)
+            : (_launcher.LauncherExists ? Loc.Get("launcherVersionUnknown") : Loc.Get("notInstalled"));
 
         CanLaunch = _launcher.LauncherExists && _launcher.HasBackendConfig;
         CanUninstall = _backendState?.ValidationStatus == BackendValidationStatus.Validated && IsInstalled;
@@ -620,13 +745,13 @@ public sealed class InstallerViewModel
 
     private void UpdatePrimaryAction()
     {
-        PrimaryActionLabel = IsInstalled ? "Update / Reinstall" : "Install";
+        PrimaryActionLabel = IsInstalled ? Loc.Get("updateReinstall") : Loc.Get("install");
         if (_catalogue is not null && SelectedVersion is not null && IsInstalled)
         {
             var installedToken = _backend.ReadSelectionToken();
             if (installedToken is not null && installedToken != SelectedVersion.Token)
             {
-                PrimaryActionLabel = "Switch version";
+                PrimaryActionLabel = Loc.Get("switchVersion");
             }
         }
     }

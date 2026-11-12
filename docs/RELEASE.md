@@ -59,7 +59,7 @@ tar -xzf circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz
 ```
 
 Before writing anything, `install.sh` verifies every packaged file against the archive's
-`SHA256SUMS` (232 entries for 1.0.0) and prints `Verified <n> files against SHA256SUMS`. It aborts
+`SHA256SUMS` (236 entries for 1.0.0) and prints `Verified <n> files against SHA256SUMS`. It aborts
 with a non-zero exit and a clear message if a checksum mismatches, if the list contains an absolute
 or `..` path, or if `SHA256SUMS` is missing or empty. Nothing is created in the home directory on
 those failure paths.
@@ -88,7 +88,8 @@ Pinned inputs:
 - SDK version via `global.json`
 - every direct and transitive package via `packages.lock.json` in all three projects, restored with
   `--locked-mode`
-- Avalonia `11.3.9`; `Tmds.DBus.Protocol` pinned to the patched `0.21.3` (CVE-2026-39959 backport)
+- Avalonia `12.1.6`, including the opt-in `Avalonia.Wayland` package; its
+  `Tmds.DBus.Protocol` dependency is newer than the CVE-2026-39959 fix
 
 Deterministic output:
 
@@ -99,7 +100,7 @@ Deterministic output:
 Measured on 2026-11-12: two consecutive clean builds produced the byte-identical archive
 
 ```
-136bd95d550833f5ccbf3e3c110a23aaa08a59aa7bee778df53f63610400e358  circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz
+6895d52aa7b9e115a1a9a09511469045320ecd34e77b8a0f3c8fcee12937deb2  circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz
 ```
 
 Build is reproducible for the same commit, SDK and package sources; a NuGet package republished
@@ -128,11 +129,13 @@ git push origin v1.0.0-beta.2
 | Check | Result |
 |---|---|
 | `dotnet build -c Release` | succeeds, 0 warnings |
-| `dotnet test -c Release` | 33/33 pass |
-| Two clean package builds | identical SHA-256 |
+| `dotnet test -c Release` | 40/40 pass |
+| Two clean package builds | identical SHA-256 (`6895d52a…`) |
 | Archive contents guard | no game/mod payload |
 | `desktop-file-validate` on the shipped menu entry | valid |
-| Install into a throwaway `HOME` | 232 files verified, app, symlink, 7 icon sizes, menu entry created |
+| Install into a throwaway `HOME` | 236 files verified, app, symlink, 7 icon sizes, menu entry created |
+| Native Wayland launch (KWin) | window rendered with no X11 window; `libwayland-client` loaded |
+| X11 fallback launch | window rendered when `WAYLAND_DISPLAY` is unset |
 | Tampered archive (one byte changed) | install aborted before any write, clear integrity message |
 | Absolute path injected into `SHA256SUMS` | install aborted, path rejected |
 | Missing/empty `SHA256SUMS` | install aborted |

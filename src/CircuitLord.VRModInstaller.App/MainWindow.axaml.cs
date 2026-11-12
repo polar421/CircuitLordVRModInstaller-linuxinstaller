@@ -1,11 +1,14 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
+using CircuitLord.VRModInstaller.Localization;
 
 namespace CircuitLord.VRModInstaller;
 
@@ -17,11 +20,13 @@ public partial class MainWindow : Window
     private readonly InstallerViewModel _vm = new();
     private TaskCompletionSource<bool>? _confirmation;
     private bool _updatingVersions;
+    private bool _loadingSettings;
 
     public MainWindow()
     {
         InitializeComponent();
         Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://CircuitLordVRModInstaller/Assets/app-256.png")));
+        ApplyCornerStyle(_vm.RoundedCorners);
         DataContext = _vm;
         _vm.Changed += (_, _) => RefreshUi();
         Opened += async (_, _) =>
@@ -44,8 +49,8 @@ public partial class MainWindow : Window
         this.FindControl<TextBlock>("ManifestText")!.Text = _vm.ManifestText;
         this.FindControl<TextBlock>("StageText")!.Text = _vm.StageText;
         this.FindControl<TextBlock>("TitanfallStatus")!.Text = _vm.IsInstalled
-            ? "Installed · " + _vm.InstalledText
-            : "Ready to install through tf2vr-linux";
+            ? Loc.Format("installedStatus", _vm.InstalledText)
+            : Loc.Get("readyStatus");
 
         this.FindControl<ProgressBar>("Progress")!.IsVisible = _vm.Busy;
         this.FindControl<Button>("InstallButton")!.Content = _vm.PrimaryActionLabel;
@@ -63,6 +68,22 @@ public partial class MainWindow : Window
 
         this.FindControl<ListBox>("LogsList")!.ItemsSource = _vm.LogLines;
         this.FindControl<ItemsControl>("ChangelogList")!.ItemsSource = _vm.ChangelogLines;
+        this.FindControl<TextBlock>("UpdateStatusText")!.Text = _vm.UpdateStatusText;
+        this.FindControl<Button>("OpenReleaseButton")!.IsEnabled = _vm.LatestReleaseUrl is not null;
+    }
+
+    private static void ApplyCornerStyle(bool rounded)
+    {
+        if (Application.Current is null)
+        {
+            return;
+        }
+
+        var resources = Application.Current.Resources;
+        resources["CornerCard"] = rounded ? new CornerRadius(10) : default;
+        resources["CornerCardLeft"] = rounded ? new CornerRadius(9, 0, 0, 9) : default;
+        resources["CornerInner"] = rounded ? new CornerRadius(6) : default;
+        resources["CornerPill"] = rounded ? new CornerRadius(16) : default;
     }
 
     private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -109,7 +130,9 @@ public partial class MainWindow : Window
         this.FindControl<StackPanel>("InstallerView")!.IsVisible = false;
     }
 
-    private void OpenSupport_Click(object? sender, RoutedEventArgs e)
+    private void OpenSupport_Click(object? sender, RoutedEventArgs e) => OpenUrl(SupportUrl);
+
+    private void OpenUrl(string url)
     {
         // Desktop-standard URL opening; never spawns a terminal and does not claim success.
         try
@@ -118,12 +141,82 @@ public partial class MainWindow : Window
             {
                 FileName = "xdg-open",
                 UseShellExecute = false,
-                ArgumentList = { SupportUrl },
+                ArgumentList = { url },
             });
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"Could not open {SupportUrl}: {ex.Message}");
+            Trace.WriteLine($"Could not open {url}: {ex.Message}");
+        }
+    }
+
+    private void OpenSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        _loadingSettings = true;
+        this.FindControl<ToggleSwitch>("RoundedCornersToggle")!.IsChecked = _vm.RoundedCorners;
+        this.FindControl<ToggleSwitch>("AppUpdatesToggle")!.IsChecked = _vm.AutoCheckForAppUpdates;
+        this.FindControl<ToggleSwitch>("BackendUpdatesToggle")!.IsChecked = _vm.UpdateBackendAutomatically;
+        this.FindControl<ComboBox>("LanguageCombo")!.SelectedIndex = _vm.Language == "de" ? 1 : 0;
+        this.FindControl<TextBlock>("UpdateStatusText")!.Text = _vm.UpdateStatusText;
+        _loadingSettings = false;
+        this.FindControl<Border>("SettingsOverlay")!.IsVisible = true;
+    }
+
+    private void CloseSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        this.FindControl<Border>("SettingsOverlay")!.IsVisible = false;
+    }
+
+    private void RoundedCorners_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings)
+        {
+            return;
+        }
+        var enabled = this.FindControl<ToggleSwitch>("RoundedCornersToggle")!.IsChecked == true;
+        _vm.SetRoundedCorners(enabled);
+        ApplyCornerStyle(enabled);
+    }
+
+    private void AppUpdates_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings)
+        {
+            return;
+        }
+        _vm.SetAutoCheckForAppUpdates(this.FindControl<ToggleSwitch>("AppUpdatesToggle")!.IsChecked == true);
+    }
+
+    private void BackendUpdates_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings)
+        {
+            return;
+        }
+        _vm.SetUpdateBackendAutomatically(this.FindControl<ToggleSwitch>("BackendUpdatesToggle")!.IsChecked == true);
+    }
+
+    private void Language_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings)
+        {
+            return;
+        }
+        var tag = (this.FindControl<ComboBox>("LanguageCombo")!.SelectedItem as ComboBoxItem)?.Tag as string;
+        _vm.SetLanguage(tag ?? "en");
+    }
+
+    private async void CheckUpdates_Click(object? sender, RoutedEventArgs e)
+    {
+        await _vm.CheckForUpdatesAsync();
+        RefreshUi();
+    }
+
+    private void OpenRelease_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_vm.LatestReleaseUrl is { } url)
+        {
+            OpenUrl(url);
         }
     }
 
@@ -155,9 +248,9 @@ public partial class MainWindow : Window
     private async void Uninstall_Click(object? sender, RoutedEventArgs e)
     {
         var confirmed = await ConfirmAsync(
-            "Uninstall Titanfall 2 VR?",
-            "The backend removes the mod files, its launcher and Proton-TF2VR. Campaign saves and the normal Titanfall 2 installation are kept.",
-            "Uninstall");
+            Loc.Get("uninstallTitle"),
+            Loc.Get("uninstallText"),
+            Loc.Get("uninstall"));
         if (!confirmed)
         {
             return;
@@ -183,9 +276,9 @@ public partial class MainWindow : Window
         if (_vm.IsSteamRunning)
         {
             var confirmed = await ConfirmAsync(
-                "Add Titanfall 2 VR to Steam?",
-                "Steam needs to restart to install or update the library shortcut. The application will close Steam gracefully, update the shortcut and reopen the same Steam installation automatically. Existing games and shortcuts are preserved.",
-                "Restart Steam and Add");
+                Loc.Get("addSteamTitle"),
+                Loc.Get("addSteamText"),
+                Loc.Get("restartSteamAdd"));
             if (!confirmed)
             {
                 return;
@@ -201,9 +294,9 @@ public partial class MainWindow : Window
         if (_vm.IsSteamRunning)
         {
             var confirmed = await ConfirmAsync(
-                "Remove the Titanfall 2 VR shortcut?",
-                "Steam will be closed gracefully, the Titanfall 2 VR shortcut removed, and Steam reopened. Other shortcuts are preserved.",
-                "Restart Steam and Remove");
+                Loc.Get("removeSteamTitle"),
+                Loc.Get("removeSteamText"),
+                Loc.Get("restartSteamRemove"));
             if (!confirmed)
             {
                 return;

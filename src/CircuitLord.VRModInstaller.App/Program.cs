@@ -11,6 +11,8 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            // Native Wayland when a compositor is reachable; X11 otherwise.
+            .UseWaylandWithFallback()
             .WithInterFont()
             .LogToTrace();
 }

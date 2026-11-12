@@ -15,13 +15,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.3.9" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.3.9" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.9" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.9" />
-    <!-- Avalonia.Desktop pulls 0.21.2, which is affected by CVE-2026-39959 /
-         GHSA-xrw6-gwf8-vvr9. 0.21.3 is the same-API-line backport of the fix. -->
-    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
+    <!-- Native Wayland is opt-in in Avalonia; UseWaylandWithFallback keeps X11 working. -->
+    <PackageReference Include="Avalonia.Wayland" Version="12.1.6" />
   </ItemGroup>
 
   <ItemGroup>

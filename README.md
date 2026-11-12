@@ -13,18 +13,24 @@ original but is unavailable on Linux because no backend exists for it.
 
 ![Game selection screen](docs/screenshots/game-selection.png)
 
+![Settings screen](docs/screenshots/settings.png)
+
 > **Beta:** the UI, backend management and packaging are usable, but a full install has not been
 > exercised end-to-end against a real Titanfall 2 install, and the Steam integration has only been
 > fixture-tested. See [Status](#status) and [Limitations](#limitations) before relying on it.
+>
+> Native Wayland, the settings screen and update checks are on `main`; the published
+> `v1.0.0-beta.1` archive predates them. Build from source or wait for the next beta tag.
 
 ## Install the prebuilt release
 
 The release archive is **self-contained** (no .NET runtime required) and installs entirely in your
 user account — no root, no system files.
 
-Requirements: glibc-based **x86-64** Linux with a desktop session, plus `git`, `bash`, `curl` and
-`python3` for the backend. Steam, SteamVR, WiVRn or Monado are needed only for the integrations you
-use.
+Requirements: glibc-based **x86-64** Linux with an X11 or Wayland desktop session, plus `git`,
+`bash`, `curl` and `python3` for the backend. Native Wayland is used when a compositor is available
+(Avalonia 12.1, experimental); otherwise the app falls back to X11. Steam, SteamVR, WiVRn or Monado
+are needed only for the integrations you use.
 
 ```bash
 # 1. Download the archive and its checksum from the latest release page.
@@ -59,6 +65,10 @@ on a mismatch or an unsafe checksum path.
 | Area | Status |
 |---|---|
 | Native Linux UI (Avalonia, no Wine) | Implemented; original layout, serif typography, icon title bar, NEW badge and support footer |
+| Native Wayland with X11 fallback | Implemented on Avalonia 12.1; exercised on KWin Wayland and X11 |
+| Settings screen (rounded corners, language, updates) | Implemented; preferences persist in `settings.json` |
+| English / German interface | Implemented; backend and git output remain English |
+| Release update check and automatic helper update | Implemented; the check links to GitHub and never installs the app itself |
 | Managed `tf2vr-linux` checkout with origin verification and safe update | Implemented |
 | Live catalogue from `install.sh --list-versions` | Implemented, exercised against the real backend (19 entries) |
 | Stable/beta mapping (choice 1 → `latest`, 2 → `beta`, other ordinals → exact token) | Implemented and unit tested |
@@ -69,16 +79,22 @@ on a mismatch or an unsafe checksum path.
 | Steam shortcut with graceful close → backup → verified write → reopen | Implemented and fixture tested; not verified against a live Steam client |
 | Manifest release notes | Implemented (HTTPS, cache, validation) |
 | Reproducible self-contained release + user-level installer | Implemented; see `docs/RELEASE.md` |
-| Automated tests | 33 passing |
+| Automated tests | 40 passing |
 
 ## Limitations
 
 - **Beta quality.** Core flows exist, but real-game/Steam/WiVRn behavior has not been confirmed on
   a machine with Titanfall 2 installed. Treat installation and Steam changes as untested paths.
 - **x86-64 only.** No arm64 build, AppImage, Flatpak or distribution package.
-- **Wayland tested via XWayland only.** Native Wayland was not exercised; X11 behavior was.
-- Background downloads, pause/resume and an in-app updater are not implemented.
-- No first-run wizard, settings screen, dedicated diagnostics page or installation history UI.
+- **Native Wayland is experimental in Avalonia 12.1.** It was exercised on KWin; other
+  compositors may expose backend gaps. The app falls back to X11 when no Wayland compositor is
+  reachable.
+- **The update check is not a self-updater.** It reports a newer GitHub release and opens its page;
+  it never downloads or replaces the running app. Background downloads and pause/resume are not
+  implemented.
+- **German covers the interface chrome.** Backend, git and some technical status messages stay in
+  English.
+- No first-run wizard, dedicated diagnostics page or installation history UI.
 
 ## Build from source
 

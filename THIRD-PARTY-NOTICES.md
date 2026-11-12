@@ -36,6 +36,14 @@ typography of the reference build.
 - Source: https://github.com/AvaloniaUI/Avalonia
 - License: MIT
 
+## Avalonia.Wayland / NWayland
+
+- Source: https://github.com/AvaloniaUI/Avalonia and https://github.com/kekekeks/NWayland
+- License: MIT
+
+The native Wayland backend is an optional Avalonia 12.1 package. It is used when a Wayland
+compositor is available; otherwise the app falls back to X11.
+
 ## .NET runtime
 
 - Source: https://github.com/dotnet/runtime
