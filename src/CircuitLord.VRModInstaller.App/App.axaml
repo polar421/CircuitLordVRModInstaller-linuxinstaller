@@ -180,6 +180,7 @@
       <FontFamily x:Key="UiFont">avares://CircuitLordVRModInstaller/Assets/Fonts#Liberation Serif</FontFamily>
 
       <!-- Swapped to 0 when the user turns rounded corners off. -->
+      <CornerRadius x:Key="CornerWindow">12</CornerRadius>
       <CornerRadius x:Key="CornerCard">10</CornerRadius>
       <CornerRadius x:Key="CornerCardLeft">9,0,0,9</CornerRadius>
       <CornerRadius x:Key="CornerInner">6</CornerRadius>

@@ -9,8 +9,12 @@
         CanResize="True"
         WindowDecorations="None"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource Bg}">
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        TransparencyBackgroundFallback="{DynamicResource Bg}">
 
+  <Border Name="WindowFrame" Background="{DynamicResource Bg}"
+          CornerRadius="{DynamicResource CornerWindow}" ClipToBounds="True">
   <LayoutTransformControl Name="RootScale">
   <Grid RowDefinitions="46,*">
 
@@ -613,4 +617,5 @@
 
   </Grid>
 </LayoutTransformControl>
+  </Border>
 </Window>

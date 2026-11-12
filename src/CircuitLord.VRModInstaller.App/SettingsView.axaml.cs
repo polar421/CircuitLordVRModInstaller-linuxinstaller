@@ -477,6 +477,7 @@ public partial class SettingsView : UserControl
             return;
         }
         var resources = Application.Current.Resources;
+        resources["CornerWindow"] = rounded ? new CornerRadius(12) : default;
         resources["CornerCard"] = rounded ? new CornerRadius(10) : default;
         resources["CornerCardLeft"] = rounded ? new CornerRadius(9, 0, 0, 9) : default;
         resources["CornerInner"] = rounded ? new CornerRadius(6) : default;
