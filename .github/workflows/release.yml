@@ -29,13 +29,18 @@ jobs:
             exit 1
           fi
 
-      - name: Publish prerelease
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --prerelease \
-            --title "$GITHUB_REF_NAME" \
-            --notes-from-tag \
+          tag="$GITHUB_REF_NAME"
+          args=(--title "$tag" --notes-from-tag)
+          if [[ "$tag" == *-* ]]; then
+            echo "Tag $tag has a prerelease suffix; publishing as a prerelease."
+            args+=(--prerelease)
+          else
+            echo "Tag $tag is a plain version; publishing as a normal release."
+          fi
+          gh release create "$tag" "${args[@]}" \
             artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz \
             artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz.sha256

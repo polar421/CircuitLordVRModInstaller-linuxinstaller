@@ -105,6 +105,24 @@ Measured on 2026-11-12: two consecutive clean builds produced the byte-identical
 Build is reproducible for the same commit, SDK and package sources; a NuGet package republished
 with different content would change the hash, which is the intended detection.
 
+## Publishing a release
+
+Releases are built by `.github/workflows/release.yml` when an annotated tag matching `v*` is
+pushed. The workflow runs `packaging/build-release.sh` and uploads the archive and its checksum.
+The tag name is the release title and the tag annotation is the release body, so write the notes
+in the tag message. Prerelease status is derived from the tag:
+
+- tags with a suffix (anything after a hyphen, e.g. `v1.0.0-beta.1`, `v1.0.0-rc.1`) publish as
+  **prereleases**;
+- plain version tags (`v1.0.0`) publish as **normal releases**.
+
+Lightweight tags are rejected with a clear error. Example:
+
+```bash
+git tag -a v1.0.0-beta.2 -m "What changed in this beta"
+git push origin v1.0.0-beta.2
+```
+
 ## Verified for this release
 
 | Check | Result |
@@ -128,5 +146,6 @@ with different content would change the hash, which is the intended detection.
 - `linux-x64` only; no arm64 build.
 - No AppImage, Flatpak or distribution package. A sandboxed package would need verified access to
   the game directory and Steam configuration before it could be offered.
-- No CI pipeline; the commands above are the manual release procedure.
+- CI builds and publishes the archive, but does not run the test suite yet; run the commands above
+  locally before tagging.
 - The packaged app is self-contained but not code-signed.
