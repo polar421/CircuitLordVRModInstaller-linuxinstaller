@@ -13,7 +13,7 @@ this app manages a checkout of that repository, runs its real `install.sh`, and 
 Proton setup, downloads, checksums or the mod layout. Big Walk VR is shown for parity with the
 original but is unavailable on Linux because no backend exists for it.
 
-[**Download the beta**](https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases)
+[**Download the beta**](https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.7-beta.2)
 · [Build from source](#build-from-source) · [Documentation](#documentation)
 
 ![Game selection screen](docs/screenshots/game-selection.png)
@@ -25,7 +25,7 @@ original but is unavailable on Linux because no backend exists for it.
 > fixture-tested. See [Status](#status) and [Limitations](#limitations) before relying on it.
 >
 > Native Wayland, the settings screen and automatic installer updates are included in the
-> latest `v1.0.5` release.
+> latest `v1.0.7-beta.2` release.
 
 ## Install the prebuilt release
 
@@ -38,15 +38,15 @@ Requirements: glibc-based **x86-64** Linux with an X11 or Wayland desktop sessio
 are needed only for the integrations you use.
 
 ```bash
-# 1. Download the archive and its checksum from the latest release page.
-#    https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases
+# 1. Download the archive and its checksum from:
+#    https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.7-beta.2
 
-# 2. Verify the download (replace the file name if the version differs).
-sha256sum -c circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz.sha256
+# 2. Verify the download.
+sha256sum -c circuitlord-vrmodinstaller-1.0.7-beta.2-linux-x64.tar.gz.sha256
 
 # 3. Extract and install for the current user.
-tar -xzf circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz
-./circuitlord-vrmodinstaller-1.0.5-linux-x64/install.sh
+tar -xzf circuitlord-vrmodinstaller-1.0.7-beta.2-linux-x64.tar.gz
+./circuitlord-vrmodinstaller-1.0.7-beta.2-linux-x64/install.sh
 ```
 
 This creates:
