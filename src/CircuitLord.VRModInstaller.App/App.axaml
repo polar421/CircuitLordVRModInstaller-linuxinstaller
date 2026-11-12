@@ -388,12 +388,15 @@
                   Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="{TemplateBinding CornerRadius}"
-                  ClipToBounds="True">
-            <ContentPresenter Content="{TemplateBinding Content}"
-                              ContentTemplate="{TemplateBinding ContentTemplate}"
-                              HorizontalContentAlignment="Stretch"
-                              VerticalContentAlignment="Stretch" />
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <!-- Clip the artwork separately so the card's own outline is not
+                 clipped away at the rounded corners. -->
+            <Border CornerRadius="{TemplateBinding CornerRadius}" ClipToBounds="True">
+              <ContentPresenter Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch" />
+            </Border>
           </Border>
         </ControlTemplate>
       </Setter>
