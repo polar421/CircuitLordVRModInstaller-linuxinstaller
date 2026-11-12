@@ -5,7 +5,8 @@
              Focusable="True"
              KeyDown="Settings_KeyDown">
 
-  <Border Name="SettingsOverlay" Background="#D914171C" IsVisible="False">
+  <Border Name="SettingsOverlay" Background="#D914171C" IsVisible="False"
+          KeyboardNavigation.TabNavigation="Cycle">
     <Grid>
       <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
               CornerRadius="{DynamicResource CornerCard}" Width="540" MaxHeight="680"
@@ -26,7 +27,7 @@
             <StackPanel Width="494" Spacing="12">
 
               <!-- Appearance -->
-              <TextBlock Text="{loc:Tr Key=appearance}" Classes="h2" />
+              <TextBlock Text="{loc:Tr Key=appearance}" Classes="section" />
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="2" Margin="0,0,16,0">
                   <TextBlock Text="{loc:Tr Key=roundedCorners}" FontSize="12" />
@@ -40,7 +41,7 @@
               <Border Height="1" Background="{StaticResource Stroke}" />
 
               <!-- Language -->
-              <TextBlock Text="{loc:Tr Key=language}" Classes="h2" />
+              <TextBlock Text="{loc:Tr Key=language}" Classes="section" />
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="2" Margin="0,0,16,0">
                   <TextBlock Text="{loc:Tr Key=interfaceLanguage}" FontSize="12" />
@@ -56,7 +57,7 @@
               <Border Height="1" Background="{StaticResource Stroke}" />
 
               <!-- Updates -->
-              <TextBlock Text="{loc:Tr Key=updates}" Classes="h2" />
+              <TextBlock Text="{loc:Tr Key=updates}" Classes="section" />
               <TextBlock Text="{loc:Tr Key=installerApplicationUpdates}" FontSize="13" FontWeight="SemiBold" />
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=currentInstalledVersion}" Classes="small" />
@@ -132,7 +133,7 @@
               <Border Height="1" Background="{StaticResource Stroke}" />
 
               <!-- VR integration -->
-              <TextBlock Text="{loc:Tr Key=vrIntegration}" Classes="h2" />
+              <TextBlock Text="{loc:Tr Key=vrIntegration}" Classes="section" />
               <TextBlock Text="{loc:Tr Key=vrIntegrationDescription}" Classes="small" TextWrapping="Wrap" />
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=activeOpenXrRuntime}" Classes="small" />
@@ -184,7 +185,7 @@
               <Border Height="1" Background="{StaticResource Stroke}" />
 
               <!-- Steam integration -->
-              <TextBlock Text="{loc:Tr Key=steamIntegration}" Classes="h2" />
+              <TextBlock Text="{loc:Tr Key=steamIntegration}" Classes="section" />
               <TextBlock Text="{loc:Tr Key=steamIntegrationDescription}" Classes="small" TextWrapping="Wrap" />
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=steamDetectedStatus}" Classes="small" />
@@ -242,7 +243,7 @@
               <Border Height="1" Background="{StaticResource Stroke}" />
 
               <!-- Diagnostics -->
-              <TextBlock Text="{loc:Tr Key=diagnostics}" Classes="h2" />
+              <TextBlock Text="{loc:Tr Key=diagnostics}" Classes="section" />
               <TextBlock Text="{loc:Tr Key=diagnosticsDescription}" Classes="small" TextWrapping="Wrap" />
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=lastPreflight}" Classes="small" />
@@ -269,7 +270,7 @@
               <Border Height="1" Background="{StaticResource Stroke}" />
 
               <!-- About -->
-              <TextBlock Text="{loc:Tr Key=about}" Classes="h2" />
+              <TextBlock Text="{loc:Tr Key=about}" Classes="section" />
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=aboutName}" Classes="small" />
                 <TextBlock Grid.Column="1" Text="CircuitLord's VR Mod Installer" Classes="small"
@@ -315,7 +316,7 @@
               <Border Height="1" Background="{StaticResource Stroke}" />
 
               <!-- Restore defaults -->
-              <TextBlock Text="{loc:Tr Key=restoreDefaults}" Classes="h2" />
+              <TextBlock Text="{loc:Tr Key=restoreDefaults}" Classes="section" />
               <TextBlock Text="{loc:Tr Key=restoreDefaultsDescription}" Classes="small" TextWrapping="Wrap" />
               <Button Name="SettingsRestoreButton" Content="{loc:Tr Key=restoreDefaultsButton}" Classes="danger" FontSize="11.5" Padding="8,4"
                       HorizontalAlignment="Left" Click="RestoreDefaults_Click" />

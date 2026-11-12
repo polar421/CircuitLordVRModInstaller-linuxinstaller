@@ -53,6 +53,12 @@ public partial class MainWindow : Window
         this.FindControl<TextBlock>("ChannelValue")!.Text = _vm.InstalledChannelText;
         this.FindControl<TextBlock>("HeroInstalledVersion")!.Text = _vm.InstalledVersionText;
         this.FindControl<TextBlock>("HeroChannel")!.Text = _vm.InstalledChannelText;
+        // Not installed is already the primary state; repeating it under
+        // "Installed version" and in the hero adds no information.
+        var showChannel = _vm.IsInstalled;
+        this.FindControl<TextBlock>("ChannelValue")!.IsVisible = showChannel;
+        this.FindControl<TextBlock>("HeroChannelSeparator")!.IsVisible = showChannel;
+        this.FindControl<TextBlock>("HeroChannel")!.IsVisible = showChannel;
         this.FindControl<TextBlock>("HeroStatusText")!.Text = _vm.IsInstalled
             ? Loc.Get("overviewInstalled")
             : Loc.Get("overviewNotInstalled");

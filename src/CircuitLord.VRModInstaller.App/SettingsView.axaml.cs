@@ -52,7 +52,22 @@ public partial class SettingsView : UserControl
         this.FindControl<ScrollViewer>("SettingsScroll")!.Offset = new Vector(0, 0);
         _loading = false;
         RefreshAll();
-        this.FindControl<Button>("SettingsCloseButton")!.Focus();
+        // The overlay is only becoming visible in this pass. Move keyboard
+        // focus after layout so it cannot remain on the title-bar gear behind
+        // the modal sheet.
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () =>
+            {
+                if (IsVisible)
+                {
+                    // Move through the sheet itself first; Avalonia otherwise
+                    // leaves the old title-bar focus adorner painted until the
+                    // next keyboard navigation.
+                    Focus();
+                    this.FindControl<Button>("SettingsCloseButton")!.Focus();
+                }
+            },
+            Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     private void CloseSettings()
