@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The tag object itself is needed to read the annotated release notes.
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -21,14 +24,23 @@ jobs:
       - name: Build release archive
         id: build
         run: |
-          version=$(dotnet msbuild src/CircuitLord.VRModInstaller.App/CircuitLord.VRModInstaller.App.csproj -nologo -getProperty:Version | tr -d '\r\n')
-          echo "version=$version" >> "$GITHUB_OUTPUT"
           packaging/build-release.sh
+          archive=$(find artifacts -maxdepth 1 -type f -name 'circuitlord-vrmodinstaller-*-linux-x64.tar.gz' -printf '%T@ %p\n' | sort -nr | sed -n '1s/^[^ ]* //p')
+          if [ -z "$archive" ] || [ ! -f "$archive" ]; then
+            echo "error: release archive was not produced" >&2
+            exit 1
+          fi
+          archive_name=$(basename "$archive")
+          version=${archive_name#circuitlord-vrmodinstaller-}
+          version=${version%-linux-x64.tar.gz}
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Require an annotated tag
         run: |
-          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" != "tag" ]; then
-            echo "error: $GITHUB_REF_NAME is a lightweight tag." >&2
+          tag_type=$(git cat-file -t "$GITHUB_REF_NAME" 2>/dev/null || true)
+          if [ "$tag_type" != "tag" ]; then
+            echo "error: $GITHUB_REF_NAME is not an annotated tag (type: ${tag_type:-missing})." >&2
             echo "Push an annotated tag; its message becomes the release notes." >&2
             exit 1
           fi
@@ -36,7 +48,7 @@ jobs:
           case "$GITHUB_REF_NAME" in
             "v$version"|"v$version"-*) ;;
             *)
-              echo "error: $GITHUB_REF_NAME does not match the application version $version." >&2
+              echo "error: $GITHUB_REF_NAME does not match the packaged application version $version." >&2
               exit 1
               ;;
           esac
@@ -53,9 +65,13 @@ jobs:
           else
             echo "Tag $tag is a plain version; publishing as a normal release."
           fi
-          archive="artifacts/circuitlord-vrmodinstaller-${{ steps.build.outputs.version }}-linux-x64.tar.gz"
+          archive="${{ steps.build.outputs.archive }}"
           if [[ ! -f "$archive" ]]; then
             echo "error: expected release archive not found: $archive" >&2
+            exit 1
+          fi
+          if [[ ! -f "$archive.sha256" ]]; then
+            echo "error: expected release checksum not found: $archive.sha256" >&2
             exit 1
           fi
           gh release create "$tag" "${args[@]}" \
