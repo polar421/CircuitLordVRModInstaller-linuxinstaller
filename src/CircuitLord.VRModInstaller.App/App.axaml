@@ -140,6 +140,21 @@
     <Style Selector="Button.ghost:disabled">
       <Setter Property="Opacity" Value="0.7" />
     </Style>
+    <Style Selector="Button.link">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Foreground" Value="{StaticResource Accent}" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.link:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.link:pointerover">
+      <Setter Property="Foreground" Value="{StaticResource AccentHover}" />
+    </Style>
     <Style Selector="Button.danger">
       <Setter Property="Background" Value="{StaticResource RedFill}" />
       <Setter Property="BorderBrush" Value="{StaticResource Red}" />

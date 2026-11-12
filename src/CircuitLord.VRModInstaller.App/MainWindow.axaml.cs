@@ -40,9 +40,44 @@ public partial class MainWindow : Window
         _vm.RestartRequested += (_, _) => Close();
         Opened += async (_, _) =>
         {
+            // Show the notice immediately while backend initialization proceeds.
+            ShowAttributionNotice();
             await _vm.InitializeAsync();
             RefreshUi();
         };
+    }
+
+    private void ShowAttributionNotice()
+    {
+        var overlay = this.FindControl<Border>("AttributionOverlay");
+        if (overlay is null)
+        {
+            return;
+        }
+        overlay.IsVisible = true;
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () =>
+            {
+                if (overlay.IsVisible)
+                {
+                    this.FindControl<Button>("AttributionContinueButton")?.Focus();
+                }
+            },
+            Avalonia.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void ContinueAttribution_Click(object? sender, RoutedEventArgs e)
+    {
+        this.FindControl<Border>("AttributionOverlay")!.IsVisible = false;
+        this.FindControl<Button>("TitanfallCard")?.Focus();
+    }
+
+    private void OpenAttributionLink_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string url })
+        {
+            OpenUrl(url);
+        }
     }
 
     private void SettingsEscape_Handler(object? sender, KeyEventArgs e)

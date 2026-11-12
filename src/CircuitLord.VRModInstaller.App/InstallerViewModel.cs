@@ -127,7 +127,7 @@ public sealed class InstallerViewModel
 
     public string AppTitle => "CircuitLord's VR Mod Installer";
     public string CurrentAppVersion => CurrentVersion.ToString(3);
-    public string AppVersion => CurrentAppVersion + " · Linux";
+    public string AppVersion => CurrentAppVersion + " · Linux · Unofficial";
     public string PlatformText => "Linux · " + System.Runtime.InteropServices.RuntimeInformation.OSDescription
         + " · " + System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture;
 

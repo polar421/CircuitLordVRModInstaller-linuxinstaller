@@ -459,8 +459,10 @@
       </ScrollViewer>
 
       <!-- pinned attribution, present only on the game-selection screen -->
-      <StackPanel Name="GameFooter" Grid.Row="1" HorizontalAlignment="Center" Spacing="10" Margin="0,10,0,18">
+      <StackPanel Name="GameFooter" Grid.Row="1" HorizontalAlignment="Center" Spacing="5" Margin="0,8,0,14">
         <TextBlock Text="{loc:Tr Key=footerNote}" Classes="footer-note" HorizontalAlignment="Center" />
+        <TextBlock Text="{loc:Tr Key=footerUnofficial}" Classes="footer-note" FontSize="10"
+                   HorizontalAlignment="Center" />
         <Button Classes="support" HorizontalAlignment="Center" Click="OpenSupport_Click"
                 ToolTip.Tip="{loc:Tr Key=supportTooltip}">
           <StackPanel Orientation="Horizontal" Spacing="7">
@@ -468,6 +470,8 @@
             <TextBlock Text="{loc:Tr Key=supportCircuitLord}" Foreground="{Binding $parent[Button].Foreground}" />
           </StackPanel>
         </Button>
+        <TextBlock Text="{loc:Tr Key=supportNote}" FontSize="10.5"
+                   Foreground="{StaticResource TextDim}" HorizontalAlignment="Center" />
       </StackPanel>
     </Grid>
 
@@ -530,6 +534,54 @@
 
     <!-- expanded settings, self-contained so the installer screen stays untouched -->
     <local:SettingsView Name="SettingsPanel" Grid.Row="0" Grid.RowSpan="2" IsVisible="False" />
+
+    <!-- startup attribution notice; dismissal is handled once by the window -->
+    <Border Name="AttributionOverlay" Grid.Row="0" Grid.RowSpan="2" Background="#E614171C" IsVisible="False">
+      <Border Width="540" MaxHeight="480" Background="{StaticResource Panel}"
+              BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+              CornerRadius="{DynamicResource CornerCard}" Padding="22,18"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="Auto,*">
+            <Image Source="avares://CircuitLordVRModInstaller/Assets/app-256.png" Width="36" Height="36"
+                   VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{loc:Tr Key=unofficialPort}" FontSize="19"
+                       FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0" />
+          </Grid>
+
+          <Border Background="{StaticResource AccentFill}" BorderBrush="#664FA3E3" BorderThickness="1"
+                  CornerRadius="{DynamicResource CornerInner}" Padding="12,10">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{loc:Tr Key=attributionIntro}" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Text="{loc:Tr Key=attributionIndependent}" Classes="small" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+
+          <StackPanel Spacing="3">
+            <TextBlock Text="{loc:Tr Key=attributionOriginalCreator}" FontSize="12" TextWrapping="Wrap" />
+            <TextBlock Text="{loc:Tr Key=attributionBackend}" FontSize="12" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <Border Height="1" Background="{StaticResource Stroke}" />
+
+          <Grid ColumnDefinitions="155,*" RowDefinitions="Auto,Auto" RowSpacing="5">
+            <TextBlock Text="{loc:Tr Key=attributionOriginalApplication}" Classes="small" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="link" FontSize="10.5"
+                    Content="https://github.com/CircuitLord/CircuitLordVRModInstaller"
+                    Tag="https://github.com/CircuitLord/CircuitLordVRModInstaller"
+                    Click="OpenAttributionLink_Click" />
+            <TextBlock Grid.Row="1" Text="{loc:Tr Key=attributionLinuxBackend}" Classes="small" VerticalAlignment="Center" />
+            <Button Grid.Row="1" Grid.Column="1" Classes="link" FontSize="10.5"
+                    Content="https://github.com/Monkellie/tf2vr-linux"
+                    Tag="https://github.com/Monkellie/tf2vr-linux"
+                    Click="OpenAttributionLink_Click" />
+          </Grid>
+
+          <Button Name="AttributionContinueButton" Content="{loc:Tr Key=continueLabel}" Classes="primary"
+                  HorizontalAlignment="Right" MinWidth="104" Click="ContinueAttribution_Click" />
+        </StackPanel>
+      </Border>
+    </Border>
 
   </Grid>
 </Window>

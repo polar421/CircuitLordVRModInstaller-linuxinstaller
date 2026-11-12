@@ -276,8 +276,33 @@
               <TextBlock Text="{loc:Tr Key=about}" Classes="section" />
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=aboutName}" Classes="small" />
-                <TextBlock Grid.Column="1" Text="CircuitLord's VR Mod Installer" Classes="small"
+                <TextBlock Grid.Column="1" Text="{loc:Tr Key=aboutApplicationValue}" Classes="small"
+                           Foreground="{StaticResource Text}" TextWrapping="Wrap" />
+              </Grid>
+              <Grid ColumnDefinitions="180,*">
+                <TextBlock Text="{loc:Tr Key=aboutOriginalCreator}" Classes="small" />
+                <TextBlock Grid.Column="1" Text="{loc:Tr Key=aboutOriginalCreatorValue}" Classes="small"
                            Foreground="{StaticResource Text}" />
+              </Grid>
+              <Grid ColumnDefinitions="180,*">
+                <TextBlock Text="{loc:Tr Key=aboutOriginalApplication}" Classes="small" />
+                <Button Grid.Column="1" Classes="link" FontSize="10.5"
+                        Content="https://github.com/CircuitLord/CircuitLordVRModInstaller"
+                        Tag="https://github.com/CircuitLord/CircuitLordVRModInstaller" Click="OpenLink_Click" />
+              </Grid>
+              <Grid ColumnDefinitions="180,*">
+                <TextBlock Text="{loc:Tr Key=aboutLinuxBackend}" Classes="small" />
+                <StackPanel Grid.Column="1" Spacing="1">
+                  <TextBlock Text="{loc:Tr Key=aboutLinuxBackendValue}" Classes="small"
+                             Foreground="{StaticResource Text}" />
+                  <Button Classes="link" FontSize="10.5" Content="https://github.com/Monkellie/tf2vr-linux"
+                          Tag="https://github.com/Monkellie/tf2vr-linux" Click="OpenLink_Click" />
+                </StackPanel>
+              </Grid>
+              <Grid ColumnDefinitions="180,*">
+                <TextBlock Text="{loc:Tr Key=aboutPortStatus}" Classes="small" />
+                <TextBlock Grid.Column="1" Text="{loc:Tr Key=aboutPortStatusValue}" Classes="small"
+                           Foreground="{StaticResource Text}" TextWrapping="Wrap" />
               </Grid>
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=aboutVersion}" Classes="small" />
@@ -290,15 +315,11 @@
                            Foreground="{StaticResource Text}" TextWrapping="Wrap" />
               </Grid>
               <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
-                <Button Content="{loc:Tr Key=originalProject}" Classes="ghost" FontSize="11.5" Padding="8,4"
-                        Tag="https://github.com/CircuitLord/CircuitLordVRModInstaller" Click="OpenLink_Click" />
-                <Button Grid.Column="1" Content="{loc:Tr Key=linuxBackendRepo}" Classes="ghost" FontSize="11.5"
-                        Padding="8,4" Tag="https://github.com/Monkellie/tf2vr-linux" Click="OpenLink_Click" />
-                <Button Grid.Row="1" Content="{loc:Tr Key=officialManifest}" Classes="ghost" FontSize="11.5"
+                <Button Content="{loc:Tr Key=officialManifest}" Classes="ghost" FontSize="11.5"
                         Padding="8,4"
                         Tag="https://raw.githubusercontent.com/CircuitLord/CircuitLordVRModInstaller/main/manifest-v3.json"
                         Click="OpenLink_Click" />
-                <Button Grid.Row="1" Grid.Column="1" Content="{loc:Tr Key=license}" Classes="ghost" FontSize="11.5"
+                <Button Grid.Column="1" Content="{loc:Tr Key=license}" Classes="ghost" FontSize="11.5"
                         Padding="8,4"
                         Tag="https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/blob/main/LICENSE"
                         Click="OpenLink_Click" />

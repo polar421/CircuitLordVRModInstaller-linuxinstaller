@@ -1,7 +1,12 @@
-# CircuitLord's VR Mod Installer — Linux (beta)
+# CircuitLord's VR Mod Installer — Unofficial Linux Port (beta)
 
 A native Linux desktop port of [CircuitLord's VR Mod Installer](https://github.com/CircuitLord/CircuitLordVRModInstaller).
 The original WPF interface is recreated in .NET 10 + Avalonia, so it runs without Wine.
+
+> **Unofficial Linux port.** This project is independently developed and is not made, developed,
+> published, endorsed, or officially supported by CircuitLord. The original VR Mod Installer was
+> created by CircuitLord for Windows. Titanfall 2 VR installation uses Monkellie's `tf2vr-linux`
+> project as its Linux backend.
 
 Titanfall 2 VR installation is delegated to [Monkellie's `tf2vr-linux`](https://github.com/Monkellie/tf2vr-linux):
 this app manages a checkout of that repository, runs its real `install.sh`, and does not reimplement
@@ -20,7 +25,7 @@ original but is unavailable on Linux because no backend exists for it.
 > fixture-tested. See [Status](#status) and [Limitations](#limitations) before relying on it.
 >
 > Native Wayland, the settings screen and automatic installer updates are included in the
-> latest `v1.0.3` release.
+> latest `v1.0.4` release.
 
 ## Install the prebuilt release
 
@@ -37,11 +42,11 @@ are needed only for the integrations you use.
 #    https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases
 
 # 2. Verify the download (replace the file name if the version differs).
-sha256sum -c circuitlord-vrmodinstaller-1.0.3-linux-x64.tar.gz.sha256
+sha256sum -c circuitlord-vrmodinstaller-1.0.4-linux-x64.tar.gz.sha256
 
 # 3. Extract and install for the current user.
-tar -xzf circuitlord-vrmodinstaller-1.0.3-linux-x64.tar.gz
-./circuitlord-vrmodinstaller-1.0.3-linux-x64/install.sh
+tar -xzf circuitlord-vrmodinstaller-1.0.4-linux-x64.tar.gz
+./circuitlord-vrmodinstaller-1.0.4-linux-x64/install.sh
 ```
 
 This creates:
@@ -140,9 +145,19 @@ archive hash; exact commands and the measured hash are in `docs/RELEASE.md`.
 - [`docs/PROJECT_AUDIT.md`](docs/PROJECT_AUDIT.md) — feature-by-feature audit against the original
 - [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) — common failures and fixes
 
-## License
+## Attribution and license
 
-This installer is MIT licensed; see [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
-The bundled serif font is Liberation Serif under the SIL Open Font License 1.1. Game names and
-artwork belong to their respective owners; no game or mod content is distributed here. This project
-is not affiliated with or endorsed by Respawn Entertainment or Electronic Arts.
+- **Original VR Mod Installer:** created by **CircuitLord** for Windows:
+  <https://github.com/CircuitLord/CircuitLordVRModInstaller>. The installer source is MIT licensed.
+- **Linux backend:** **Monkellie's** `tf2vr-linux`: <https://github.com/Monkellie/tf2vr-linux>,
+  MIT licensed. It is cloned at runtime and is not redistributed in this project.
+- **This Linux port:** independently developed and maintained by the Linux-port contributors. The
+  Avalonia interface, Linux orchestration, packaging and update code are separate from CircuitLord's
+  original WPF application. The original application's name, visual identity and artwork remain
+  CircuitLord's work and are reused under the original MIT license.
+- **Mod packages:** not covered by the installer's MIT license and not redistributed here.
+
+See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the complete
+notices. The bundled serif font is Liberation Serif under the SIL Open Font License 1.1. Game names
+and artwork belong to their respective owners; no game or mod content is distributed here. This
+project is not affiliated with or endorsed by Respawn Entertainment or Electronic Arts.

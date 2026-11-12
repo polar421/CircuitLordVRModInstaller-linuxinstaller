@@ -10,7 +10,7 @@
     <RootNamespace>CircuitLord.VRModInstaller</RootNamespace>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
     <Product>CircuitLord's VR Mod Installer (Linux)</Product>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
   </PropertyGroup>
 

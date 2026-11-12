@@ -11,6 +11,16 @@ structure and bundled artwork (`app.ico`, `Assets/titanfall-2.jpg`, `Assets/big-
 that license. Big Walk VR is shown as unavailable on Linux because no installation backend exists
 for it; it is not presented as installable.
 
+## Linux port
+
+- Authors: the independent CircuitLord VR Mod Installer Linux port contributors.
+- License: MIT for the independently written Linux code; see `LICENSE`.
+- The Avalonia interface, Linux backend orchestration, packaging, installer and update code are
+  separate from CircuitLord's original WPF application.
+- The Linux port does not claim ownership of CircuitLord's original application, name, artwork or
+  other original assets. It is not made, published, endorsed, or officially supported by
+  CircuitLord.
+
 ## tf2vr-linux
 
 - Source: https://github.com/Monkellie/tf2vr-linux
