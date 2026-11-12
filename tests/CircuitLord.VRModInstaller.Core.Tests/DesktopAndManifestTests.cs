@@ -72,7 +72,7 @@ public class DesktopEntryTests
 
         Assert.True(repaired.HasRequiredCategory);
         Assert.Equal(DesktopIntegrationState.Installed, repaired.State);
-        Assert.Single(File.ReadAllLines(env.Paths.DesktopEntryFile).Where(l => l.StartsWith("Categories=")));
+        Assert.Single(File.ReadAllLines(env.Paths.DesktopEntryFile), l => l.StartsWith("Categories="));
     }
 
     [Fact]

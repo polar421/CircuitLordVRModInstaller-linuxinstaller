@@ -167,7 +167,7 @@ public class SteamTransactionTests
         SteamShortcutsDocument.Load(path).SaveVerified(path);
 
         var final = SteamShortcutsDocument.Load(path);
-        Assert.Single(final.Entries.Where(e => e.Name == "Titanfall 2 VR"));
+        Assert.Single(final.Entries, e => e.Name == "Titanfall 2 VR");
     }
 
     [Fact]
@@ -204,7 +204,7 @@ public class SteamTransactionTests
 
         var shortcuts = SteamShortcutsDocument.Load(path);
         Assert.Contains(shortcuts.Entries, e => e.Name == "Other Game");
-        Assert.Single(shortcuts.Entries.Where(e => e.Name == "Titanfall 2 VR"));
+        Assert.Single(shortcuts.Entries, e => e.Name == "Titanfall 2 VR");
     }
 
     [Fact]
