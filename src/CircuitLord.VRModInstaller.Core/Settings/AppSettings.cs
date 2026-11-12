@@ -11,7 +11,7 @@ namespace CircuitLord.VRModInstaller.Core.Settings;
 /// </summary>
 public sealed class AppSettings
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     [JsonPropertyName("schemaVersion")]
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
@@ -25,9 +25,21 @@ public sealed class AppSettings
     [JsonPropertyName("roundedCorners")]
     public bool RoundedCorners { get; set; } = true;
 
-    /// <summary>Interface language; "en" and "de" are bundled, anything else falls back to English.</summary>
+    /// <summary>Interface language; validated against the bundled translation catalog.</summary>
     [JsonPropertyName("language")]
     public string Language { get; set; } = "en";
+
+    /// <summary>Dark, Light or System. Dark remains the default visual identity.</summary>
+    [JsonPropertyName("theme")]
+    public string Theme { get; set; } = "dark";
+
+    /// <summary>Application interface scale from 80 to 150 percent, in five-percent steps.</summary>
+    [JsonPropertyName("uiScale")]
+    public int UiScale { get; set; } = 100;
+
+    /// <summary>System, Reduced or Full motion preference.</summary>
+    [JsonPropertyName("motionPreference")]
+    public string MotionPreference { get; set; } = "system";
 
     [JsonPropertyName("checkForAppUpdates")]
     public bool CheckForAppUpdates { get; set; } = true;
@@ -65,6 +77,32 @@ public sealed class AppSettings
 
     [JsonPropertyName("showLaunchConfirmation")]
     public bool ShowLaunchConfirmation { get; set; } = true;
+
+    /// <summary>
+    /// Keeps older and hand-edited settings safe. Unknown values fall back to
+    /// the documented defaults rather than escaping into the UI layer.
+    /// </summary>
+    public void Normalize()
+    {
+        Theme = Theme?.Trim().ToLowerInvariant() switch
+        {
+            "system" => "system",
+            "light" => "light",
+            _ => "dark",
+        };
+        MotionPreference = MotionPreference?.Trim().ToLowerInvariant() switch
+        {
+            "reduced" => "reduced",
+            "full" => "full",
+            _ => "system",
+        };
+        UiScale = Math.Clamp(UiScale, 80, 150);
+        UiScale = (int)(Math.Round(UiScale / 5.0, MidpointRounding.AwayFromZero) * 5);
+        if (string.IsNullOrWhiteSpace(Language))
+        {
+            Language = "en";
+        }
+    }
 }
 
 public sealed class SettingsStore
@@ -83,7 +121,9 @@ public sealed class SettingsStore
         {
             if (!File.Exists(_paths.SettingsFile))
             {
-                return new AppSettings();
+                var defaults = new AppSettings();
+                defaults.Normalize();
+                return defaults;
             }
 
             var json = File.ReadAllText(_paths.SettingsFile);
@@ -111,11 +151,14 @@ public sealed class SettingsStore
                 }
             }
 
+            settings.Normalize();
             return settings;
         }
         catch (Exception ex) when (ex is IOException or JsonException or InvalidDataException)
         {
-            return new AppSettings();
+            var defaults = new AppSettings();
+            defaults.Normalize();
+            return defaults;
         }
     }
 

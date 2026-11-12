@@ -3,34 +3,35 @@
         xmlns:loc="using:CircuitLord.VRModInstaller.Localization"
         xmlns:local="using:CircuitLord.VRModInstaller"
         x:Class="CircuitLord.VRModInstaller.MainWindow"
-        Title="CircuitLord VR Mod Install unofficial-port for Linux"
+        Title="{loc:Tr Key=windowTitle}"
         Width="800" Height="740"
         MinWidth="560" MinHeight="520"
         CanResize="True"
         WindowDecorations="None"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource Bg}">
+        Background="{DynamicResource Bg}">
 
+  <LayoutTransformControl Name="RootScale">
   <Grid RowDefinitions="46,*">
 
     <!-- title bar: original icon, name and a Linux version marker -->
-    <Grid Grid.Row="0" Name="TitleBar" Background="{StaticResource Bg}" PointerPressed="TitleBar_PointerPressed"
+    <Grid Grid.Row="0" Name="TitleBar" Background="{DynamicResource Bg}" PointerPressed="TitleBar_PointerPressed"
           ColumnDefinitions="*,Auto">
       <Grid Grid.Column="0" ColumnDefinitions="Auto,*,Auto" Margin="16,0,10,0">
         <Image Source="avares://CircuitLordVRModInstaller/Assets/app-256.png" Width="20" Height="20"
                VerticalAlignment="Center" />
-        <TextBlock Grid.Column="1" Text="CircuitLord VR Mod Install unofficial-port for Linux"
+        <TextBlock Grid.Column="1" Text="{loc:Tr Key=windowTitle}"
                    FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,8,0"
                    TextTrimming="CharacterEllipsis"
-                   ToolTip.Tip="CircuitLord VR Mod Install unofficial-port for Linux" />
-        <Border Grid.Column="2" Background="{StaticResource Hover}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                   ToolTip.Tip="{loc:Tr Key=windowTitle}" />
+        <Border Grid.Column="2" Background="{DynamicResource Hover}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
                 CornerRadius="4" Padding="6,1" VerticalAlignment="Center" Margin="0,1,0,0">
-          <TextBlock Name="VersionText" Text="{Binding AppVersion}" FontSize="10.5" Foreground="{StaticResource TextDim}" />
+          <TextBlock Name="VersionText" Text="{Binding AppVersion}" FontSize="10.5" Foreground="{DynamicResource TextDim}" />
         </Border>
       </Grid>
       <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">
-        <Button Classes="titlebar" Click="OpenSettings_Click" ToolTip.Tip="{loc:Tr Key=settings}"
-                AutomationProperties.Name="Settings">
+        <Button Name="SettingsButton" Classes="titlebar" Click="OpenSettings_Click" ToolTip.Tip="{loc:Tr Key=settings}"
+                AutomationProperties.Name="{loc:Tr Key=settings}">
           <Path Data="M 1,3 L 11,3 M 1,9 L 11,9 M 4,0.5 L 4,5.5 M 8,6.5 L 8,11.5"
                 Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.2"
                 Width="12" Height="12" Stretch="None" />
@@ -44,7 +45,7 @@
                 Width="10" Height="10" Stretch="None" />
         </Button>
       </StackPanel>
-      <Border Height="1" VerticalAlignment="Bottom" Background="{StaticResource Stroke}" IsHitTestVisible="False" />
+      <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource Stroke}" IsHitTestVisible="False" />
     </Grid>
 
     <Grid Grid.Row="1" RowDefinitions="*,Auto">
@@ -68,9 +69,9 @@
                   <TextBlock Text="Big Walk VR" Classes="card-title" />
                   <TextBlock Name="BigWalkStatus" Text="{loc:Tr Key=notAvailableLinux}" Classes="small" TextWrapping="Wrap" />
                 </StackPanel>
-                <Border Grid.Column="2" Background="{StaticResource Hover}" BorderBrush="{StaticResource Stroke}"
+                <Border Grid.Column="2" Background="{DynamicResource Hover}" BorderBrush="{DynamicResource Stroke}"
                         BorderThickness="1" CornerRadius="{DynamicResource CornerInner}" Padding="8,3" VerticalAlignment="Center" Margin="0,0,16,0">
-                  <TextBlock Text="{loc:Tr Key=noBackend}" FontSize="10.5" Foreground="{StaticResource TextDim}" />
+                  <TextBlock Text="{loc:Tr Key=noBackend}" FontSize="10.5" Foreground="{DynamicResource TextDim}" />
                 </Border>
               </Grid>
             </Button>
@@ -103,8 +104,8 @@
           <StackPanel Name="InstallerView" IsVisible="False" Spacing="0">
             <!-- The large banner owns the title and install state; this row is navigation only. -->
             <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
-              <Button Classes="ghost" Width="32" Height="32" Padding="0" Click="Back_Click"
-                      ToolTip.Tip="{loc:Tr Key=backToGames}" AutomationProperties.Name="Back to games">
+              <Button Name="BackToGamesButton" Classes="ghost" Width="32" Height="32" Padding="0" Click="Back_Click"
+                      ToolTip.Tip="{loc:Tr Key=backToGames}" AutomationProperties.Name="{loc:Tr Key=backToGames}">
                 <Path Data="M 6,0 L 0,6 L 6,12" Width="7" Height="12" Stretch="None"
                       Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.4" />
               </Button>
@@ -123,38 +124,38 @@
                 <Border IsHitTestVisible="False">
                   <Border.Background>
                     <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                      <GradientStop Offset="0" Color="#2214171C" />
-                      <GradientStop Offset="0.36" Color="#9914171C" />
-                      <GradientStop Offset="1" Color="#FA14171C" />
+                      <GradientStop Offset="0" Color="{DynamicResource HeroFadeTop}" />
+                      <GradientStop Offset="0.36" Color="{DynamicResource HeroFadeMid}" />
+                      <GradientStop Offset="1" Color="{DynamicResource HeroFadeBottom}" />
                     </LinearGradientBrush>
                   </Border.Background>
                 </Border>
                 <Border IsHitTestVisible="False">
                   <Border.Background>
                     <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                      <GradientStop Offset="0" Color="#D914171C" />
-                      <GradientStop Offset="0.62" Color="#3314171C" />
-                      <GradientStop Offset="1" Color="#0014171C" />
+                      <GradientStop Offset="0" Color="{DynamicResource HeroShadeTop}" />
+                      <GradientStop Offset="0.62" Color="{DynamicResource HeroShadeMid}" />
+                      <GradientStop Offset="1" Color="{DynamicResource HeroShadeClear}" />
                     </LinearGradientBrush>
                   </Border.Background>
                 </Border>
                 <Grid Margin="20,16,20,18" RowDefinitions="Auto,*,Auto">
                   <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="TITANFALL 2 · VR" FontSize="10.5" FontWeight="Bold" Foreground="#B3FFFFFF"
+                    <TextBlock Text="TITANFALL 2 · VR" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource HeroTextMuted}"
                                VerticalAlignment="Center" />
-                    <Border Grid.Column="1" Name="HeroStatusChip" Background="#D914171C" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                    <Border Grid.Column="1" Name="HeroStatusChip" Background="{DynamicResource Overlay}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
                             CornerRadius="{DynamicResource CornerPill}" Padding="10,4">
                       <StackPanel Orientation="Horizontal" Spacing="6">
-                        <Ellipse Width="6" Height="6" Fill="{StaticResource Accent}" VerticalAlignment="Center" />
-                        <TextBlock Name="HeroStatusText" Text="{loc:Tr Key=overviewNotInstalled}" FontSize="10.5" Foreground="#E6FFFFFF" />
+                        <Ellipse Width="6" Height="6" Fill="{DynamicResource Accent}" VerticalAlignment="Center" />
+                        <TextBlock Name="HeroStatusText" Text="{loc:Tr Key=overviewNotInstalled}" FontSize="10.5" Foreground="{DynamicResource HeroTextSoft}" />
                       </StackPanel>
                     </Border>
                   </Grid>
 
                   <Grid Grid.Row="2" ColumnDefinitions="*,Auto" VerticalAlignment="Bottom">
                     <StackPanel Spacing="2" Margin="0,0,14,0">
-                      <TextBlock Text="Titanfall 2 VR" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" />
-                      <TextBlock Text="{loc:Tr Key=overviewTagline}" FontSize="12" Foreground="#E6FFFFFF" />
+                      <TextBlock Text="Titanfall 2 VR" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource HeroText}" />
+                      <TextBlock Text="{loc:Tr Key=overviewTagline}" FontSize="12" Foreground="{DynamicResource HeroTextSoft}" />
                       <WrapPanel Margin="0,10,0,0">
                         <Border Classes="hero-chip" Margin="0,0,7,0">
                           <StackPanel Spacing="1">
@@ -221,7 +222,7 @@
                 <StackPanel Spacing="3">
                   <TextBlock Text="{loc:Tr Key=latestBeta}" Classes="small" />
                   <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Name="LatestBetaValue" Text="{loc:Tr Key=notAvailable}" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource Accent}" />
+                    <TextBlock Name="LatestBetaValue" Text="{loc:Tr Key=notAvailable}" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" />
                     <Border Name="LatestBetaBadge" Classes="status-pill" IsVisible="False" VerticalAlignment="Center">
                       <TextBlock Name="LatestBetaBadgeText" Classes="status-pill-text" />
                     </Border>
@@ -247,14 +248,15 @@
                       <TextBlock Name="VersionPickerTitle" FontSize="12.5" FontWeight="SemiBold" />
                       <TextBlock Name="VersionPickerMeta" Classes="small" />
                     </StackPanel>
-                    <Path Grid.Column="1" Data="M 0,0 L 5,5 L 10,0" Stroke="{StaticResource TextDim}"
+                    <Path Grid.Column="1" Data="M 0,0 L 5,5 L 10,0" Stroke="{DynamicResource TextDim}"
                           StrokeThickness="1.5" Width="10" Height="6" Stretch="None" Margin="10,0,0,0" />
                   </Grid>
                 </Button>
 
-                <Popup Name="VersionPopup" PlacementTarget="{Binding #VersionPickerButton}" Placement="Bottom"
+                <Popup Name="VersionPopup" PlacementTarget="{Binding #VersionPickerButton}" Placement="BottomEdgeAlignedLeft"
                        IsLightDismissEnabled="True" VerticalOffset="6">
-                  <Border Classes="popup" Width="520" MaxHeight="340">
+                  <LayoutTransformControl Name="VersionPopupScale">
+                  <Border Name="VersionPopupPanel" Classes="popup" Width="520" MaxHeight="340">
                     <Grid RowDefinitions="Auto,*">
                       <Grid ColumnDefinitions="*,Auto" Margin="12,10,12,7">
                         <StackPanel Spacing="1">
@@ -265,14 +267,14 @@
                                 Click="CloseVersionPicker_Click" ToolTip.Tip="{loc:Tr Key=close}" />
                       </Grid>
                       <ScrollViewer Grid.Row="1" MaxHeight="286" VerticalScrollBarVisibility="Auto"
-                                    HorizontalScrollBarVisibility="Disabled">
+                                    AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
                         <ItemsControl Name="VersionGroupsList" Margin="6,0,6,7">
                           <ItemsControl.ItemTemplate>
                             <DataTemplate>
                               <StackPanel Margin="0,0,0,8">
                                 <StackPanel Margin="10,4,10,4" Spacing="1">
                                   <TextBlock Text="{Binding Title}" FontSize="10.5" FontWeight="Bold"
-                                             Foreground="{StaticResource Accent}" />
+                                             Foreground="{DynamicResource Accent}" />
                                   <TextBlock Text="{Binding Hint}" Classes="small" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <ItemsControl ItemsSource="{Binding Options}">
@@ -282,10 +284,10 @@
                                               Click="VersionOption_Click">
                                         <Grid ColumnDefinitions="4,18,*,Auto" VerticalAlignment="Center">
                                           <Border Grid.Column="0" Width="3" Height="26" CornerRadius="2"
-                                                  Background="{StaticResource Accent}" IsVisible="{Binding IsSelected}"
+                                                  Background="{DynamicResource Accent}" IsVisible="{Binding IsSelected}"
                                                   VerticalAlignment="Center" />
                                           <Path Grid.Column="1" Data="M 1,5 L 4,8 L 9,1" Width="10" Height="10"
-                                                Stretch="None" Stroke="{StaticResource Green}" StrokeThickness="1.6"
+                                                Stretch="None" Stroke="{DynamicResource Green}" StrokeThickness="1.6"
                                                 IsVisible="{Binding IsInstalled}" VerticalAlignment="Center"
                                                 ToolTip.Tip="{loc:Tr Key=installed}" />
                                           <StackPanel Grid.Column="2" Spacing="1" Margin="2,0,8,0">
@@ -316,6 +318,7 @@
                       </ScrollViewer>
                     </Grid>
                   </Border>
+                  </LayoutTransformControl>
                 </Popup>
 
                 <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
@@ -344,7 +347,7 @@
                     <Button Content="{loc:Tr Key=refresh}" Classes="ghost" FontSize="11" Padding="7,4" Click="Refresh_Click" />
                   </StackPanel>
                 </Grid>
-                <Border Background="{StaticResource Bg}" BorderBrush="{StaticResource Stroke}"
+                <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}"
                         BorderThickness="1" CornerRadius="{DynamicResource CornerInner}" Padding="10,8">
                   <StackPanel Spacing="2">
                     <TextBlock Text="{loc:Tr Key=installationHistory}" Classes="h2" />
@@ -370,7 +373,7 @@
                 </Grid>
                 <TextBlock Name="ChangelogUpdatedText" Classes="small" />
                 <TextBlock Name="ChangelogPreview" FontSize="11.5" TextWrapping="Wrap" MaxHeight="82"
-                           LineHeight="18" Foreground="{StaticResource TextDim}" />
+                           LineHeight="18" Foreground="{DynamicResource TextDim}" />
                 <Button Name="ChangelogExpandButton" Classes="ghost" FontSize="11" Padding="8,4"
                         HorizontalAlignment="Left" IsVisible="False" Click="ChangelogExpand_Click" />
               </StackPanel>
@@ -396,7 +399,7 @@
                   </StackPanel>
                 </Expander.Header>
                 <StackPanel Spacing="10" Margin="16,0,16,14">
-                  <Border Background="{StaticResource Bg}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                  <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
                           CornerRadius="{DynamicResource CornerInner}" Padding="12,10">
                     <StackPanel Spacing="6">
                       <Grid ColumnDefinitions="*,Auto">
@@ -407,17 +410,17 @@
                         <Button Grid.Column="1" Content="{loc:Tr Key=runBackendCheck}" Classes="ghost" FontSize="11" Padding="7,4"
                                 Click="Check_Click" />
                       </Grid>
-                      <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                      <Border Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
                               CornerRadius="{DynamicResource CornerInner}" Padding="9" MaxHeight="120">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
-                          <TextBlock Name="PreflightText" FontFamily="monospace" FontSize="10.5" Foreground="{StaticResource TextDim}"
+                          <TextBlock Name="PreflightText" FontFamily="{DynamicResource UiFont}" FontSize="10.5" Foreground="{DynamicResource TextDim}"
                                      TextWrapping="Wrap" />
                         </ScrollViewer>
                       </Border>
                     </StackPanel>
                   </Border>
 
-                  <Border Background="{StaticResource Bg}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                  <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
                           CornerRadius="{DynamicResource CornerInner}" Padding="12,10">
                     <StackPanel Spacing="7">
                       <TextBlock Text="{loc:Tr Key=integrations}" Classes="h2" />
@@ -444,12 +447,12 @@
                     <Button Grid.Column="1" Name="UninstallButton" Content="{loc:Tr Key=uninstall}" Classes="danger" FontSize="11"
                             Padding="8,4" Click="Uninstall_Click" IsEnabled="False" />
                   </Grid>
-                  <Border Background="{StaticResource Bg}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                  <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
                           CornerRadius="{DynamicResource CornerInner}">
                     <ListBox Name="LogsList" Height="130" Background="Transparent" BorderThickness="0" FontSize="10.5">
                       <ListBox.ItemTemplate>
                         <DataTemplate>
-                          <TextBlock Text="{Binding}" FontFamily="monospace" TextWrapping="Wrap" />
+                          <TextBlock Text="{Binding}" FontFamily="{DynamicResource UiFont}" TextWrapping="Wrap" />
                         </DataTemplate>
                       </ListBox.ItemTemplate>
                     </ListBox>
@@ -475,7 +478,7 @@
           </StackPanel>
         </Button>
         <TextBlock Text="{loc:Tr Key=supportNote}" FontSize="10.5"
-                   Foreground="{StaticResource TextDim}" HorizontalAlignment="Center" />
+                   Foreground="{DynamicResource TextDim}" HorizontalAlignment="Center" />
       </StackPanel>
     </Grid>
 
@@ -500,9 +503,9 @@
     </Grid>
 
     <!-- changelog overlay -->
-    <Border Name="ChangelogOverlay" Grid.Row="0" Grid.RowSpan="2" Background="#D914171C" IsVisible="False">
-      <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
-              CornerRadius="{DynamicResource CornerCard}" Padding="22,18" Width="560" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <Border Name="ChangelogOverlay" Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource Overlay}" IsVisible="False">
+      <Border Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
+              CornerRadius="{DynamicResource CornerCard}" Padding="22,18" MaxWidth="560" MaxHeight="680" Margin="12" HorizontalAlignment="Stretch" VerticalAlignment="Center">
         <StackPanel Spacing="10">
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel Spacing="2">
@@ -522,12 +525,12 @@
     </Border>
 
     <!-- confirmation overlay -->
-    <Border Name="ConfirmOverlay" Grid.Row="0" Grid.RowSpan="2" Background="#D914171C" IsVisible="False">
-      <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
-              CornerRadius="{DynamicResource CornerCard}" Padding="22,18" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <Border Name="ConfirmOverlay" Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource Overlay}" IsVisible="False">
+      <Border Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
+              CornerRadius="{DynamicResource CornerCard}" Padding="22,18" MaxWidth="440" Margin="12" HorizontalAlignment="Stretch" VerticalAlignment="Center">
         <StackPanel Spacing="10">
           <TextBlock Name="ConfirmTitle" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <TextBlock Name="ConfirmText" FontSize="12" Foreground="{StaticResource TextDim}" TextWrapping="Wrap" />
+          <TextBlock Name="ConfirmText" FontSize="12" Foreground="{DynamicResource TextDim}" TextWrapping="Wrap" />
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
             <Button Name="ConfirmCancelButton" Content="{loc:Tr Key=cancel}" Classes="ghost" Click="ConfirmCancel_Click" />
             <Button Name="ConfirmOkButton" Content="{loc:Tr Key=restartSteamAdd}" Classes="primary" Click="ConfirmOk_Click" />
@@ -540,11 +543,12 @@
     <local:SettingsView Name="SettingsPanel" Grid.Row="0" Grid.RowSpan="2" IsVisible="False" />
 
     <!-- startup attribution notice; dismissal is handled once by the window -->
-    <Border Name="AttributionOverlay" Grid.Row="0" Grid.RowSpan="2" Background="#E614171C" IsVisible="False">
-      <Border Width="540" MaxHeight="480" Background="{StaticResource Panel}"
-              BorderBrush="{StaticResource Stroke}" BorderThickness="1"
-              CornerRadius="{DynamicResource CornerCard}" Padding="22,18"
-              HorizontalAlignment="Center" VerticalAlignment="Center">
+    <Border Name="AttributionOverlay" Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource OverlayStrong}" IsVisible="False">
+      <Border MaxWidth="540" MaxHeight="680" Background="{DynamicResource Panel}"
+              BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
+              CornerRadius="{DynamicResource CornerCard}" Padding="22,18" Margin="12"
+              HorizontalAlignment="Stretch" VerticalAlignment="Center">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="12">
           <Grid ColumnDefinitions="Auto,*">
             <Image Source="avares://CircuitLordVRModInstaller/Assets/app-256.png" Width="36" Height="36"
@@ -553,7 +557,7 @@
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0" />
           </Grid>
 
-          <Border Background="{StaticResource AccentFill}" BorderBrush="#664FA3E3" BorderThickness="1"
+          <Border Background="{DynamicResource AccentFill}" BorderBrush="{DynamicResource AccentBorder}" BorderThickness="1"
                   CornerRadius="{DynamicResource CornerInner}" Padding="12,10">
             <StackPanel Spacing="4">
               <TextBlock Text="{loc:Tr Key=attributionIntro}" FontSize="12.5" TextWrapping="Wrap" />
@@ -566,7 +570,7 @@
             <TextBlock Text="{loc:Tr Key=attributionBackend}" FontSize="12" TextWrapping="Wrap" />
           </StackPanel>
 
-          <Border Height="1" Background="{StaticResource Stroke}" />
+          <Border Height="1" Background="{DynamicResource Stroke}" />
 
           <Grid ColumnDefinitions="155,*" RowDefinitions="Auto,Auto" RowSpacing="5">
             <TextBlock Text="{loc:Tr Key=attributionOriginalApplication}" Classes="small" VerticalAlignment="Center" />
@@ -584,8 +588,10 @@
           <Button Name="AttributionContinueButton" Content="{loc:Tr Key=continueLabel}" Classes="primary"
                   HorizontalAlignment="Right" MinWidth="104" Click="ContinueAttribution_Click" />
         </StackPanel>
+        </ScrollViewer>
       </Border>
     </Border>
 
   </Grid>
+</LayoutTransformControl>
 </Window>

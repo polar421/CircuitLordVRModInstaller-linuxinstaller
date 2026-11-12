@@ -6,7 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using CircuitLord.VRModInstaller.Appearance;
 using CircuitLord.VRModInstaller.Core;
+using CircuitLord.VRModInstaller.Core.Appearance;
 using CircuitLord.VRModInstaller.Core.Backend;
 using CircuitLord.VRModInstaller.Core.Catalogue;
 using CircuitLord.VRModInstaller.Core.Desktop;
@@ -75,6 +77,12 @@ public sealed class InstallerViewModel
         typeof(InstallerViewModel).Assembly.GetName().Version ?? new Version(1, 0, 0);
     private bool _checkingUpdates;
     private bool _appUpdateInProgress;
+    private string _updateStatusKey = "updatesNotChecked";
+    private object?[] _updateStatusArgs = Array.Empty<object?>();
+    private string? _backendUpdateStatusKey;
+    private object?[] _backendUpdateStatusArgs = Array.Empty<object?>();
+    private string _stageKey = "stageStarting";
+    private object?[] _stageArgs = Array.Empty<object?>();
     private bool _checkingBackendUpdate;
     private bool _backendUpdateInProgress;
     private string? _latestAppTag;
@@ -92,6 +100,7 @@ public sealed class InstallerViewModel
     private InstallerOperationRecord? _lastOperation;
     private InstallerOperationRecord? _lastSuccessfulInstall;
     private ManifestSnapshot? _manifestSnapshot;
+    private ReleaseNotesSelection _changelogSelection = ReleaseNotesSelection.None;
     private bool _historyUnavailable;
 
     private BackendInstallation? _backendState;
@@ -127,12 +136,15 @@ public sealed class InstallerViewModel
 
     public string AppTitle => "CircuitLord's VR Mod Installer";
     public string CurrentAppVersion => CurrentVersion.ToString(3);
-    public string AppVersion => CurrentAppVersion + " · Linux · Unofficial";
+    public string AppVersion => CurrentAppVersion + " · Linux · " + Loc.Get("unofficialLabel");
     public string PlatformText => "Linux · " + System.Runtime.InteropServices.RuntimeInformation.OSDescription
         + " · " + System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture;
 
     public bool RoundedCorners => _settings.RoundedCorners;
     public string Language => _settings.Language;
+    public string ThemeSetting => _settings.Theme;
+    public int UiScalePercent => _settings.UiScale;
+    public string MotionSetting => _settings.MotionPreference;
     public bool AutoCheckForAppUpdates => _settings.CheckForAppUpdates;
     public bool UpdateBackendAutomatically => _settings.UpdateBackendAutomatically;
     public bool ConfirmSteamRestart => _settings.ConfirmSteamRestart;
@@ -252,8 +264,8 @@ public sealed class InstallerViewModel
     public string LauncherLogPath => Path.Combine(_paths.StateHome, "tf2vr", "launch.log");
     public string DiagnosticsReport => BuildDiagnosticsReport();
 
-    public string BackendText { get; private set; } = "Checking the Linux backend...";
-    public string CatalogueText { get; private set; } = "Loading version catalogue...";
+    public string BackendText { get; private set; } = Loc.Get("backendChecking");
+    public string CatalogueText { get; private set; } = Loc.Get("catalogueLoading");
     public string InstalledText { get; private set; } = Loc.Get("notInstalled");
     public string InstalledVersionText => IsInstalled
         ? ModVersion(_installedVersionRaw) ?? Loc.Get("versionUnknown")
@@ -285,10 +297,26 @@ public sealed class InstallerViewModel
             ? Loc.Get("updateAvailableShort")
             : SelectedVersion is not null && !IsSameRelease(SelectedVersion)
                 ? Loc.Get("selectedReleasePending")
-                : Loc.Get("upToDateShort");
+                : UpToDateStatusText;
     public string InstalledCardStatusText => !IsInstalled
         ? Loc.Get("notInstalled")
-        : StableUpdateAvailable ? Loc.Get("updateAvailableShort") : Loc.Get("upToDateShort");
+        : StableUpdateAvailable
+            ? Loc.Get("updateAvailableShort")
+            : SelectedVersion is not null && !IsSameRelease(SelectedVersion)
+                ? Loc.Get("selectedReleasePending")
+                : UpToDateStatusText;
+
+    private string UpToDateStatusText => SelectedVersion?.GroupKey switch
+    {
+        "beta" => Loc.Format("upToDateOnChannel", Loc.Get("betaReleases")),
+        "stable" => Loc.Format("upToDateOnChannel", Loc.Get("stableReleases")),
+        "pinned" => Loc.Get("upToDateOnSelectedRelease"),
+        _ => IsOnBeta
+            ? Loc.Format("upToDateOnChannel", Loc.Get("betaReleases"))
+            : _installedToken == "latest"
+                ? Loc.Format("upToDateOnChannel", Loc.Get("stableReleases"))
+                : Loc.Get("upToDateShort"),
+    };
     public string LatestStableBadgeText => Loc.Get("installed");
     public string LatestBetaBadgeText => Loc.Get("installed");
     public bool LatestStableBadgeVisible => IsInstalled && !IsOnBeta
@@ -330,9 +358,17 @@ public sealed class InstallerViewModel
     public string ChangelogPreview { get; private set; } = Loc.Get("changelogUnavailable");
     public string ChangelogFullText { get; private set; } = Loc.Get("changelogUnavailable");
     public bool ChangelogCanExpand { get; private set; }
-    public string ChangelogChannelText => SelectedVersion is null
-        ? Loc.Get("stableLabel")
-        : GroupTitleFor(SelectedVersion.GroupKey);
+    public string ChangelogChannelText => _changelogSelection.Source switch
+    {
+        ReleaseNotesSource.SelectedRelease => SelectedVersion is null
+            ? Loc.Get("stableLabel")
+            : GroupTitleFor(SelectedVersion.GroupKey),
+        ReleaseNotesSource.InstalledRelease => string.IsNullOrWhiteSpace(_installedToken)
+            ? Loc.Get("installedNotes")
+            : Loc.Get("installedNotes") + " · " + InstalledChannelText,
+        ReleaseNotesSource.StableManifest => Loc.Get("stableNotes"),
+        _ => Loc.Get("notesUnavailableLabel"),
+    };
     public string ChangelogUpdatedText => _manifestSnapshot is null
         ? Loc.Get("notLoaded")
         : Loc.Format("lastRefreshed", _manifestSnapshot.RetrievedAt.ToLocalTime().ToString("g"));
@@ -346,15 +382,15 @@ public sealed class InstallerViewModel
         && !IsSameRelease(SelectedVersion);
     public bool CanPrimaryAction => CanInstall && !Busy;
     public string PrimaryActionHint { get; private set; } = Loc.Get("primaryHintInstall");
-    public string GameText { get; private set; } = "Titanfall 2 VR install state unknown.";
-    public string PreflightText { get; private set; } = "Run the backend check to see game, Proton and runtime details.";
-    public string DesktopText { get; private set; } = "WiVRn desktop entry: not checked.";
-    public string SteamText { get; private set; } = "Steam: not checked.";
-    public string RuntimeText { get; private set; } = "OpenXR runtime: not checked.";
+    public string GameText { get; private set; } = Loc.Get("gameStateUnknown");
+    public string PreflightText { get; private set; } = Loc.Get("preflightHint");
+    public string DesktopText { get; private set; } = Loc.Get("desktopNotChecked");
+    public string SteamText { get; private set; } = Loc.Get("steamNotChecked");
+    public string RuntimeText { get; private set; } = Loc.Get("runtimeNotChecked");
     public string ManifestText { get; private set; } = string.Empty;
-    public string StageText { get; private set; } = "Starting";
+    public string StageText { get; private set; } = Loc.Get("stageStarting");
     public string PrimaryActionLabel { get; private set; } = Loc.Get("install");
-    public string BigWalkText { get; private set; } = "Not available on Linux — no installation backend exists for Big Walk VR.";
+    public string BigWalkText { get; private set; } = Loc.Get("bigWalkUnavailable");
 
     public bool Busy { get; private set; }
     public bool CanInstall { get; private set; }
@@ -377,18 +413,10 @@ public sealed class InstallerViewModel
 
     public async Task InitializeAsync()
     {
-        SetStage("Checking the Linux backend");
+        SetStage("stageCheckingBackend");
 
         _backendState = await _backend.EnsureAsync(_lifetime.Token);
-        BackendText = _backendState.ValidationStatus == BackendValidationStatus.Validated
-            ? $"tf2vr-linux {Short(_backendState.CommitHash)} · origin verified"
-            : _backendState.ValidationStatus switch
-            {
-                BackendValidationStatus.CloneFailed => "Backend clone failed (network or disk).",
-                BackendValidationStatus.OriginMismatch => "Existing checkout has a different origin; left untouched.",
-                BackendValidationStatus.Incomplete => "Backend checkout is missing install.sh or tf2vr.",
-                _ => "Backend not available yet.",
-            };
+        BackendText = BuildBackendText(_backendState);
 
         if (_settings.UpdateBackendAutomatically &&
             _backendState.ValidationStatus == BackendValidationStatus.Validated)
@@ -409,9 +437,13 @@ public sealed class InstallerViewModel
             await RefreshCatalogueAsync();
             await LoadManifestAsync();
         }
+        else if (_catalogue is null)
+        {
+            CatalogueText = Loc.Get("catalogueUnavailable");
+        }
 
         RefreshLocalState();
-        SetStage("Ready");
+        SetStage("stageReady");
         RaiseChanged();
 
         if (_settings.CheckForAppUpdates)
@@ -422,37 +454,73 @@ public sealed class InstallerViewModel
 
     private async Task LoadManifestAsync()
     {
-                var snapshot = await _manifest.GetAsync(forceRefresh: false, _lifetime.Token);
+        var snapshot = await _manifest.GetAsync(forceRefresh: false, _lifetime.Token);
         _manifestSnapshot = snapshot;
-        if (snapshot.Titanfall2Vr is null)
-        {
-            ChangelogPreview = Loc.Get("changelogUnavailable");
-            ChangelogFullText = ChangelogPreview;
-            ChangelogCanExpand = false;
-            ManifestText = snapshot.ValidationWarning ?? Loc.Get("changelogUnavailable");
-            RaiseChanged();
-            return;
-        }
+        RefreshChangelog();
+        ManifestText = BuildManifestText(snapshot);
+        RaiseChanged();
+    }
 
+    private static string BuildBackendText(BackendInstallation? state)
+    {
+        if (state is null)
+        {
+            return Loc.Get("backendNotAvailable");
+        }
+        if (state.ValidationStatus == BackendValidationStatus.Validated)
+        {
+            return $"tf2vr-linux {Short(state.CommitHash)} · " + Loc.Get("backendOriginVerified");
+        }
+        return state.ValidationStatus switch
+        {
+            BackendValidationStatus.CloneFailed => Loc.Get("backendCloneFailed"),
+            BackendValidationStatus.OriginMismatch => Loc.Get("backendOriginMismatch"),
+            BackendValidationStatus.Incomplete => Loc.Get("backendIncomplete"),
+            _ => Loc.Get("backendNotAvailable"),
+        };
+    }
+
+    private string BuildCatalogueText(VersionCatalogue? catalogue)
+    {
+        if (_backendState is null || _backendState.ValidationStatus != BackendValidationStatus.Validated)
+        {
+            return Loc.Get("catalogueUnavailable");
+        }
+        if (catalogue is null)
+        {
+            return Loc.Get("catalogueLoading");
+        }
+        if (catalogue.Entries.Count == 0)
+        {
+            return catalogue.Diagnostic ?? Loc.Get("catalogueNoVersions");
+        }
+        return Loc.Format(
+                   "catalogueSummary",
+                   catalogue.IsFromCache ? Loc.Get("catalogueCached") : Loc.Get("catalogueLive"),
+                   catalogue.Entries.Count)
+               + (catalogue.Diagnostic is null ? string.Empty : " · " + catalogue.Diagnostic);
+    }
+
+    private static string BuildManifestText(ManifestSnapshot? snapshot)
+    {
+        if (snapshot?.Titanfall2Vr is null)
+        {
+            return snapshot?.ValidationWarning ?? Loc.Get("changelogUnavailable");
+        }
         var product = snapshot.Titanfall2Vr;
-        ChangelogPreview = FormatChangelog(product.Changes, 2);
-        ChangelogFullText = FormatChangelog(product.Changes, int.MaxValue);
-        ChangelogCanExpand = product.Changes.Count > 2 || ChangelogFullText.Length > 260;
-        ManifestText = (snapshot.IsFromCache ? Loc.Get("cachedData") : Loc.Get("liveData"))
+        var text = (snapshot.IsFromCache ? Loc.Get("cachedData") : Loc.Get("liveData"))
             + $" · stable {product.Version}"
             + (product.Channels.Count > 0 ? $" · beta {product.Channels[0].Version}" : string.Empty);
-        if (snapshot.ValidationWarning is not null)
-        {
-            ManifestText += " · " + snapshot.ValidationWarning;
-        }
-        RaiseChanged();
+        return snapshot.ValidationWarning is null
+            ? text
+            : text + " · " + snapshot.ValidationWarning;
     }
 
     public async Task RefreshCatalogueAsync()
     {
         if (_backendState is null || _backendState.ValidationStatus != BackendValidationStatus.Validated)
         {
-            CatalogueText = "Catalogue unavailable until the backend checkout is valid.";
+            CatalogueText = Loc.Get("catalogueUnavailable");
             return;
         }
 
@@ -472,11 +540,9 @@ public sealed class InstallerViewModel
             AddLog($"'{previousSelection}' is no longer offered by the backend; selection reset to the first entry.");
         }
 
-        CatalogueText = catalogue.Entries.Count == 0
-            ? catalogue.Diagnostic ?? "The backend returned no installable versions."
-            : $"{(catalogue.IsFromCache ? "Cached" : "Live")} catalogue · {catalogue.Entries.Count} choices"
-              + (catalogue.Diagnostic is null ? string.Empty : " · " + catalogue.Diagnostic);
+        CatalogueText = BuildCatalogueText(catalogue);
 
+        RefreshChangelog();
         UpdatePrimaryAction();
         RaiseChanged();
     }
@@ -484,17 +550,7 @@ public sealed class InstallerViewModel
     private void ApplyCatalogue(VersionCatalogue catalogue)
     {
         _catalogue = catalogue;
-        Versions = catalogue.Entries
-            .Select(e => new VersionOption
-            {
-                DisplayLabel = e.DisplayName,
-                Token = e.BackendToken,
-                Version = e.ResolvedVersion,
-                GroupKey = GroupKeyFor(e),
-                KindLabel = e.IsPinnedRelease ? Loc.Get("fixedVersion") : Loc.Get("channel"),
-                Description = e.Description ?? string.Empty,
-            })
-            .ToList();
+        Versions = catalogue.Entries.Select(CreateVersionOption).ToList();
 
         if (SelectedVersion is null && Versions.Count > 0)
         {
@@ -512,11 +568,11 @@ public sealed class InstallerViewModel
         {
             if (_backendState is null || _backendState.ValidationStatus != BackendValidationStatus.Validated)
             {
-                PreflightText = "The backend is not validated, so nothing was run.";
+                PreflightText = Loc.Get("preflightNothingRun");
                 return;
             }
 
-            SetStage("Running backend preflight");
+            SetStage("stagePreflight");
             var command = _adapter.CreateCheck(_backendState);
             var output = new List<string>();
             var result = await _runner.RunAsync(
@@ -538,14 +594,14 @@ public sealed class InstallerViewModel
             if (PreflightText.Length == 0)
             {
                 PreflightText = result.Started
-                    ? $"The backend check finished with exit code {result.ExitCode} but printed nothing."
-                    : "The backend could not start: " + result.StartFailure;
+                    ? Loc.Format("preflightNoOutput", result.ExitCode)
+                    : Loc.Format("preflightCouldNotStart", result.StartFailure);
             }
-            PreflightText = $"Backend exit code: {result.ExitCode}\n\n" + PreflightText;
+            PreflightText = Loc.Format("preflightExitCode", result.ExitCode) + "\n\n" + PreflightText;
             GameText = result.Succeeded
-                ? "Preflight completed. Review the reported checks below."
-                : "Preflight reported problems; review the output below.";
-            SetStage(result.Succeeded ? "Preflight completed" : "Preflight failed");
+                ? Loc.Get("preflightReviewChecks")
+                : Loc.Get("preflightReviewProblems");
+            SetStage(result.Succeeded ? "stagePreflightCompleted" : "stagePreflightFailed");
         }
         finally
         {
@@ -585,7 +641,7 @@ public sealed class InstallerViewModel
                 return;
             }
 
-            SetStage("Starting the Linux installer");
+            SetStage("stageStartingInstaller");
             var operationId = Guid.NewGuid().ToString("N");
             var command = _adapter.CreateInstall(backend, token, force: IsInstalled, refreshProton: false);
             var logPath = _logger.CreateOperationLog(operationId, command, backend.CommitHash);
@@ -625,7 +681,7 @@ public sealed class InstallerViewModel
 
             if (!result.Succeeded)
             {
-                SetStage($"Install finished with exit code {result.ExitCode}");
+                SetStage("stageInstallFinished", result.ExitCode);
                 return;
             }
 
@@ -636,8 +692,8 @@ public sealed class InstallerViewModel
             _settingsStore.Save(_settings);
 
             SetStage(desktopStatus.State == DesktopIntegrationState.Installed
-                ? "Installed · WiVRn desktop entry installed"
-                : "Installed · desktop integration needs attention");
+                ? "stageInstalledDesktop"
+                : "stageInstalledDesktopAttention");
             AddLog($"Backend reported: {installed ?? "unknown version"}");
             RaiseChanged();
         }
@@ -660,7 +716,7 @@ public sealed class InstallerViewModel
                 AddLog("Cannot uninstall: the backend checkout is not valid.");
                 return;
             }
-            SetStage("Removing the mod with the backend");
+            SetStage("stageUninstalling");
             var command = _adapter.CreateUninstall(_backendState);
             var operationId = Guid.NewGuid().ToString("N");
             var logPath = _logger.CreateOperationLog(operationId, command, _backendState.CommitHash);
@@ -677,7 +733,7 @@ public sealed class InstallerViewModel
 
             _logger.Complete(logPath, result, _backend.ReadInstalledVersion());
             RefreshLocalState();
-            SetStage(result.Succeeded ? "Uninstalled" : $"Uninstall failed with exit code {result.ExitCode}");
+            SetStage(result.Succeeded ? "stageUninstalled" : "stageUninstallFailed", result.Succeeded ? Array.Empty<object?>() : new object?[] { result.ExitCode });
         }
         finally
         {
@@ -689,7 +745,7 @@ public sealed class InstallerViewModel
     {
         var result = _launcher.Launch();
         AddLog(result.Message);
-        SetStage(result.Started ? "VR launch requested" : "Launch failed");
+        SetStage(result.Started ? "stageLaunchRequested" : "stageLaunchFailed");
         RefreshLocalState();
     }
 
@@ -709,8 +765,8 @@ public sealed class InstallerViewModel
         _desktopStatus = status;
         DesktopText = DescribeDesktop(status);
         SetStage(status.State == DesktopIntegrationState.Installed
-            ? "WiVRn desktop entry installed and validated"
-            : "Desktop integration still needs attention");
+            ? "desktopInstalledValidated"
+            : "desktopNeedsAttention");
         await Task.CompletedTask;
         RaiseChanged();
     }
@@ -732,8 +788,8 @@ public sealed class InstallerViewModel
         _desktopStatus = status;
         DesktopText = DescribeDesktop(status);
         SetStage(status.State == DesktopIntegrationState.Installed
-            ? "Game desktop entry reinstalled and validated"
-            : "Game desktop entry still needs attention");
+            ? "desktopGameReinstalled"
+            : "desktopGameNeedsAttention");
         await Task.CompletedTask;
         RaiseChanged();
     }
@@ -793,6 +849,11 @@ public sealed class InstallerViewModel
             SelectedSteamInstallationId = _settings.SelectedSteamInstallationId,
             SelectedSteamAccountId = _settings.SelectedSteamAccountId,
         };
+        AppearanceManager.SetTheme(ThemePreference.Dark);
+        AppearanceManager.SetScale(UiScale.DefaultPercent);
+        AppearanceManager.SetMotion(MotionPreference.System);
+        Loc.Use("en");
+        RelocalizeAfterLanguageChange();
         SavePreferences();
         AddLog("Application preferences restored to defaults; no files or integrations were removed.");
         RaiseChanged();
@@ -813,12 +874,12 @@ public sealed class InstallerViewModel
         if (!CanModifySteamNow(out var blockReason))
         {
             AddLog(blockReason ?? "The Steam shortcut cannot be changed while a session is active.");
-            SteamText = blockReason ?? "The Steam shortcut cannot be changed while a session is active.";
-            SetStage("Steam shortcut not changed");
+            SteamText = blockReason ?? Loc.Get("steamSessionActive");
+            SetStage("stageSteamNotChanged");
             return null;
         }
 
-        SetStage("Updating the Steam shortcut");
+        SetStage("stageSteamUpdating");
         var result = await _steamManager.AddOrUpdateAsync(
             _steamInstallation, _steamAccount, _launcher.LauncherPath, allowRestart, _lifetime.Token);
 
@@ -827,7 +888,7 @@ public sealed class InstallerViewModel
             AddLog(line);
         }
         AddLog(result.Message);
-        SteamText = result.Message ?? "Steam shortcut updated.";
+        SteamText = BuildSteamResultText(result);
         if (result.ShortcutVerified || result.Shortcut is ShortcutOutcome.AlreadyCorrect or ShortcutOutcome.Removed)
         {
             _settings.LastSteamIntegrationAt = DateTimeOffset.Now;
@@ -835,8 +896,8 @@ public sealed class InstallerViewModel
             SavePreferences();
         }
         SetStage(result.Restart == RestartOutcome.Verified
-            ? "Steam shortcut updated and Steam reopened"
-            : result.Shortcut == ShortcutOutcome.Failed ? "Steam shortcut failed" : "Steam shortcut updated");
+            ? "stageSteamUpdated"
+            : result.Shortcut == ShortcutOutcome.Failed ? "stageSteamFailed" : "stageSteamUpdated");
         RefreshLocalState();
         return result;
     }
@@ -851,14 +912,14 @@ public sealed class InstallerViewModel
         if (!CanModifySteamNow(out var blockReason))
         {
             AddLog(blockReason ?? "The Steam shortcut cannot be changed while a session is active.");
-            SteamText = blockReason ?? "The Steam shortcut cannot be changed while a session is active.";
-            SetStage("Steam shortcut not changed");
+            SteamText = blockReason ?? Loc.Get("steamSessionActive");
+            SetStage("stageSteamNotChanged");
             return;
         }
         var result = await _steamManager.RemoveAsync(
             _steamInstallation, _steamAccount, _launcher.LauncherPath, allowRestart, _lifetime.Token);
         AddLog(result.Message);
-        SteamText = result.Message ?? "Steam shortcut removed.";
+        SteamText = BuildSteamResultText(result);
         if (result.Shortcut is ShortcutOutcome.Removed or ShortcutOutcome.AlreadyCorrect)
         {
             _settings.LastSteamIntegrationAt = DateTimeOffset.Now;
@@ -866,6 +927,30 @@ public sealed class InstallerViewModel
             SavePreferences();
         }
         RefreshLocalState();
+    }
+
+    private static string BuildSteamResultText(SteamTransactionResult result)
+    {
+        var localized = result.Shortcut switch
+        {
+            ShortcutOutcome.Added => Loc.Get("steamShortcutAdded"),
+            ShortcutOutcome.Updated => Loc.Get("steamShortcutUpdated"),
+            ShortcutOutcome.Removed => Loc.Get("steamShortcutRemoved"),
+            ShortcutOutcome.AlreadyCorrect => Loc.Get("steamShortcutAlreadyCorrect"),
+            ShortcutOutcome.Failed => Loc.Get("steamShortcutFailed"),
+            _ => null,
+        };
+
+        if (localized is null)
+        {
+            return result.Message ?? Loc.Get("steamShortcutUpdated");
+        }
+
+        // The short UI status is localized; failure detail stays as the backend/git
+        // diagnostic it is. Timelines and logs still contain the original message.
+        return result.Shortcut == ShortcutOutcome.Failed && !string.IsNullOrWhiteSpace(result.Message)
+            ? localized + " " + result.Message
+            : localized;
     }
 
     public async Task UpdateBackendAsync()
@@ -877,16 +962,14 @@ public sealed class InstallerViewModel
         try
         {
             _backendUpdateInProgress = true;
-            SetStage("Updating the tf2vr-linux checkout");
-            BackendUpdateStatusText = Loc.Get("backendUpdateRunning");
+            SetStage("stageBackendUpdating");
+            SetBackendUpdateStatus("backendUpdateRunning");
             RaiseChanged();
             var update = await _backend.UpdateAsync(_lifetime.Token);
             AddLog(update.Message);
             _backendState = update.Installation;
-            BackendText = update.Installation.ValidationStatus == BackendValidationStatus.Validated
-                ? $"tf2vr-linux {Short(update.Installation.CommitHash)} · origin verified"
-                : update.Message;
-            BackendUpdateStatusText = update.Message;
+            BackendText = BuildBackendText(update.Installation);
+            SetBackendUpdateStatusRaw(update.Message);
             if (update.Succeeded)
             {
                 _settings.LastBackendUpdateAt = DateTimeOffset.Now;
@@ -904,7 +987,7 @@ public sealed class InstallerViewModel
                 await RefreshCatalogueAsync();
                 RefreshLocalState();
             }
-            SetStage(update.Succeeded ? "Backend update complete" : "Backend update failed");
+            SetStage(update.Succeeded ? "stageBackendUpdateComplete" : "stageBackendUpdateFailed");
         }
         finally
         {
@@ -930,6 +1013,7 @@ public sealed class InstallerViewModel
         {
             AddLog("Could not save the selection: " + ex.Message);
         }
+        RefreshChangelog();
         UpdatePrimaryAction();
         RaiseChanged();
     }
@@ -945,15 +1029,134 @@ public sealed class InstallerViewModel
         RaiseChanged();
     }
 
-    public void SetLanguage(string language)
+    public void SetTheme(string theme)
     {
-        if (string.Equals(_settings.Language, language, StringComparison.OrdinalIgnoreCase))
+        var preference = ThemePreferenceNames.Parse(theme);
+        var setting = preference.ToSetting();
+        if (string.Equals(_settings.Theme, setting, StringComparison.Ordinal))
         {
             return;
         }
-        _settings.Language = string.Equals(language, "de", StringComparison.OrdinalIgnoreCase) ? "de" : "en";
+
+        _settings.Theme = setting;
+        AppearanceManager.SetTheme(preference);
         SavePreferences();
         RaiseChanged();
+    }
+
+    public void SetUiScale(int percent)
+    {
+        var clamped = Core.Appearance.UiScale.ClampPercent(percent);
+        if (_settings.UiScale == clamped)
+        {
+            return;
+        }
+
+        _settings.UiScale = clamped;
+        AppearanceManager.SetScale(clamped);
+        SavePreferences();
+        RaiseChanged();
+    }
+
+    public void SetMotion(string motion)
+    {
+        var preference = MotionPreferenceNames.Parse(motion);
+        var setting = preference.ToSetting();
+        if (string.Equals(_settings.MotionPreference, setting, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _settings.MotionPreference = setting;
+        AppearanceManager.SetMotion(preference);
+        SavePreferences();
+        RaiseChanged();
+    }
+
+    public void SetLanguage(string language)
+    {
+        var normalized = Loc.NormalizeLanguage(language);
+        if (string.Equals(_settings.Language, normalized, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _settings.Language = normalized;
+        Loc.Use(normalized);
+        RelocalizeAfterLanguageChange();
+        SavePreferences();
+        RaiseChanged();
+    }
+
+    /// <summary>
+    /// Most list/status values are materialized strings rather than bindings.
+    /// Rebuild them from the cached state so switching language updates the
+    /// installer screen, not just labels declared in XAML.
+    /// </summary>
+    private void RelocalizeAfterLanguageChange()
+    {
+        RelocalizeVersions();
+        BackendText = BuildBackendText(_backendState);
+        CatalogueText = BuildCatalogueText(_catalogue);
+        ManifestText = BuildManifestText(_manifestSnapshot);
+        BigWalkText = Loc.Get("bigWalkUnavailable");
+        if (_lastPreflightAt is null)
+        {
+            PreflightText = Loc.Get("preflightHint");
+        }
+        RefreshLocalState();
+        RelocalizeStage();
+        RelocalizeUpdateStatuses();
+    }
+
+    private void RelocalizeVersions()
+    {
+        if (_catalogue is null)
+        {
+            return;
+        }
+
+        var selectedToken = SelectedVersion?.Token;
+        Versions = _catalogue.Entries.Select(CreateVersionOption).ToList();
+        SelectedVersion = Versions.FirstOrDefault(v => v.Token == selectedToken)
+            ?? Versions.FirstOrDefault();
+    }
+
+    private VersionOption CreateVersionOption(VersionCatalogueEntry entry) => new()
+    {
+        DisplayLabel = LocalizedDisplayLabel(entry),
+        Token = entry.BackendToken,
+        Version = entry.ResolvedVersion,
+        GroupKey = GroupKeyFor(entry),
+        KindLabel = entry.IsPinnedRelease ? Loc.Get("fixedVersion") : Loc.Get("channel"),
+        // Moving channels already have a localized group hint. Pinned
+        // descriptions are backend-provided technical text.
+        Description = entry.IsPinnedRelease ? entry.Description ?? string.Empty : string.Empty,
+    };
+
+    private static string LocalizedDisplayLabel(VersionCatalogueEntry entry)
+    {
+        if (entry.BackendToken == "latest")
+        {
+            return Loc.Get("channelStable");
+        }
+        if (entry.BackendToken == "beta")
+        {
+            return Loc.Get("betaReleases");
+        }
+        return entry.DisplayName;
+    }
+
+    private void RelocalizeStage()
+        => StageText = Loc.Format(_stageKey, _stageArgs);
+
+    private void RelocalizeUpdateStatuses()
+    {
+        UpdateStatusText = Loc.Format(_updateStatusKey, _updateStatusArgs);
+        if (_backendUpdateStatusKey is not null)
+        {
+            BackendUpdateStatusText = Loc.Format(_backendUpdateStatusKey, _backendUpdateStatusArgs);
+        }
     }
 
     public void SetAutoCheckForAppUpdates(bool enabled)
@@ -996,7 +1199,7 @@ public sealed class InstallerViewModel
             return;
         }
         _checkingBackendUpdate = true;
-        BackendUpdateStatusText = Loc.Get("checkingBackendUpdates");
+        SetBackendUpdateStatus("checkingBackendUpdates");
         RaiseChanged();
         try
         {
@@ -1004,16 +1207,16 @@ public sealed class InstallerViewModel
             _backendUpdateCheck = check;
             if (check.Error is not null)
             {
-                BackendUpdateStatusText = Loc.Format("backendCheckFailed", check.Error);
+                SetBackendUpdateStatus("backendCheckFailed", check.Error);
                 AddLog("Backend update check failed: " + check.Error);
             }
             else if (check.UpdateAvailable)
             {
-                BackendUpdateStatusText = Loc.Format("backendUpdateAvailable", Short(check.RemoteCommit));
+                SetBackendUpdateStatus("backendUpdateAvailable", Short(check.RemoteCommit));
             }
             else
             {
-                BackendUpdateStatusText = Loc.Get("backendUpToDate");
+                SetBackendUpdateStatus("backendUpToDate");
             }
             if (check.Error is null && !check.WorkingTreeClean)
             {
@@ -1025,7 +1228,7 @@ public sealed class InstallerViewModel
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
-            BackendUpdateStatusText = Loc.Format("backendCheckFailed", ex.Message);
+            SetBackendUpdateStatus("backendCheckFailed", ex.Message);
             AddLog("Backend update check failed: " + ex.Message);
         }
         finally
@@ -1043,27 +1246,27 @@ public sealed class InstallerViewModel
         }
         if (_latestAppRelease is not { UpdateAvailable: true } release)
         {
-            UpdateStatusText = Loc.Get("updatesNotChecked");
+            SetUpdateStatus("updatesNotChecked");
             RaiseChanged();
             return;
         }
         if (!release.CanAutoUpdate)
         {
-            UpdateStatusText = Loc.Get("appUpdatePackageMissing");
+            SetUpdateStatus("appUpdatePackageMissing");
             AddLog("This release does not include the Linux update archive.");
             RaiseChanged();
             return;
         }
         if (!_appUpdater.IsInstalledCopy())
         {
-            UpdateStatusText = Loc.Get("appUpdateInstalledOnly");
+            SetUpdateStatus("appUpdateInstalledOnly");
             AddLog("Automatic installation is only available from the installed application.");
             RaiseChanged();
             return;
         }
         if (Busy)
         {
-            UpdateStatusText = Loc.Get("appUpdateBusy");
+            SetUpdateStatus("appUpdateBusy");
             RaiseChanged();
             return;
         }
@@ -1072,7 +1275,7 @@ public sealed class InstallerViewModel
         // Keep mod installs and helper updates from starting underneath the
         // updater, which will close the app before the helper replaces it.
         Busy = true;
-        UpdateStatusText = Loc.Get("appUpdateDownloading");
+        SetUpdateStatus("appUpdateDownloading");
         AddLog("Downloading installer update " + (release.LatestTag ?? string.Empty) + ".");
         RaiseChanged();
         try
@@ -1081,14 +1284,19 @@ public sealed class InstallerViewModel
                 release,
                 progress =>
                 {
-                    UpdateStatusText = progress.Fraction is { } fraction
-                        ? Loc.Format("appUpdateDownloadingProgress", (int)Math.Round(fraction * 100))
-                        : Loc.Get("appUpdateDownloading");
+                    if (progress.Fraction is { } fraction)
+                    {
+                        SetUpdateStatus("appUpdateDownloadingProgress", (int)Math.Round(fraction * 100));
+                    }
+                    else
+                    {
+                        SetUpdateStatus("appUpdateDownloading");
+                    }
                     RaiseChanged();
                 },
                 _lifetime.Token);
 
-            UpdateStatusText = Loc.Format("appUpdateRestarting", release.LatestTag ?? "");
+            SetUpdateStatus("appUpdateRestarting", release.LatestTag ?? "");
             AddLog("Update verified. Restarting into " + (release.LatestTag ?? "the new version") + ".");
             RaiseChanged();
             _appUpdater.StartApply(package, Environment.ProcessId);
@@ -1096,11 +1304,11 @@ public sealed class InstallerViewModel
         }
         catch (OperationCanceledException)
         {
-            UpdateStatusText = Loc.Get("appUpdateCanceled");
+            SetUpdateStatus("appUpdateCanceled");
         }
         catch (Exception ex)
         {
-            UpdateStatusText = Loc.Format("appUpdateFailed", ex.Message);
+            SetUpdateStatus("appUpdateFailed", ex.Message);
             AddLog("Installer update failed: " + ex.Message);
         }
         finally
@@ -1118,7 +1326,7 @@ public sealed class InstallerViewModel
             return;
         }
         _checkingUpdates = true;
-        UpdateStatusText = Loc.Get("checkingUpdates");
+        SetUpdateStatus("checkingUpdates");
         RaiseChanged();
         try
         {
@@ -1129,7 +1337,7 @@ public sealed class InstallerViewModel
                 LatestReleaseUrl = null;
                 _latestAppTag = null;
                 UpdateAvailable = false;
-                UpdateStatusText = Loc.Format("updateCheckFailed", result.Error);
+                SetUpdateStatus("updateCheckFailed", result.Error);
                 AddLog("Update check failed: " + result.Error);
             }
             else if (result.UpdateAvailable)
@@ -1137,9 +1345,7 @@ public sealed class InstallerViewModel
                 LatestReleaseUrl = result.ReleaseUrl;
                 _latestAppTag = result.LatestTag;
                 UpdateAvailable = true;
-                UpdateStatusText = result.CanAutoUpdate
-                    ? Loc.Format("updateAvailable", result.LatestTag)
-                    : Loc.Format("updateAvailableManual", result.LatestTag);
+                SetUpdateStatus(result.CanAutoUpdate ? "updateAvailable" : "updateAvailableManual", result.LatestTag);
                 if (_settings.CheckForAppUpdates && result.CanAutoUpdate)
                 {
                     await InstallAppUpdateAsync();
@@ -1150,7 +1356,7 @@ public sealed class InstallerViewModel
                 LatestReleaseUrl = result.ReleaseUrl;
                 _latestAppTag = result.LatestTag ?? "v" + CurrentVersion.ToString(3);
                 UpdateAvailable = false;
-                UpdateStatusText = Loc.Format("upToDate", result.LatestTag ?? "v" + CurrentVersion.ToString(3));
+                SetUpdateStatus("upToDate", result.LatestTag ?? "v" + CurrentVersion.ToString(3));
             }
         }
         catch (OperationCanceledException)
@@ -1205,8 +1411,8 @@ public sealed class InstallerViewModel
         CanInstall = _backendState?.ValidationStatus == BackendValidationStatus.Validated && Versions.Count > 0;
 
         GameText = _launcher.LauncherExists
-            ? "tf2vr launcher found at " + _launcher.LauncherPath
-            : "No tf2vr launcher yet. Run the backend check to confirm Titanfall 2 and Proton are present.";
+            ? Loc.Format("gameLauncherFound", _launcher.LauncherPath)
+            : Loc.Get("gameLauncherMissingHint");
 
         var desktop = _desktop.GetStatus();
         _desktopStatus = desktop;
@@ -1215,10 +1421,10 @@ public sealed class InstallerViewModel
         DetectSteam();
         var runtime = _runtime.Inspect();
         _runtimeInfo = runtime;
-        RuntimeText = runtime.Summary
-            + (runtime.WiVrnRunning ? " · WiVRn running" : string.Empty)
-            + (runtime.MonadoRunning ? " · Monado running" : string.Empty)
-            + (runtime.SteamVrRunning ? " · SteamVR running" : string.Empty)
+        RuntimeText = DescribeRuntime(runtime)
+            + (runtime.WiVrnRunning ? " · WiVRn " + Loc.Get("running") : string.Empty)
+            + (runtime.MonadoRunning ? " · Monado " + Loc.Get("running") : string.Empty)
+            + (runtime.SteamVrRunning ? " · SteamVR " + Loc.Get("running") : string.Empty)
             + (runtime.ParseWarning is null ? string.Empty : " · " + runtime.ParseWarning);
 
         foreach (var pending in _steamManager.PendingRecoveries())
@@ -1226,6 +1432,7 @@ public sealed class InstallerViewModel
             AddLog("An earlier Steam transaction still owes a restart (" + pending.TransactionId + ").");
         }
 
+        RefreshChangelog();
         UpdatePrimaryAction();
         RaiseChanged();
     }
@@ -1240,7 +1447,7 @@ public sealed class InstallerViewModel
         {
             _steamAccount = null;
             _steamShortcutStatus = null;
-            SteamText = "Steam: no native or Flatpak installation was detected.";
+            SteamText = Loc.Get("steamNoInstallation");
             return;
         }
 
@@ -1251,20 +1458,25 @@ public sealed class InstallerViewModel
         if (_steamAccount is null)
         {
             _steamShortcutStatus = null;
-            SteamText = $"Steam found at {_steamInstallation.InstallationRoot}, but no account userdata directory exists yet.";
+            SteamText = Loc.Format("steamNoAccount", _steamInstallation.InstallationRoot);
             return;
         }
 
         var status = _steamManager.Inspect(_steamAccount, _launcher.LauncherPath);
         _steamShortcutStatus = status;
-        SteamText = $"{_steamInstallation.InstallationType} Steam · account {_steamAccount.AccountId} · "
-            + (status.State switch
-            {
-                ShortcutInstallState.Installed => "Titanfall 2 VR shortcut installed",
-                ShortcutInstallState.ConflictingEntry => "conflicting shortcut entry",
-                _ => "shortcut not installed",
-            })
-            + (_steamProcess.IsClientRunning(_steamInstallation) ? " · Steam running" : " · Steam closed");
+        var shortcutState = status.State switch
+        {
+            ShortcutInstallState.Installed => Loc.Get("steamShortcutStateInstalled"),
+            ShortcutInstallState.ConflictingEntry => Loc.Get("steamShortcutStateConflicting"),
+            _ => Loc.Get("steamShortcutStateMissing"),
+        };
+        SteamText = Loc.Format(
+            "steamDetails",
+            _steamInstallation.InstallationType,
+            _steamAccount.AccountId,
+            shortcutState + (_steamProcess.IsClientRunning(_steamInstallation)
+                ? " · " + Loc.Get("steamRunning")
+                : " · " + Loc.Get("steamClosed")));
         SteamText += status.Detail is null ? string.Empty : " · " + status.Detail;
     }
 
@@ -1284,6 +1496,11 @@ public sealed class InstallerViewModel
             return _desktop.GetStatus();
         }
     }
+
+    private static string DescribeRuntime(OpenXrRuntimeInfo runtime)
+        => runtime.JsonFound && runtime.RuntimeName is not null
+            ? Loc.Get("activeOpenXrRuntime") + ": " + runtime.RuntimeName
+            : Loc.Get("noRuntimeRegistered");
 
     private static string DescribeDesktop(DesktopIntegrationStatus status) => status.State switch
     {
@@ -1418,6 +1635,23 @@ public sealed class InstallerViewModel
                 + "\n" + change.Notes.Trim()));
     }
 
+    private void RefreshChangelog()
+    {
+        var product = _manifestSnapshot?.Titanfall2Vr;
+        _changelogSelection = product is null
+            ? ReleaseNotesSelection.None
+            : ReleaseNotesSelector.Select(
+                product,
+                SelectedVersion?.Version,
+                ModVersion(_installedVersionRaw));
+
+        ChangelogPreview = FormatChangelog(_changelogSelection.Changes, 2);
+        ChangelogFullText = FormatChangelog(_changelogSelection.Changes, int.MaxValue);
+        ChangelogCanExpand = _changelogSelection.Changes.Count > 2
+            || ChangelogFullText.Length > 260
+            || ChangelogFullText.Count(character => character == '\n') >= 4;
+    }
+
     private void UpdatePrimaryAction()
     {
         if (!CanInstall)
@@ -1519,14 +1753,37 @@ public sealed class InstallerViewModel
         RaiseChanged();
     }
 
-    private void SetStage(string stage)
+    private void SetStage(string key, params object?[] args)
     {
-        StageText = stage;
-        if (stage is not ("Ready" or "Starting"))
+        _stageKey = key;
+        _stageArgs = args;
+        StageText = Loc.Format(key, args);
+        if (key is not ("stageReady" or "stageStarting"))
         {
-            AddLog(stage);
+            AddLog(StageText);
         }
         RaiseChanged();
+    }
+
+    private void SetBackendUpdateStatus(string key, params object?[] args)
+    {
+        _backendUpdateStatusKey = key;
+        _backendUpdateStatusArgs = args;
+        BackendUpdateStatusText = Loc.Format(key, args);
+    }
+
+    private void SetBackendUpdateStatusRaw(string text)
+    {
+        _backendUpdateStatusKey = null;
+        _backendUpdateStatusArgs = Array.Empty<object?>();
+        BackendUpdateStatusText = text;
+    }
+
+    private void SetUpdateStatus(string key, params object?[] args)
+    {
+        _updateStatusKey = key;
+        _updateStatusArgs = args;
+        UpdateStatusText = Loc.Format(key, args);
     }
 
     public void AddLog(string? line)
@@ -1549,27 +1806,28 @@ public sealed class InstallerViewModel
     {
         var runtime = _runtimeInfo ?? _runtime.Inspect();
         var builder = new StringBuilder();
-        builder.AppendLine("OpenXR runtime: " + (runtime.RuntimeName ?? "none registered"));
-        builder.AppendLine("Runtime path: " + (runtime.RuntimePath ?? "not reported"));
-        builder.AppendLine("Active runtime file: " + runtime.ActiveRuntimeJsonPath + (runtime.JsonFound ? " (found)" : " (missing)"));
-        builder.AppendLine("SteamVR: " + (runtime.SteamVrAvailable ? runtime.SteamVrPath : "not detected")
-            + (runtime.SteamVrRunning ? " · running" : string.Empty));
-        builder.AppendLine("WiVRn: " + (runtime.WiVrnAvailable ? "detected" : "not detected")
-            + (runtime.WiVrnRunning ? " · running" : string.Empty));
-        builder.AppendLine("Monado: " + (runtime.MonadoAvailable ? "detected" : "not detected")
-            + (runtime.MonadoRunning ? " · running" : string.Empty));
-        builder.AppendLine("OpenVR bridge: " + (runtime.OpenVrBridgePath is null
-            ? "not found"
-            : (runtime.OpenVrBridgeKind ?? "detected") + " · " + runtime.OpenVrBridgePath));
-        builder.AppendLine("OpenVR paths file: " + (runtime.OpenVrPathsFile ?? "not available"));
-        builder.AppendLine("tf2vr launcher: " + (_launcher.LauncherExists ? _launcher.LauncherPath : "not installed"));
-        builder.AppendLine("Desktop entry: " + DesktopEntryStatusText);
+        builder.AppendLine(Loc.Get("activeOpenXrRuntime") + ": " + (runtime.RuntimeName ?? Loc.Get("noRuntimeRegistered")));
+        builder.AppendLine(Loc.Get("runtimePath") + ": " + (runtime.RuntimePath ?? Loc.Get("notReported")));
+        builder.AppendLine(Loc.Get("activeRuntimeFile") + ": " + runtime.ActiveRuntimeJsonPath
+            + " (" + (runtime.JsonFound ? Loc.Get("found") : Loc.Get("missing")) + ")");
+        builder.AppendLine(Loc.Get("steamVrAvailability") + ": " + (runtime.SteamVrAvailable ? runtime.SteamVrPath : Loc.Get("notDetected"))
+            + (runtime.SteamVrRunning ? " · " + Loc.Get("running") : string.Empty));
+        builder.AppendLine(Loc.Get("wivrnAvailability") + ": " + (runtime.WiVrnAvailable ? Loc.Get("detected") : Loc.Get("notDetected"))
+            + (runtime.WiVrnRunning ? " · " + Loc.Get("running") : string.Empty));
+        builder.AppendLine(Loc.Get("monadoAvailability") + ": " + (runtime.MonadoAvailable ? Loc.Get("detected") : Loc.Get("notDetected"))
+            + (runtime.MonadoRunning ? " · " + Loc.Get("running") : string.Empty));
+        builder.AppendLine(Loc.Get("openVrBridge") + ": " + (runtime.OpenVrBridgePath is null
+            ? Loc.Get("notFound")
+            : (runtime.OpenVrBridgeKind ?? Loc.Get("detected")) + " · " + runtime.OpenVrBridgePath));
+        builder.AppendLine(Loc.Get("openVrPathsFile") + ": " + (runtime.OpenVrPathsFile ?? Loc.Get("notAvailable")));
+        builder.AppendLine(Loc.Get("tf2vrLauncher") + ": " + (_launcher.LauncherExists ? _launcher.LauncherPath : Loc.Get("notInstalled")));
+        builder.AppendLine(Loc.Get("desktopEntry") + ": " + DesktopEntryStatusText);
         if (runtime.ParseWarning is not null)
         {
-            builder.AppendLine("Warning: " + runtime.ParseWarning);
+            builder.AppendLine(Loc.Get("warning") + ": " + runtime.ParseWarning);
         }
         builder.AppendLine();
-        builder.AppendLine("This panel is informational. The active OpenXR runtime is not changed by this application.");
+        builder.AppendLine(Loc.Get("runtimeInfoNote"));
         return builder.ToString();
     }
 
@@ -1578,38 +1836,38 @@ public sealed class InstallerViewModel
         var version = _backend.ReadInstalledVersion();
         var runtime = _runtimeInfo ?? _runtime.Inspect();
         var builder = new StringBuilder();
-        builder.AppendLine("CircuitLord's VR Mod Installer — diagnostic report");
-        builder.AppendLine("Generated: " + DateTimeOffset.Now.ToString("O"));
-        builder.AppendLine("Application version: " + CurrentAppVersion);
-        builder.AppendLine("Platform: Linux · " + System.Runtime.InteropServices.RuntimeInformation.OSDescription);
-        builder.AppendLine("Language: " + _settings.Language);
-        builder.AppendLine("Backend commit: " + (_backendState?.CommitHash ?? "not available"));
-        builder.AppendLine("Backend checkout: " + _paths.BackendCheckout);
-        builder.AppendLine("Backend origin verified: " + (_backendState?.VerifiedOrigin == true ? "yes" : "no"));
-        builder.AppendLine("Backend working tree: " + BackendWorkingTreeText);
-        builder.AppendLine("Installed mod version: " + (version ?? "not installed"));
-        builder.AppendLine("Selected channel: " + (SelectedVersion?.DisplayLabel ?? _settings.SelectedToken ?? "not selected"));
-        builder.AppendLine("Game installation: " + PathValue("GAME_DIR"));
-        builder.AppendLine("VR prefix: " + PathValue("PREFIX_DIR"));
-        builder.AppendLine("Launcher: " + (_launcher.LauncherExists ? _launcher.LauncherPath : "not installed"));
-        builder.AppendLine("OpenXR runtime: " + (runtime.RuntimeName ?? "none registered"));
-        builder.AppendLine("SteamVR: " + (runtime.SteamVrAvailable ? "detected" : "not detected")
-            + (runtime.SteamVrRunning ? " · running" : string.Empty));
-        builder.AppendLine("WiVRn: " + (runtime.WiVrnAvailable ? "detected" : "not detected")
-            + (runtime.WiVrnRunning ? " · running" : string.Empty));
-        builder.AppendLine("Monado: " + (runtime.MonadoAvailable ? "detected" : "not detected")
-            + (runtime.MonadoRunning ? " · running" : string.Empty));
-        builder.AppendLine("OpenVR bridge: " + (runtime.OpenVrBridgePath ?? "not found"));
-        builder.AppendLine("Steam: " + (_steamInstallation is null
-            ? "not detected"
+        builder.AppendLine(Loc.Get("diagnosticReportTitle"));
+        builder.AppendLine(Loc.Get("generated") + ": " + DateTimeOffset.Now.ToString("O"));
+        builder.AppendLine(Loc.Get("applicationVersion") + ": " + CurrentAppVersion);
+        builder.AppendLine(Loc.Get("aboutPlatform") + ": Linux · " + System.Runtime.InteropServices.RuntimeInformation.OSDescription);
+        builder.AppendLine(Loc.Get("language") + ": " + _settings.Language);
+        builder.AppendLine(Loc.Get("backendCommit") + ": " + (_backendState?.CommitHash ?? Loc.Get("notAvailable")));
+        builder.AppendLine(Loc.Get("backendCheckout") + ": " + _paths.BackendCheckout);
+        builder.AppendLine(Loc.Get("backendOriginVerified") + ": " + (_backendState?.VerifiedOrigin == true ? Loc.Get("yes") : Loc.Get("no")));
+        builder.AppendLine(Loc.Get("helperWorkingTree") + ": " + BackendWorkingTreeText);
+        builder.AppendLine(Loc.Get("installedVersion") + ": " + (version ?? Loc.Get("notInstalled")));
+        builder.AppendLine(Loc.Get("selectedChannel") + ": " + (SelectedVersion?.DisplayLabel ?? _settings.SelectedToken ?? Loc.Get("notSelected")));
+        builder.AppendLine(Loc.Get("gameInstallation") + ": " + PathValue("GAME_DIR"));
+        builder.AppendLine(Loc.Get("vrPrefix") + ": " + PathValue("PREFIX_DIR"));
+        builder.AppendLine(Loc.Get("tf2vrLauncher") + ": " + (_launcher.LauncherExists ? _launcher.LauncherPath : Loc.Get("notInstalled")));
+        builder.AppendLine(Loc.Get("activeOpenXrRuntime") + ": " + (runtime.RuntimeName ?? Loc.Get("noneRegistered")));
+        builder.AppendLine(Loc.Get("steamVrAvailability") + ": " + (runtime.SteamVrAvailable ? Loc.Get("detected") : Loc.Get("notDetected"))
+            + (runtime.SteamVrRunning ? " · " + Loc.Get("running") : string.Empty));
+        builder.AppendLine(Loc.Get("wivrnAvailability") + ": " + (runtime.WiVrnAvailable ? Loc.Get("detected") : Loc.Get("notDetected"))
+            + (runtime.WiVrnRunning ? " · " + Loc.Get("running") : string.Empty));
+        builder.AppendLine(Loc.Get("monadoAvailability") + ": " + (runtime.MonadoAvailable ? Loc.Get("detected") : Loc.Get("notDetected"))
+            + (runtime.MonadoRunning ? " · " + Loc.Get("running") : string.Empty));
+        builder.AppendLine(Loc.Get("openVrBridge") + ": " + (runtime.OpenVrBridgePath ?? Loc.Get("notFound")));
+        builder.AppendLine(Loc.Get("steamLabel") + ": " + (_steamInstallation is null
+            ? Loc.Get("notDetected")
             : _steamInstallation.InstallationType + " · " + _steamInstallation.InstallationRoot));
-        builder.AppendLine("Steam account: " + (_steamAccount is null ? "not detected" : "detected (account id withheld)"));
-        builder.AppendLine("Titanfall 2 VR shortcut: " + SteamShortcutStatusText);
-        builder.AppendLine("Shortcut executable: " + SteamShortcutExecutableText);
-        builder.AppendLine("WiVRn desktop entry: " + DesktopEntryStatusText);
-        builder.AppendLine("Last preflight: " + LastPreflightText);
+        builder.AppendLine(Loc.Get("steamSelectedAccount") + ": " + (_steamAccount is null ? Loc.Get("notDetected") : Loc.Get("steamAccountDetected")));
+        builder.AppendLine(Loc.Get("steamShortcutStatus") + ": " + SteamShortcutStatusText);
+        builder.AppendLine(Loc.Get("steamShortcutExecutable") + ": " + SteamShortcutExecutableText);
+        builder.AppendLine(Loc.Get("desktopEntry") + ": " + DesktopEntryStatusText);
+        builder.AppendLine(Loc.Get("lastPreflight") + ": " + LastPreflightText);
         builder.AppendLine();
-        builder.AppendLine("Credentials, authentication tokens and Steam account identifiers are not included.");
+        builder.AppendLine(Loc.Get("diagnosticsPrivacy"));
         return builder.ToString();
     }
 

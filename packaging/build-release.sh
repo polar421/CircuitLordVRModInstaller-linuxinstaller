@@ -2,6 +2,11 @@
 # Build a reproducible, self-contained linux-x64 release of the installer.
 #
 #   packaging/build-release.sh
+#   VERSION_OVERRIDE=1.0.3 packaging/build-release.sh
+#
+# VERSION_OVERRIDE builds the same source with a different application version.
+# It is intended for channel builds (for example a stable 1.0.3 archive and a
+# newer beta archive); the normal release workflow does not set it.
 #
 # Outputs, under artifacts/:
 #   circuitlord-vrmodinstaller-<version>-linux-x64/        staged installable tree
@@ -26,8 +31,13 @@ export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 
 command -v dotnet >/dev/null 2>&1 || { echo "error: dotnet is not installed" >&2; exit 1; }
 
-VERSION=$(dotnet msbuild "$APP_PROJECT" -nologo -getProperty:Version | tr -d '\r\n')
+VERSION="${VERSION_OVERRIDE:-$(dotnet msbuild "$APP_PROJECT" -nologo -getProperty:Version | tr -d '\r\n')}"
 [ -n "$VERSION" ] || { echo "error: could not read the application version" >&2; exit 1; }
+
+PUBLISH_VERSION_ARGS=()
+if [ -n "${VERSION_OVERRIDE:-}" ]; then
+  PUBLISH_VERSION_ARGS+=("-p:Version=$VERSION")
+fi
 
 STAGE_NAME="circuitlord-vrmodinstaller-$VERSION-$RID"
 STAGE="$ARTIFACTS/$STAGE_NAME"
@@ -52,6 +62,7 @@ dotnet publish "$APP_PROJECT" \
   -p:DebugType=None \
   -p:DebugSymbols=false \
   -p:ContinuousIntegrationBuild=true \
+  "${PUBLISH_VERSION_ARGS[@]}" \
   --output "$STAGE/app"
 
 # --- package contents -------------------------------------------------------
@@ -65,6 +76,8 @@ install -m 0644 "$ROOT/THIRD-PARTY-NOTICES.md" "$STAGE/THIRD-PARTY-NOTICES.md"
 mkdir -p "$STAGE/licenses"
 install -m 0644 "$ROOT/src/CircuitLord.VRModInstaller.App/Assets/Fonts/LICENSE.txt" \
   "$STAGE/licenses/LiberationSerif-OFL.txt"
+install -m 0644 "$ROOT/src/CircuitLord.VRModInstaller.App/Assets/Fonts/NOTO-OFL.txt" \
+  "$STAGE/licenses/NotoSansCJK-OFL.txt"
 install -m 0644 "$ROOT/README.md" "$STAGE/README.md"
 
 # --- guards -----------------------------------------------------------------

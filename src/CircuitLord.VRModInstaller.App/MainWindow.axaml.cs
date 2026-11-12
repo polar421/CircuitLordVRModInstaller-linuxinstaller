@@ -9,6 +9,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Platform;
+using CircuitLord.VRModInstaller.Appearance;
 using CircuitLord.VRModInstaller.Localization;
 
 namespace CircuitLord.VRModInstaller;
@@ -33,6 +34,18 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, SettingsEscape_Handler, RoutingStrategies.Tunnel);
         Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://CircuitLordVRModInstaller/Assets/app-256.png")));
         ApplyCornerStyle(_vm.RoundedCorners);
+        AppearanceManager.ScaleChanged += Appearance_Changed;
+        AppearanceManager.MotionChanged += Appearance_Changed;
+        AppearanceManager.Theme.Changed += Theme_Changed;
+        SizeChanged += (_, _) => ApplyScale();
+        Closed += (_, _) =>
+        {
+            AppearanceManager.ScaleChanged -= Appearance_Changed;
+            AppearanceManager.MotionChanged -= Appearance_Changed;
+            AppearanceManager.Theme.Changed -= Theme_Changed;
+        };
+        ApplyScale();
+        ApplyMotionClasses();
         DataContext = _vm;
         _vm.Changed += (_, _) => RefreshUi();
         // Auto-update starts a detached helper and then asks the window to close.
@@ -45,6 +58,47 @@ public partial class MainWindow : Window
             await _vm.InitializeAsync();
             RefreshUi();
         };
+    }
+
+    private void Appearance_Changed(object? sender, EventArgs e)
+    {
+        ApplyScale();
+        ApplyMotionClasses();
+    }
+
+    private void Theme_Changed(object? sender, EventArgs e)
+    {
+        // Brushes assigned from code-behind are not DynamicResource bindings;
+        // re-apply them after the variant changes.
+        Avalonia.Threading.Dispatcher.UIThread.Post(RefreshUi);
+    }
+
+    private void ApplyMotionClasses()
+        => AppearanceManager.ApplyMotionClasses(this);
+
+    private void ApplyScale()
+    {
+        var factor = AppearanceManager.ScaleFactor;
+        var root = this.FindControl<LayoutTransformControl>("RootScale");
+        if (root is not null)
+        {
+            root.LayoutTransform = new ScaleTransform(factor, factor);
+        }
+
+        var popupScale = this.FindControl<LayoutTransformControl>("VersionPopupScale");
+        if (popupScale is not null)
+        {
+            popupScale.LayoutTransform = new ScaleTransform(factor, factor);
+        }
+
+        var popup = this.FindControl<Border>("VersionPopupPanel");
+        if (popup is not null)
+        {
+            var availableWidth = Bounds.Width > 0 ? (Bounds.Width - 40) / factor : 520;
+            popup.Width = Math.Clamp(availableWidth, 260, 520);
+            var availableHeight = Bounds.Height > 0 ? (Bounds.Height - 80) / factor : 340;
+            popup.MaxHeight = Math.Clamp(availableHeight, 220, 340);
+        }
     }
 
     private void ShowAttributionNotice()
@@ -201,8 +255,18 @@ public partial class MainWindow : Window
         block.Foreground = BrushFor(ok ? "Green" : "TextDim");
     }
 
-    private static IBrush BrushFor(string key) =>
-        Application.Current?.Resources[key] as IBrush ?? Brushes.White;
+    private static IBrush BrushFor(string key)
+    {
+        var app = Application.Current;
+        if (app is not null
+            && app.TryFindResource(key, app.ActualThemeVariant, out var value)
+            && value is IBrush brush)
+        {
+            return brush;
+        }
+
+        return Brushes.White;
+    }
 
     private static void ApplyCornerStyle(bool rounded)
     {
@@ -390,6 +454,12 @@ public partial class MainWindow : Window
     private void VersionPicker_Click(object? sender, RoutedEventArgs e)
     {
         var popup = this.FindControl<Popup>("VersionPopup")!;
+        if (sender is Button target)
+        {
+            // The control is inside a scaled root; re-assert the anchor before
+            // opening so the flyout is positioned from the actual selector.
+            popup.PlacementTarget = target;
+        }
         popup.IsOpen = !popup.IsOpen;
     }
 

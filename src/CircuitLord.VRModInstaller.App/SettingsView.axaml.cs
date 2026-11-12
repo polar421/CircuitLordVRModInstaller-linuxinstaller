@@ -1,11 +1,15 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using CircuitLord.VRModInstaller.Appearance;
+using CircuitLord.VRModInstaller.Core.Appearance;
 using CircuitLord.VRModInstaller.Localization;
 
 namespace CircuitLord.VRModInstaller;
@@ -23,6 +27,8 @@ public partial class SettingsView : UserControl
     public SettingsView()
     {
         InitializeComponent();
+        AppearanceManager.Theme.Changed += (_, _) =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(UpdateThemeStatus);
     }
 
     public void Open(InstallerViewModel vm)
@@ -48,7 +54,22 @@ public partial class SettingsView : UserControl
         this.FindControl<ToggleSwitch>("AppUpdatesToggle")!.IsChecked = vm.AutoCheckForAppUpdates;
         this.FindControl<ToggleSwitch>("BackendUpdatesToggle")!.IsChecked = vm.UpdateBackendAutomatically;
         this.FindControl<ToggleSwitch>("ConfirmSteamRestartToggle")!.IsChecked = vm.ConfirmSteamRestart;
-        this.FindControl<ComboBox>("LanguageCombo")!.SelectedIndex = vm.Language == "de" ? 1 : 0;
+        this.FindControl<ComboBox>("ThemeCombo")!.SelectedIndex = vm.ThemeSetting switch
+        {
+            "system" => 0,
+            "light" => 2,
+            _ => 1,
+        };
+        this.FindControl<ComboBox>("MotionCombo")!.SelectedIndex = vm.MotionSetting switch
+        {
+            "reduced" => 1,
+            "full" => 2,
+            _ => 0,
+        };
+        this.FindControl<Slider>("UiScaleSlider")!.Value = vm.UiScalePercent;
+        this.FindControl<ComboBox>("LanguageCombo")!.SelectedIndex = LanguageIndex(vm.Language);
+        UpdateUiScaleLabel(vm.UiScalePercent);
+        UpdateThemeStatus();
         this.FindControl<ScrollViewer>("SettingsScroll")!.Offset = new Vector(0, 0);
         _loading = false;
         RefreshAll();
@@ -139,6 +160,135 @@ public partial class SettingsView : UserControl
         this.FindControl<TextBox>("DiagnosticsTextBox")!.Text = _vm.DiagnosticsReport;
         this.FindControl<TextBlock>("SettingsAboutVersion")!.Text = _vm.AppVersion;
         this.FindControl<TextBlock>("SettingsAboutPlatform")!.Text = _vm.PlatformText;
+        RefreshSelectedComboText();
+        UpdateUiScaleLabel(_vm.UiScalePercent);
+        UpdateThemeStatus();
+    }
+
+    private void RefreshSelectedComboText()
+    {
+        // Avalonia's ComboBox keeps a snapshot of the selected item's content.
+        // Re-select it after a live language change so the closed box updates
+        // together with the popup items; guard the handlers from persisting it.
+        var wasLoading = _loading;
+        _loading = true;
+        try
+        {
+            foreach (var name in new[] { "ThemeCombo", "MotionCombo" })
+            {
+                var combo = this.FindControl<ComboBox>(name);
+                var index = combo?.SelectedIndex ?? -1;
+                if (combo is not null && index >= 0)
+                {
+                    combo.SelectedIndex = -1;
+                    combo.SelectedIndex = index;
+                }
+            }
+        }
+        finally
+        {
+            _loading = wasLoading;
+        }
+    }
+
+    private static int LanguageIndex(string language)
+    {
+        for (var index = 0; index < Loc.SupportedLanguages.Count; index++)
+        {
+            if (string.Equals(Loc.SupportedLanguages[index].Code, language, StringComparison.OrdinalIgnoreCase))
+            {
+                return index;
+            }
+        }
+
+        return 0;
+    }
+
+    private void UpdateUiScaleLabel(int percent)
+    {
+        this.FindControl<TextBlock>("UiScaleValue")!.Text =
+            (percent / 100.0).ToString("P0", CultureInfo.CurrentCulture);
+    }
+
+    private void UpdateThemeStatus()
+    {
+        var block = this.FindControl<TextBlock>("SettingsThemeStatus");
+        if (block is null)
+        {
+            return;
+        }
+
+        if (_vm?.ThemeSetting != "system")
+        {
+            block.IsVisible = false;
+            return;
+        }
+
+        var theme = AppearanceManager.Theme;
+        if (theme.SystemTheme.Detected)
+        {
+            var name = theme.SystemTheme.Theme == ResolvedTheme.Light
+                ? Loc.Get("themeLight")
+                : Loc.Get("themeDark");
+            block.Text = Loc.Format("themeSystemFollowing", name);
+        }
+        else
+        {
+            block.Text = Loc.Get("themeSystemFallback");
+        }
+        block.IsVisible = true;
+    }
+
+    private void Theme_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _vm is null)
+        {
+            return;
+        }
+
+        var tag = (this.FindControl<ComboBox>("ThemeCombo")!.SelectedItem as ComboBoxItem)?.Tag as string;
+        _vm.SetTheme(tag ?? "dark");
+        UpdateThemeStatus();
+    }
+
+    private void Motion_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _vm is null)
+        {
+            return;
+        }
+
+        var tag = (this.FindControl<ComboBox>("MotionCombo")!.SelectedItem as ComboBoxItem)?.Tag as string;
+        _vm.SetMotion(tag ?? "system");
+    }
+
+    private void UiScale_Changed(object? sender, RangeBaseValueChangedEventArgs e)
+    {
+        var percent = Core.Appearance.UiScale.ClampPercent(e.NewValue);
+        UpdateUiScaleLabel(percent);
+        if (!_loading && _vm is not null)
+        {
+            _vm.SetUiScale(percent);
+        }
+    }
+
+    private void UiScalePreset_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string raw } || !int.TryParse(raw, out var percent))
+        {
+            return;
+        }
+
+        this.FindControl<Slider>("UiScaleSlider")!.Value = percent;
+        UpdateUiScaleLabel(percent);
+        _vm?.SetUiScale(percent);
+    }
+
+    private void UiScaleReset_Click(object? sender, RoutedEventArgs e)
+    {
+        this.FindControl<Slider>("UiScaleSlider")!.Value = UiScale.DefaultPercent;
+        UpdateUiScaleLabel(UiScale.DefaultPercent);
+        _vm?.SetUiScale(UiScale.DefaultPercent);
     }
 
     private static void ApplyCornerStyle(bool rounded)
@@ -416,7 +566,6 @@ public partial class SettingsView : UserControl
     private async void RestoreDefaults_Click(object? sender, RoutedEventArgs e)
     {
         if (_vm is null) return;
-        var wasGerman = _vm.Language == "de";
         var confirmed = await ConfirmAsync(
             Loc.Get("restoreDefaultsTitle"),
             Loc.Get("restoreDefaultsText"),
@@ -432,13 +581,12 @@ public partial class SettingsView : UserControl
         this.FindControl<ToggleSwitch>("AppUpdatesToggle")!.IsChecked = true;
         this.FindControl<ToggleSwitch>("BackendUpdatesToggle")!.IsChecked = false;
         this.FindControl<ToggleSwitch>("ConfirmSteamRestartToggle")!.IsChecked = true;
+        this.FindControl<ComboBox>("ThemeCombo")!.SelectedIndex = 1;
+        this.FindControl<ComboBox>("MotionCombo")!.SelectedIndex = 0;
+        this.FindControl<Slider>("UiScaleSlider")!.Value = UiScale.DefaultPercent;
         this.FindControl<ComboBox>("LanguageCombo")!.SelectedIndex = 0;
         _loading = false;
         RefreshAll();
-        if (wasGerman)
-        {
-            await ShowInfoAsync(Loc.Get("restoreDefaultsTitle"), Loc.Get("restoreDefaultsRestart"));
-        }
     }
 
     private void OpenLink_Click(object? sender, RoutedEventArgs e)

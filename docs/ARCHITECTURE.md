@@ -6,7 +6,7 @@ Presentation (Avalonia) → Application services → Domain models → Infrastru
 
 ## Projects
 
-- `src/CircuitLord.VRModInstaller.App` — Avalonia 11 desktop UI (`MainWindow`, `InstallerViewModel`).
+- `src/CircuitLord.VRModInstaller.App` — Avalonia 12.1 desktop UI (`MainWindow`, `InstallerViewModel`).
 - `src/CircuitLord.VRModInstaller.Core` — services and models; no Avalonia dependency.
 - `tests/CircuitLord.VRModInstaller.Core.Tests` — xUnit tests for parsers, models and transactions.
 
@@ -29,7 +29,12 @@ Presentation (Avalonia) → Application services → Domain models → Infrastru
 | `SteamShortcutManager` | Backup → parse → upsert → temp write → verify → atomic commit → relaunch obligation |
 | `LauncherService` | Launches the installed `tf2vr`; classifies missing/non-executable/config cases |
 | `RuntimeService` | Read-only OpenXR runtime and WiVRn/Monado/SteamVR process inspection |
-| `SettingsStore` | Versioned settings, exact-token persistence, atomic writes |
+| `SettingsStore` | Versioned settings (schema 4), exact-token persistence, atomic writes, backup on migration |
+| `ThemeService` | KDE/GNOME/GTK appearance detection, Dark fallback, explicit System/Dark/Light precedence |
+| `MotionService` | KDE/GNOME/GTK reduced-motion detection with explicit Follow system/Reduced/Full precedence |
+| `UiScale` | Clamp/snap to 80–150% in 5% steps and produce the application scale factor |
+| `AppearanceManager` | App-level coordinator for theme, scale resources, motion classes and 5-second system polling |
+| `TranslationCatalog` | Embedded JSON catalogs for ten locales, English fallback, placeholder-aware formatting |
 | `OperationLogger` | Per-operation log files and installation history under the state directory |
 
 ## Operation ownership

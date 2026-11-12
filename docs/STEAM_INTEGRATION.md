@@ -41,7 +41,7 @@ UpdatingShortcutModel → WritingTemporaryFile → VerifyingCommittedShortcut �
 
 ## Test status
 
-Fixture-tested (33 tests total, Steam subset): parse/serialize round trip, unknown-field
+Fixture-tested as part of the current 56-test suite: parse/serialize round trip, unknown-field
 preservation, idempotent upsert, same-name conflict refusal, backup creation, running → close →
 write → reopen verified, refusal to restart, shutdown timeout with no write, write failure followed
 by successful reopen, reopen failure marked as recovery required, initially-closed behaviour,

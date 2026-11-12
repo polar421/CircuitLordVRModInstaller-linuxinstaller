@@ -41,6 +41,16 @@ resources. The original Windows installer specifies Segoe UI Variable Display, w
 and cannot be redistributed; Liberation Serif is the licensed stand-in used here to match the serif
 typography of the reference build.
 
+## Noto Sans CJK JP / Noto Sans CJK SC
+
+- Source: https://github.com/notofonts/noto-cjk
+- License: SIL Open Font License 1.1 (`src/CircuitLord.VRModInstaller.App/Assets/Fonts/NOTO-OFL.txt`)
+- Copyright (c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+The Japanese and Simplified Chinese faces are bundled unmodified as Avalonia resources so those
+locales render without relying on fonts installed on the host. They are selected only for `ja` and
+`zh-Hans`; the other catalogs use Liberation Serif.
+
 ## Avalonia
 
 - Source: https://github.com/AvaloniaUI/Avalonia

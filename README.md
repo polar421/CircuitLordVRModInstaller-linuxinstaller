@@ -71,8 +71,9 @@ on a mismatch or an unsafe checksum path.
 |---|---|
 | Native Linux UI (Avalonia, no Wine) | Implemented; original layout, serif typography, icon title bar, NEW badge and support footer |
 | Native Wayland with X11 fallback | Implemented on Avalonia 12.1; exercised on KWin Wayland and X11 |
-| Settings screen (appearance, language, updates, VR/Steam integration, diagnostics, About, Restore Defaults) | Implemented; preferences persist in `settings.json` |
-| English / German interface | Implemented; backend and git output remain English |
+| Settings screen (appearance, language, updates, VR/Steam integration, diagnostics, About, Restore Defaults) | Implemented; preferences persist in `settings.json` schema 4 |
+| Appearance | System/Dark/Light themes, 80–150% UI scaling in 5% steps, and Follow system/Reduced/Full motion, applied live and persisted |
+| Interface languages | English, German, Spanish, French, Brazilian Portuguese, Italian, Polish, Russian, Japanese and Simplified Chinese; see [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md) |
 | Automatic installer updates and helper updates | Implemented; release archives are checksum-verified and applied by a detached helper; helper updates remain origin-verified |
 | Managed `tf2vr-linux` checkout with origin verification and safe update | Implemented |
 | Live catalogue from `install.sh --list-versions` | Implemented, exercised against the real backend (19 entries) |
@@ -84,7 +85,7 @@ on a mismatch or an unsafe checksum path.
 | Steam shortcut with graceful close → backup → verified write → reopen | Implemented and fixture tested; not verified against a live Steam client |
 | Manifest release notes | Implemented (HTTPS, cache, validation) |
 | Reproducible self-contained release + user-level installer | Implemented; see `docs/RELEASE.md` |
-| Automated tests | 52 passing |
+| Automated tests | 86 passing |
 
 ## Limitations
 
@@ -98,8 +99,9 @@ on a mismatch or an unsafe checksum path.
   is never replaced. The updater downloads a newer Linux release archive, verifies its SHA-256 and
   the archive's internal `SHA256SUMS`, then lets a detached helper wait for the app to exit,
   install and relaunch it. A failed install leaves the previous app in place.
-- **German covers the interface chrome.** Backend, git and some technical status messages stay in
-  English.
+- **Raw technical output stays in its original language.** Backend command output, git messages,
+  release notes and technical paths are deliberately not rewritten. The ten UI catalogs cover
+  every application-owned label, dialog and status string.
 - No first-run wizard, dedicated diagnostics page or installation history UI.
 
 ## Build from source
@@ -158,6 +160,7 @@ archive hash; exact commands and the measured hash are in `docs/RELEASE.md`.
 - **Mod packages:** not covered by the installer's MIT license and not redistributed here.
 
 See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the complete
-notices. The bundled serif font is Liberation Serif under the SIL Open Font License 1.1. Game names
+notices. The bundled serif font is Liberation Serif and the CJK fallbacks are Noto Sans CJK, both
+under the SIL Open Font License 1.1. Game names
 and artwork belong to their respective owners; no game or mod content is distributed here. This
 project is not affiliated with or endorsed by Respawn Entertainment or Electronic Arts.

@@ -27,6 +27,22 @@ tar -tzf artifacts/circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz | head
 `build-release.sh` reads the version from the application project, so bumping `<Version>` in
 `src/CircuitLord.VRModInstaller.App/CircuitLord.VRModInstaller.App.csproj` renames the artifacts.
 
+### Build stable and beta archives from one tree
+
+`VERSION_OVERRIDE` stamps a build with another application version without editing the project.
+Both archives contain the same source; only their packaged version and file names differ.
+
+```bash
+# Stable-labelled archive: 1.0.3
+VERSION_OVERRIDE=1.0.3 packaging/build-release.sh
+
+# Beta/newest archive: the project's current version (1.0.5)
+packaging/build-release.sh
+```
+
+The normal tag and release-branch workflows never set `VERSION_OVERRIDE`; they always publish the
+version in the project file. Use the override only for deliberate channel builds.
+
 ## What the archive contains
 
 ```
@@ -40,6 +56,7 @@ circuitlord-vrmodinstaller-1.0.5-linux-x64/
   SHA256SUMS
   LICENSE
   licenses/LiberationSerif-OFL.txt         bundled serif font licence (SIL OFL 1.1)
+  licenses/NotoSansCJK-OFL.txt             bundled CJK font licence (SIL OFL 1.1)
   THIRD-PARTY-NOTICES.md
   README.md
 ```
@@ -59,7 +76,7 @@ tar -xzf circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz
 ```
 
 Before writing anything, `install.sh` verifies every packaged file against the archive's
-`SHA256SUMS` (236 entries for 1.0.5) and prints `Verified <n> files against SHA256SUMS`. It aborts
+`SHA256SUMS` (257 entries for the current 1.0.5 build) and prints `Verified <n> files against SHA256SUMS`. It aborts
 with a non-zero exit and a clear message if a checksum mismatches, if the list contains an absolute
 or `..` path, or if `SHA256SUMS` is missing or empty. Nothing is created in the home directory on
 those failure paths.
@@ -150,14 +167,14 @@ git push origin release/v1.0.5
 | Two clean package builds | identical SHA-256 (`41479bfb…`) |
 | Archive contents guard | no game/mod payload |
 | `desktop-file-validate` on the shipped menu entry | valid |
-| Install into a throwaway `HOME` | 236 files verified, app, symlink, 7 icon sizes, menu entry created |
+| Install into a throwaway `HOME` | 257 files verified, app, symlink, 7 icon sizes, menu entry created |
 | Native Wayland launch (KWin) | window rendered with no X11 window; `libwayland-client` loaded |
 | X11 fallback launch | window rendered when `WAYLAND_DISPLAY` is unset |
 | Tampered archive (one byte changed) | install aborted before any write, clear integrity message |
 | Absolute path injected into `SHA256SUMS` | install aborted, path rejected |
 | Missing/empty `SHA256SUMS` | install aborted |
 | `--uninstall` | app/icon/entry removed; `backend/` preserved |
-| Launch from the installed menu entry (`gtk-launch circuitlord-vrmodinstaller` in a throwaway `HOME`) | window `CircuitLord's VR Mod Installer`, 800×740, `IsViewable`; owner's `/proc/<pid>/exe` is the installed binary; first run cloned the `tf2vr-linux` backend into `$XDG_DATA_HOME/circuitlord-vrmodinstaller/backend` |
+| Launch from the installed menu entry (`gtk-launch circuitlord-vrmodinstaller` in a throwaway `HOME`) | window `CircuitLord VR Mod Install unofficial-port for Linux`, 800×740, `IsViewable`; owner's `/proc/<pid>/exe` is the installed binary; first run cloned the `tf2vr-linux` backend into `$XDG_DATA_HOME/circuitlord-vrmodinstaller/backend` |
 | `Exec` and `Icon` of that entry | `Exec` absolute and executable; GTK theme lookup resolved `circuitlord-vrmodinstaller` to the installed 48×48 PNG |
 | Vulnerability audit (`dotnet list package --vulnerable --include-transitive`) | none |
 
