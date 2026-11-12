@@ -38,6 +38,9 @@ jobs:
 
       - name: Require an annotated tag
         run: |
+          # actions/checkout replaces an annotated tag with a lightweight ref.
+          # Fetch the real tag object again so its message can become the notes.
+          git fetch --force --no-tags origin "+refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
           tag_type=$(git cat-file -t "$GITHUB_REF_NAME" 2>/dev/null || true)
           if [ "$tag_type" != "tag" ]; then
             echo "error: $GITHUB_REF_NAME is not an annotated tag (type: ${tag_type:-missing})." >&2
