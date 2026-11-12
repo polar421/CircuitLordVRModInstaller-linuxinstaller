@@ -25,6 +25,55 @@ public class ReleaseCheckerTests
         Assert.Equal(expected, ReleaseChecker.IsNewer(tag, Current));
     }
 
+    [Theory]
+    [InlineData("v1.0.7-beta.2", "1.0.7-beta.1", true)]
+    [InlineData("v1.0.7-beta.2", "1.0.7-beta.2", false)]
+    [InlineData("v1.0.7-beta.2", "1.0.7", false)]
+    [InlineData("v1.0.7", "1.0.7-beta.2", true)]
+    [InlineData("v1.0.7-beta.2", "1.0.7.0", false)]
+    [InlineData("v1.0.7-beta.10", "1.0.7-beta.2", true)]
+    [InlineData("v1.0.7-rc.1", "1.0.7-beta.2", true)]
+    [InlineData("v1.0.7-beta.2+sha.abc", "1.0.7-beta.1+sha.abc", true)]
+    [InlineData("v1.0.8-beta.1", "1.0.7-beta.2", true)]
+    public void ComparesPrereleaseTags(string tag, string current, bool expected)
+    {
+        Assert.Equal(expected, ReleaseChecker.IsNewer(tag, current));
+    }
+
+    [Fact]
+    public async Task BetaChannelOffersTheNextBetaOnTheSameNumericCore()
+    {
+        const string json = """
+            [
+              {
+                "tag_name": "v1.0.7-beta.2",
+                "html_url": "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.7-beta.2",
+                "draft": false,
+                "prerelease": true
+              },
+              {
+                "tag_name": "v1.0.7-beta.1",
+                "html_url": "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.7-beta.1",
+                "draft": false,
+                "prerelease": true
+              }
+            ]
+            """;
+
+        using var http = new HttpClient(new StubHandler(json));
+        var checker = new ReleaseChecker(http);
+
+        var older = await checker.CheckAsync(
+            "1.0.7-beta.1", includePrereleases: true, CancellationToken.None);
+        Assert.True(older.UpdateAvailable);
+        Assert.Equal("v1.0.7-beta.2", older.LatestTag);
+
+        var current = await checker.CheckAsync(
+            "1.0.7-beta.2", includePrereleases: true, CancellationToken.None);
+        Assert.False(current.UpdateAvailable);
+        Assert.Equal("v1.0.7-beta.2", current.LatestTag);
+    }
+
     [Fact]
     public async Task ReleaseFeedExposesTheLinuxArchiveAndChecksum()
     {

@@ -79,7 +79,10 @@ public sealed class InstallerViewModel
     private static readonly string BuildInformationalVersion =
         typeof(InstallerViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? string.Empty;
-    private static readonly bool BuildIsBeta = BuildInformationalVersion.Contains('-');
+    private static readonly string BuildVersion = BuildInformationalVersion.Length == 0
+        ? CurrentVersion.ToString(3)
+        : BuildInformationalVersion.Split('+', 2)[0];
+    private static readonly bool BuildIsBeta = BuildVersion.Contains('-');
     private int _updateCheckGeneration;
     private bool _appUpdateInProgress;
     private string _updateStatusKey = "updatesNotChecked";
@@ -140,7 +143,7 @@ public sealed class InstallerViewModel
     public ObservableCollection<string> LogLines { get; } = new();
 
     public string AppTitle => "CircuitLord's VR Mod Installer";
-    public string CurrentAppVersion => CurrentVersion.ToString(3);
+    public string CurrentAppVersion => BuildVersion;
     public string AppVersion => CurrentAppVersion + " · Linux · " + Loc.Get("unofficialLabel");
     public string PlatformText => "Linux · " + System.Runtime.InteropServices.RuntimeInformation.OSDescription
         + " · " + System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture;
@@ -1363,7 +1366,7 @@ public sealed class InstallerViewModel
             var includePrereleases = ReleaseChannelPreference.IncludesPrereleases(
                 _settings.UpdateChannel, BuildIsBeta);
             var result = await _releaseChecker.CheckAsync(
-                CurrentVersion, includePrereleases, _lifetime.Token);
+                CurrentAppVersion, includePrereleases, _lifetime.Token);
             if (generation != _updateCheckGeneration)
             {
                 // The channel changed while this request was running; its
@@ -1392,10 +1395,11 @@ public sealed class InstallerViewModel
             }
             else
             {
+                var currentTag = "v" + CurrentAppVersion;
                 LatestReleaseUrl = result.ReleaseUrl;
-                _latestAppTag = result.LatestTag ?? "v" + CurrentVersion.ToString(3);
+                _latestAppTag = result.LatestTag ?? currentTag;
                 UpdateAvailable = false;
-                SetUpdateStatus("upToDate", result.LatestTag ?? "v" + CurrentVersion.ToString(3));
+                SetUpdateStatus("upToDate", result.LatestTag ?? currentTag);
             }
         }
         catch (OperationCanceledException)

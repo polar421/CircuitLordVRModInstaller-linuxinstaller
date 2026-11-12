@@ -45,8 +45,19 @@ public sealed class ReleaseChecker
     public Task<ReleaseCheckResult> CheckAsync(Version current, CancellationToken cancellationToken) =>
         CheckAsync(current, includePrereleases: false, cancellationToken);
 
-    public async Task<ReleaseCheckResult> CheckAsync(
+    public Task<ReleaseCheckResult> CheckAsync(
         Version current,
+        bool includePrereleases,
+        CancellationToken cancellationToken) =>
+        CheckAsync(current.ToString(), includePrereleases, cancellationToken);
+
+    /// <summary>
+    /// Checks releases against a version that may include a prerelease suffix,
+    /// such as <c>1.0.7-beta.2</c>. The numeric-only overload cannot distinguish
+    /// two builds on the same core version.
+    /// </summary>
+    public async Task<ReleaseCheckResult> CheckAsync(
+        string currentVersion,
         bool includePrereleases,
         CancellationToken cancellationToken)
     {
@@ -92,7 +103,7 @@ public sealed class ReleaseChecker
 
                 var (archive, checksum) = ReadAssets(release);
                 return new ReleaseCheckResult(
-                    IsNewer(tag, current), tag, url, null, archive, checksum, isPrerelease);
+                    IsNewer(tag, currentVersion), tag, url, null, archive, checksum, isPrerelease);
             }
 
             return new ReleaseCheckResult(false, null, null, includePrereleases
@@ -209,13 +220,46 @@ public sealed class ReleaseChecker
     }
 
     /// <summary>
-    /// Compares the numeric core of a release tag with the running app version.
-    /// A prerelease with a newer core (1.1.0-beta.1) is still an update; an equal
-    /// core (1.0.0 vs 1.0.0-beta.1) is treated as the same release line.
+    /// Compares a release tag with a numeric running version. This overload is
+    /// suitable for stable builds; beta builds should pass their full
+    /// informational version so the prerelease suffix is compared too.
     /// </summary>
-    public static bool IsNewer(string tag, Version current)
+    public static bool IsNewer(string tag, Version current) =>
+        IsNewer(tag, current.ToString());
+
+    /// <summary>
+    /// Compares release tags using semantic-version precedence, including
+    /// prerelease identifiers. A stable release sorts above a prerelease with
+    /// the same numeric core, so <c>1.0.7</c> is newer than <c>1.0.7-beta.2</c>.
+    /// </summary>
+    public static bool IsNewer(string tag, string currentVersion)
     {
-        var value = tag.Trim();
+        if (!TryParseVersion(tag, out var remoteCore, out var remotePrerelease)
+            || !TryParseVersion(currentVersion, out var currentCore, out var currentPrerelease))
+        {
+            return false;
+        }
+
+        var core = CompareCores(remoteCore, currentCore);
+        return core != 0
+            ? core > 0
+            : ComparePrereleases(remotePrerelease, currentPrerelease) > 0;
+    }
+
+    private static bool TryParseVersion(
+        string value,
+        out Version core,
+        out string[] prerelease)
+    {
+        core = new Version(0, 0);
+        prerelease = Array.Empty<string>();
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        value = value.Trim();
         if (value.StartsWith('v') || value.StartsWith('V'))
         {
             value = value[1..];
@@ -228,8 +272,95 @@ public sealed class ReleaseChecker
         }
 
         var suffix = value.IndexOf('-');
-        var core = suffix >= 0 ? value[..suffix] : value;
+        var coreText = suffix >= 0 ? value[..suffix] : value;
+        var prereleaseText = suffix >= 0 ? value[(suffix + 1)..] : string.Empty;
+        if (!Version.TryParse(coreText, out var parsedCore) || parsedCore is null)
+        {
+            return false;
+        }
+        core = parsedCore;
 
-        return Version.TryParse(core, out var remote) && remote > current;
+        if (prereleaseText.Length == 0)
+        {
+            return true;
+        }
+
+        prerelease = prereleaseText.Split('.');
+        foreach (var identifier in prerelease)
+        {
+            if (identifier.Length == 0)
+            {
+                prerelease = Array.Empty<string>();
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static int CompareCores(Version left, Version right)
+    {
+        var result = left.Major.CompareTo(right.Major);
+        if (result != 0) return result;
+
+        result = left.Minor.CompareTo(right.Minor);
+        if (result != 0) return result;
+
+        // Assembly versions are four-part (1.0.7.0), while release tags are
+        // usually three-part (1.0.7). Treat omitted components as zero.
+        result = Component(left.Build).CompareTo(Component(right.Build));
+        return result != 0 ? result : Component(left.Revision).CompareTo(Component(right.Revision));
+    }
+
+    private static int Component(int value) => value < 0 ? 0 : value;
+
+    private static int ComparePrereleases(string[] left, string[] right)
+    {
+        if (left.Length == 0 && right.Length == 0) return 0;
+        if (left.Length == 0) return 1;
+        if (right.Length == 0) return -1;
+
+        for (var i = 0; i < Math.Min(left.Length, right.Length); i++)
+        {
+            var result = ComparePrereleaseIdentifier(left[i], right[i]);
+            if (result != 0) return result;
+        }
+
+        return left.Length.CompareTo(right.Length);
+    }
+
+    private static int ComparePrereleaseIdentifier(string left, string right)
+    {
+        var leftNumeric = IsNumeric(left);
+        var rightNumeric = IsNumeric(right);
+
+        if (leftNumeric && rightNumeric)
+        {
+            // Compare arbitrary-length numeric identifiers without overflowing.
+            left = TrimLeadingZeros(left);
+            right = TrimLeadingZeros(right);
+            var length = left.Length.CompareTo(right.Length);
+            return length != 0 ? length : string.CompareOrdinal(left, right);
+        }
+
+        if (leftNumeric) return -1;
+        if (rightNumeric) return 1;
+        return string.CompareOrdinal(left, right);
+    }
+
+    private static bool IsNumeric(string value)
+    {
+        if (value.Length == 0) return false;
+        foreach (var character in value)
+        {
+            if (character is < '0' or > '9') return false;
+        }
+        return true;
+    }
+
+    private static string TrimLeadingZeros(string value)
+    {
+        var trimmed = value.TrimStart('0');
+        return trimmed.Length == 0 ? "0" : trimmed;
     }
 }
