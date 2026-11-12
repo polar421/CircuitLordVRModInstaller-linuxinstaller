@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=CircuitLord's VR Mod Installer
+Comment=Install and manage Titanfall 2 VR on Linux
+Exec=/opt/circuitlord-vrmodinstaller/CircuitLordVRModInstaller
+Icon=circuitlord-vrmodinstaller
+Terminal=false
+Categories=Utility;Game;
+Keywords=titanfall;vr;installer;wivrn;steamvr;monado;

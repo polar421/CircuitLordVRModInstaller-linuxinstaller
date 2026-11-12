@@ -1,0 +1,234 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CircuitLord.VRModInstaller.MainWindow"
+        Title="CircuitLord's VR Mod Installer"
+        Width="800" Height="740"
+        CanResize="False"
+        SystemDecorations="None"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Bg}">
+
+  <Grid RowDefinitions="46,*">
+
+    <!-- title bar -->
+    <Grid Grid.Row="0" Name="TitleBar" Background="{StaticResource Bg}" PointerPressed="TitleBar_PointerPressed">
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0" Spacing="10">
+        <TextBlock Text="CircuitLord's VR Mod Installer" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <TextBlock Name="VersionText" Text="1.0.0 · Linux" FontSize="11" Foreground="{StaticResource TextDim}"
+                   VerticalAlignment="Center" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">
+        <Button Classes="titlebar" Content="–" Click="Minimize_Click" ToolTip.Tip="Minimize" />
+        <Button Classes="titlebar" Content="✕" Click="Close_Click" ToolTip.Tip="Close" />
+      </StackPanel>
+    </Grid>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="18,4,18,14">
+      <StackPanel>
+
+        <!-- game selection -->
+        <StackPanel Name="GameSelect" Spacing="8">
+          <TextBlock Text="Choose a game" Classes="h1" Margin="2,0,0,6" />
+
+          <Button Name="BigWalkCard" Height="96" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                  Padding="0" IsEnabled="False" Background="{StaticResource Panel}" BorderBrush="{StaticResource Stroke}">
+            <Grid ColumnDefinitions="200,*,Auto">
+              <Border CornerRadius="6,0,0,6" ClipToBounds="True">
+                <Border.Background>
+                  <ImageBrush Source="avares://CircuitLordVRModInstaller/Assets/big-walk.jpg" Stretch="UniformToFill" Opacity="0.45" />
+                </Border.Background>
+              </Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,12,0" Spacing="3">
+                <TextBlock Text="Big Walk VR" FontSize="15" FontWeight="SemiBold" />
+                <TextBlock Name="BigWalkStatus" Text="Not available on Linux" FontSize="11.5"
+                           Foreground="{StaticResource TextDim}" TextWrapping="Wrap" />
+              </StackPanel>
+              <Border Grid.Column="2" Background="{StaticResource Hover}" BorderBrush="{StaticResource Stroke}"
+                      BorderThickness="1" CornerRadius="6" Padding="8,3" VerticalAlignment="Center" Margin="0,0,14,0">
+                <TextBlock Text="No backend" FontSize="10.5" Foreground="{StaticResource TextDim}" />
+              </Border>
+            </Grid>
+          </Button>
+
+          <Button Name="TitanfallCard" Height="96" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                  Padding="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Stroke}"
+                  Click="SelectTitanfall_Click">
+            <Grid ColumnDefinitions="200,*,Auto">
+              <Border CornerRadius="6,0,0,6" ClipToBounds="True">
+                <Border.Background>
+                  <ImageBrush Source="avares://CircuitLordVRModInstaller/Assets/titanfall-2.jpg" Stretch="UniformToFill" />
+                </Border.Background>
+              </Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,12,0" Spacing="3">
+                <TextBlock Text="Titanfall 2 VR" FontSize="15" FontWeight="SemiBold" />
+                <TextBlock Name="TitanfallStatus" Text="Checking installation..." FontSize="11.5"
+                           Foreground="{StaticResource TextDim}" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock Grid.Column="2" Text="›" FontSize="18" Foreground="{StaticResource TextDim}"
+                         VerticalAlignment="Center" Margin="0,0,16,0" />
+            </Grid>
+          </Button>
+        </StackPanel>
+
+        <!-- installer -->
+        <StackPanel Name="InstallerView" IsVisible="False" Spacing="0">
+          <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+            <Button Content="‹" Classes="ghost" Padding="10,4" Click="Back_Click" ToolTip.Tip="Back to games" />
+            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+              <TextBlock Text="Titanfall 2 VR" FontSize="18" FontWeight="SemiBold" />
+              <TextBlock Name="InstalledText" Text="Not installed" Classes="small" />
+            </StackPanel>
+            <Button Grid.Column="2" Name="UninstallButton" Content="Uninstall" Classes="danger" FontSize="11.5"
+                    Padding="8,4" Click="Uninstall_Click" IsEnabled="False" />
+          </Grid>
+
+          <Border Classes="card">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Linux backend" Classes="h2" />
+                <TextBlock Name="BackendText" Classes="small" TextWrapping="Wrap" />
+                <TextBlock Name="CatalogueText" Classes="small" TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                <Button Content="Update helper" Classes="ghost" FontSize="11.5" Padding="8,4" Click="UpdateBackend_Click" />
+                <Button Content="Refresh" Classes="ghost" FontSize="11.5" Padding="8,4" Click="Refresh_Click" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border Classes="card">
+            <StackPanel Spacing="6">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="Find Titanfall 2" Classes="h2" />
+                  <TextBlock Name="GameText" Classes="small" TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="Run backend check" Classes="ghost" FontSize="11.5" Padding="8,4"
+                        Click="Check_Click" />
+              </Grid>
+              <Border Background="{StaticResource Bg}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                      CornerRadius="6" Padding="10" MaxHeight="150">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                  <TextBlock Name="PreflightText" FontFamily="monospace" FontSize="11" Foreground="{StaticResource TextDim}"
+                             TextWrapping="Wrap" />
+                </ScrollViewer>
+              </Border>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="card">
+            <StackPanel Spacing="8">
+              <TextBlock Text="Release" Classes="h2" />
+              <Grid ColumnDefinitions="*,Auto">
+                <ComboBox Name="VersionCombo" HorizontalAlignment="Stretch" FontSize="12"
+                          SelectionChanged="Version_SelectionChanged" />
+                <Button Grid.Column="1" Name="InstallButton" Content="Install" Classes="primary" Margin="10,0,0,0"
+                        Click="Install_Click" IsEnabled="False" MinWidth="150" />
+              </Grid>
+              <TextBlock Name="ManifestText" Classes="small" TextWrapping="Wrap" />
+              <ProgressBar Name="Progress" IsIndeterminate="True" IsVisible="False" Height="4" />
+              <TextBlock Name="StageText" Classes="small" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+
+          <Border Classes="card">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Text="Play" Classes="h2" />
+                <TextBlock Name="PlayText" Classes="small" TextWrapping="Wrap"
+                           Text="Launching uses the installed native tf2vr launcher, the same one the desktop entry and Steam shortcut use." />
+              </StackPanel>
+              <Button Grid.Column="1" Name="LaunchButton" Content="Launch in VR" Classes="primary" FontSize="11.5"
+                      Padding="10,5" Click="Launch_Click" IsEnabled="False" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+
+          <Border Classes="card">
+            <StackPanel Spacing="8">
+              <TextBlock Text="Integrations" Classes="h2" />
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Name="DesktopText" Classes="small" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Content="Repair WiVRn entry" Classes="ghost" FontSize="11.5" Padding="8,4"
+                        Click="RepairDesktop_Click" />
+              </Grid>
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Name="SteamText" Classes="small" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                  <Button Name="SteamRemoveButton" Content="Remove shortcut" Classes="ghost" FontSize="11.5"
+                          Padding="8,4" Click="RemoveSteam_Click" />
+                  <Button Name="SteamButton" Content="Add to Steam" Classes="ghost" FontSize="11.5"
+                          Padding="8,4" Click="AddSteam_Click" />
+                </StackPanel>
+              </Grid>
+              <TextBlock Name="RuntimeText" Classes="small" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+
+          <Border Classes="card">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Text="Release notes" Classes="h2" />
+                <TextBlock Name="ChangelogButton" Classes="small" Text="Open changelog" TextDecorations="Underline"
+                           Cursor="Hand" PointerPressed="Changelog_Click" />
+              </StackPanel>
+              <TextBlock Grid.Column="1" Text="OpenXR runtime left untouched" Classes="small" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+
+          <Border Classes="card" Padding="0">
+            <StackPanel>
+              <TextBlock Text="Log" Classes="h2" Margin="16,13,16,6" />
+              <Border Background="{StaticResource Bg}" BorderBrush="{StaticResource Stroke}" BorderThickness="0,1,0,0">
+                <ListBox Name="LogsList" Height="150" Background="Transparent" BorderThickness="0" FontSize="11">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding}" FontFamily="monospace" TextWrapping="Wrap" />
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Border>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- changelog overlay -->
+    <Border Name="ChangelogOverlay" Grid.Row="0" Grid.RowSpan="2" Background="#D914171C" IsVisible="False">
+      <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+              CornerRadius="10" Padding="22,18" Width="520" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Titanfall 2 VR changelog" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock Name="ChangelogSubtitle" Classes="small" Text="From CircuitLord's official manifest" />
+          <ScrollViewer MaxHeight="380" VerticalScrollBarVisibility="Auto">
+            <ItemsControl Name="ChangelogList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <Button Content="Close" Classes="ghost" HorizontalAlignment="Right" Click="CloseChangelog_Click" />
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <!-- confirmation overlay -->
+    <Border Name="ConfirmOverlay" Grid.Row="0" Grid.RowSpan="2" Background="#D914171C" IsVisible="False">
+      <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+              CornerRadius="10" Padding="22,18" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="10">
+          <TextBlock Name="ConfirmTitle" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Name="ConfirmText" FontSize="12" Foreground="{StaticResource TextDim}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
+            <Button Name="ConfirmCancelButton" Content="Cancel" Classes="ghost" Click="ConfirmCancel_Click" />
+            <Button Name="ConfirmOkButton" Content="Restart Steam and Add" Classes="primary" Click="ConfirmOk_Click" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+
+  </Grid>
+</Window>

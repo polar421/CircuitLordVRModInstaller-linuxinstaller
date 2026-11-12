@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CircuitLord.VRModInstaller.App/CircuitLord.VRModInstaller.App.csproj" />
+    <Project Path="src/CircuitLord.VRModInstaller.Core/CircuitLord.VRModInstaller.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CircuitLord.VRModInstaller.Core.Tests/CircuitLord.VRModInstaller.Core.Tests.csproj" />
+  </Folder>
+</Solution>

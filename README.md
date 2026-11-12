@@ -1,95 +1,58 @@
-<h1 align="center">CircuitLord's VR Mod Installer linux</h1>
+# CircuitLord's VR Mod Installer — Linux
 
-### Join the [Discord](https://discord.gg/MTKwud2cCP) if you have questions or feedback!
+A native Linux desktop port of [CircuitLord's VR Mod Installer](https://github.com/CircuitLord/CircuitLordVRModInstaller),
+built with .NET 10 and Avalonia so the installer UI runs without Wine.
 
-Hey, I'm CircuitLord! This is a utility to automatically install my full-conversion VR mods, keep them up-to-date, and launch them in VR. It currently supports:
-- Big Walk VR
-- Titanfall 2 VR
+Titanfall 2 VR installation is delegated to [Monkellie's `tf2vr-linux`](https://github.com/Monkellie/tf2vr-linux):
+this application manages a checkout of that repository, runs its real `install.sh`, and never
+reimplements Proton setup, downloads, checksums or the mod file layout.
 
-These mods and this installer are community projects, not affiliated with or endorsed by the game developers or publishers. Use at your own risk.
+## What works today
 
-**[Download the installer](https://github.com/CircuitLord/CircuitLordVRModInstaller/releases/latest/download/CircuitLordVRModInstaller.exe)**
+| Area | Status |
+|---|---|
+| Native Linux UI (Avalonia, no Wine) | Implemented |
+| Managed `tf2vr-linux` checkout with origin verification and safe update | Implemented |
+| Live catalogue from `install.sh --list-versions` | Implemented, exercised against the real backend |
+| Stable = choice 1 → `latest`, Beta = choice 2 → `beta`, other entries → exact token | Implemented and unit tested |
+| Asynchronous install / reinstall / uninstall through `install.sh` | Implemented (real backend run not performed on this machine) |
+| Preflight (`install.sh --check`) with captured output | Implemented |
+| Launch through the installed native `tf2vr` launcher | Implemented |
+| WiVRn desktop entry with `Categories=Game;X-WiVRn-VR;` | Implemented, reconciled after install |
+| Steam shortcut + graceful close / write / reopen transaction | Implemented and fixture tested; not tested against a live Steam client |
+| Manifest release notes | Implemented (HTTPS + cache + validation) |
+| Automated tests | 33 passing |
 
+Not yet implemented: first-run wizard, dedicated diagnostics/integration pages, installation
+history UI, settings UI, AppImage/native packaging. See `docs/PROJECT_AUDIT.md` for the full
+feature matrix and `docs/TEST_PLAN.md` for what has and has not been verified.
 
-## Titanfall 2 VR
+## Requirements
 
-Titanfall 2 VR adds full VR support to the Titanfall 2 campaign. It also includes stereo rendering, full body IK, manual reloads, Titan controls, and more!
+- Linux with a desktop session (Wayland or X11)
+- .NET 10 SDK to build; the published binary needs only the .NET runtime (or publish self-contained)
+- `git`, `bash`, `curl`, `python3` — the backend's own dependencies
+- Steam / SteamVR / WiVRn / Monado only as needed for the integration you use
 
-### What the installer does
+## Build, run, test
 
-1. **Finds Titanfall 2** through your Steam/EA/Xbox install.
-2. **Checks the EA app**, which Titanfall 2 needs you signed into to play. If it's missing, launch Titanfall 2 once to install it.
-3. **Installs Northstar and the mod** into a separate `TF2VR` profile in your game directory.
-
-Launching Titanfall 2 normally stays unmodded. To play in VR, start SteamVR/your VR runtime of choice and use the installer's Launch in VR button.
-
-### Campaign saves
-
-VR campaign save files are stored in `%LOCALAPPDATA%\Respawn\Titanfall2_VR`
-
-## Big Walk VR
-
-Big Walk VR adds full multiplayer-compatible SteamVR support to the game Big Walk by House House. It includes stereo rendering support, full 6dof motion controls with support for grabbing and throwing objects, and more!
-
-### Do other players need the mod?
-The **host and other players** need the mod installed to **see your VR hands**.
-
-Your non-vr friends can install the mod and still play in flatscreen!
-
-### What the installer does
-
-1. **Finds Big Walk** through your Steam install.
-2. **Sets up BepInEx**, the mod loader Big Walk VR depends on.
-3. **Installs the mod** into your game directory.
-
-Launching Big Walk normally through Steam stays non-VR while showing VR players' tracked movement. To play in VR, start SteamVR and use the installer's Launch in VR button.
-
-
-## Building from source
-
-Needs the .NET Framework 4.8 SDK.
-
-```
-dotnet build src/Installer -c Release
+```bash
+dotnet build CircuitLord.VRModInstaller.Linux.slnx
+dotnet run --project src/CircuitLord.VRModInstaller.App
+dotnet test tests/CircuitLord.VRModInstaller.Core.Tests
 ```
 
-Output is a single `src/Installer/bin/Release/net48/CircuitLordVRModInstaller.exe` using only .NET Framework assemblies.
+## Safety guarantees
 
-## How it works
-
-`manifest-v3.json` lists the installer version and each mod release with its download URL and SHA-256 hash. The app compares it against what is installed and shows Install or Update. Older manifests stay frozen so older installers can still update themselves.
-
-Each mod entry can declare:
-
-- `preserve`: files left alone if they already exist, so your calibration and configs survive updates.
-- `tokenize`: files where `{{GAMEDIR}}` and `{{GAMEDIR_JSON}}` are replaced with your game folder on install.
-- `channels`: optional releases users can pick in the version dropdown alongside stable. Each has an `id`, an optional `description`, and its own `version`, `url`, `sha256`, and `size`.
-
-```json
-"channels": [
-  {
-    "id": "beta",
-    "description": "New features, may be unstable",
-    "version": "1.1.0-beta.1",
-    "url": "https://example.com/BigWalkVR-1.1.0-beta.1.zip",
-    "sha256": "...",
-    "size": 20214466
-  }
-]
-```
-
-A channel shows only while its version is newer than stable. Removing a channel moves its users back to stable.
-
-Every install records the files it wrote inside the game folder. Updates delete files the previous version shipped that the new one no longer does, and uninstall removes exactly what was recorded.
+- The normal Titanfall 2 installation and its Steam entry are never modified.
+- `shortcuts.vdf` is never written while the selected Steam client is running; it is backed up,
+  written to a same-directory temporary file, re-parsed and atomically committed.
+- If this application shuts Steam down, it attempts to reopen the same installation even when
+  the shortcut write fails. Steam is never force-killed.
+- The active OpenXR runtime is never changed. SteamVR is never forced.
+- Only the backend's own uninstall operation removes game files; campaign saves are untouched.
 
 ## License
 
-The installer source code is MIT, see [LICENSE](LICENSE). Third-party software details are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
-
-The mods are closed source and not covered by the MIT license. All rights reserved. Do not redistribute them without permission.
-
-## Supporting
-
-If you've enjoyed something I've made, and want to support my work, see my ko-fi!
-
-https://ko-fi.com/circuitlord 
+MIT for this installer. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Mod packages and game assets are not distributed with this application.

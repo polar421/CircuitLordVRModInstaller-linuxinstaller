@@ -1,0 +1,101 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="CircuitLord.VRModInstaller.App"
+             RequestedThemeVariant="Dark">
+
+  <Application.Resources>
+    <SolidColorBrush x:Key="Bg" Color="#14171C" />
+    <SolidColorBrush x:Key="Panel" Color="#1C2027" />
+    <SolidColorBrush x:Key="Hover" Color="#252A33" />
+    <SolidColorBrush x:Key="Stroke" Color="#2C323C" />
+    <SolidColorBrush x:Key="Text" Color="#E9ECF2" />
+    <SolidColorBrush x:Key="TextDim" Color="#939CAB" />
+    <SolidColorBrush x:Key="Accent" Color="#4FA3E3" />
+    <SolidColorBrush x:Key="Green" Color="#5FC98B" />
+    <SolidColorBrush x:Key="Amber" Color="#E9A94A" />
+    <SolidColorBrush x:Key="Red" Color="#E06C75" />
+    <SolidColorBrush x:Key="AccentFill" Color="#1F4FA3E3" />
+    <SolidColorBrush x:Key="GreenFill" Color="#1F5FC98B" />
+    <SolidColorBrush x:Key="AmberFill" Color="#1FE9A94A" />
+    <SolidColorBrush x:Key="RedFill" Color="#1FE06C75" />
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme />
+    <Style Selector="Window">
+      <Setter Property="Background" Value="{StaticResource Bg}" />
+      <Setter Property="FontFamily" Value="Inter, Cantarell, Noto Sans, sans-serif" />
+    </Style>
+    <Style Selector="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+    </Style>
+    <Style Selector="TextBlock.dim">
+      <Setter Property="Foreground" Value="{StaticResource TextDim}" />
+    </Style>
+    <Style Selector="TextBlock.h1">
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.h2">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.small">
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Foreground" Value="{StaticResource TextDim}" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="Background" Value="{StaticResource Hover}" />
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="14,7" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Stroke}" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{StaticResource Accent}" />
+      <Setter Property="Foreground" Value="#0E1216" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#66B4EE" />
+    </Style>
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
+    </Style>
+    <Style Selector="Button.danger">
+      <Setter Property="Background" Value="{StaticResource RedFill}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Red}" />
+      <Setter Property="Foreground" Value="{StaticResource Red}" />
+    </Style>
+    <Style Selector="Button.titlebar">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Height" Value="34" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{StaticResource Panel}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="16,13" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="Background" Value="{StaticResource Hover}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+  </Application.Styles>
+</Application>
