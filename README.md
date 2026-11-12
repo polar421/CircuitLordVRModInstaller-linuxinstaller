@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="bigwalkvr_icon.png" alt="Big Walk VR" width="160">
-</p>
-
 <h1 align="center">CircuitLord's VR Mod Installer linux</h1>
 
 ### Join the [Discord](https://discord.gg/MTKwud2cCP) if you have questions or feedback!
