@@ -83,7 +83,7 @@ Technical names are not translated. This includes `WiVRn`, `OpenXR`, `Monado`,
    The tests fail on missing/empty keys, placeholder changes, unused keys,
    missing technical identifiers, or locale-formatting regressions.
 
-The current catalogs contain 386 keys per language. Automated tests prove key
+The current catalogs contain 391 keys per language. Automated tests prove key
 completeness and placeholder consistency; they do not replace native-speaker
 review of tone. Raw backend and git output is deliberately preserved in its
 original language.

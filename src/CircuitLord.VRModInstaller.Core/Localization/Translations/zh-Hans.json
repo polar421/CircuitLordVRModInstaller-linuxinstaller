@@ -384,5 +384,10 @@
   "yes": "是",
   "no": "否",
   "noneRegistered": "未注册",
-  "steamAccountDetected": "已检测（不含账户 ID）"
+  "steamAccountDetected": "已检测（不含账户 ID）",
+  "updateChannel": "更新通道",
+  "updateChannelDescription": "自动会跟随此构建的通道。稳定版会跳过测试版；Beta 会包含预发布版本。",
+  "updateChannelAuto": "自动",
+  "updateChannelStable": "稳定版",
+  "updateChannelBeta": "Beta"
 }

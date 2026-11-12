@@ -10,6 +10,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using CircuitLord.VRModInstaller.Appearance;
 using CircuitLord.VRModInstaller.Core.Appearance;
+using CircuitLord.VRModInstaller.Core.Updates;
 using CircuitLord.VRModInstaller.Localization;
 
 namespace CircuitLord.VRModInstaller;
@@ -52,6 +53,7 @@ public partial class SettingsView : UserControl
         this.FindControl<Border>("ConfirmOverlay")!.IsVisible = false;
         this.FindControl<ToggleSwitch>("RoundedCornersToggle")!.IsChecked = vm.RoundedCorners;
         this.FindControl<ToggleSwitch>("AppUpdatesToggle")!.IsChecked = vm.AutoCheckForAppUpdates;
+        this.FindControl<ComboBox>("UpdateChannelCombo")!.SelectedIndex = UpdateChannelIndex(vm.UpdateChannelSetting);
         this.FindControl<ToggleSwitch>("BackendUpdatesToggle")!.IsChecked = vm.UpdateBackendAutomatically;
         this.FindControl<ToggleSwitch>("ConfirmSteamRestartToggle")!.IsChecked = vm.ConfirmSteamRestart;
         this.FindControl<ComboBox>("ThemeCombo")!.SelectedIndex = vm.ThemeSetting switch
@@ -174,7 +176,7 @@ public partial class SettingsView : UserControl
         _loading = true;
         try
         {
-            foreach (var name in new[] { "ThemeCombo", "MotionCombo" })
+            foreach (var name in new[] { "ThemeCombo", "MotionCombo", "UpdateChannelCombo" })
             {
                 var combo = this.FindControl<ComboBox>(name);
                 var index = combo?.SelectedIndex ?? -1;
@@ -190,6 +192,13 @@ public partial class SettingsView : UserControl
             _loading = wasLoading;
         }
     }
+
+    private static int UpdateChannelIndex(string channel) => channel switch
+    {
+        ReleaseChannelPreference.Stable => 1,
+        ReleaseChannelPreference.Beta => 2,
+        _ => 0,
+    };
 
     private static int LanguageIndex(string language)
     {
@@ -363,6 +372,17 @@ public partial class SettingsView : UserControl
             return;
         }
         _vm.SetAutoCheckForAppUpdates(this.FindControl<ToggleSwitch>("AppUpdatesToggle")!.IsChecked == true);
+    }
+
+    private async void UpdateChannel_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _vm is null)
+        {
+            return;
+        }
+        var tag = (this.FindControl<ComboBox>("UpdateChannelCombo")!.SelectedItem as ComboBoxItem)?.Tag as string;
+        _vm.SetUpdateChannel(tag ?? ReleaseChannelPreference.Automatic);
+        await _vm.CheckForUpdatesAsync();
     }
 
     private void BackendUpdates_Changed(object? sender, RoutedEventArgs e)
@@ -579,6 +599,7 @@ public partial class SettingsView : UserControl
         _loading = true;
         this.FindControl<ToggleSwitch>("RoundedCornersToggle")!.IsChecked = true;
         this.FindControl<ToggleSwitch>("AppUpdatesToggle")!.IsChecked = true;
+        this.FindControl<ComboBox>("UpdateChannelCombo")!.SelectedIndex = 0;
         this.FindControl<ToggleSwitch>("BackendUpdatesToggle")!.IsChecked = false;
         this.FindControl<ToggleSwitch>("ConfirmSteamRestartToggle")!.IsChecked = true;
         this.FindControl<ComboBox>("ThemeCombo")!.SelectedIndex = 1;

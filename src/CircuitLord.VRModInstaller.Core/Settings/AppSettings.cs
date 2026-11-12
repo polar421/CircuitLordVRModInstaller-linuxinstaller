@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CircuitLord.VRModInstaller.Core.Updates;
 
 namespace CircuitLord.VRModInstaller.Core.Settings;
 
@@ -11,7 +12,7 @@ namespace CircuitLord.VRModInstaller.Core.Settings;
 /// </summary>
 public sealed class AppSettings
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     [JsonPropertyName("schemaVersion")]
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
@@ -43,6 +44,10 @@ public sealed class AppSettings
 
     [JsonPropertyName("checkForAppUpdates")]
     public bool CheckForAppUpdates { get; set; } = true;
+
+    /// <summary>Automatic, Stable or Beta installer update channel.</summary>
+    [JsonPropertyName("updateChannel")]
+    public string UpdateChannel { get; set; } = ReleaseChannelPreference.Automatic;
 
     [JsonPropertyName("updateBackendAutomatically")]
     public bool UpdateBackendAutomatically { get; set; }
@@ -98,6 +103,7 @@ public sealed class AppSettings
         };
         UiScale = Math.Clamp(UiScale, 80, 150);
         UiScale = (int)(Math.Round(UiScale / 5.0, MidpointRounding.AwayFromZero) * 5);
+        UpdateChannel = ReleaseChannelPreference.Normalize(UpdateChannel);
         if (string.IsNullOrWhiteSpace(Language))
         {
             Language = "en";

@@ -18,6 +18,7 @@ public class SettingsTests
             Theme = "light",
             UiScale = 125,
             MotionPreference = "reduced",
+            UpdateChannel = "beta",
             CheckForAppUpdates = false,
             UpdateBackendAutomatically = true,
             ConfirmSteamRestart = false,
@@ -36,6 +37,7 @@ public class SettingsTests
         Assert.Equal("light", loaded.Theme);
         Assert.Equal(125, loaded.UiScale);
         Assert.Equal("reduced", loaded.MotionPreference);
+        Assert.Equal("beta", loaded.UpdateChannel);
         Assert.False(loaded.CheckForAppUpdates);
         Assert.True(loaded.UpdateBackendAutomatically);
         Assert.False(loaded.ConfirmSteamRestart);
@@ -72,6 +74,7 @@ public class SettingsTests
         Assert.Equal("dark", loaded.Theme);
         Assert.Equal(100, loaded.UiScale);
         Assert.Equal("system", loaded.MotionPreference);
+        Assert.Equal("auto", loaded.UpdateChannel);
         Assert.True(File.Exists(settingsPath));
     }
 
@@ -107,6 +110,7 @@ public class SettingsTests
         Assert.Equal("dark", loaded.Theme);
         Assert.Equal(100, loaded.UiScale);
         Assert.Equal("system", loaded.MotionPreference);
+        Assert.Equal("auto", loaded.UpdateChannel);
         Assert.NotEmpty(Directory.GetFiles(env.Paths.AppConfig, "settings.json.backup-*"));
     }
 
@@ -122,7 +126,8 @@ public class SettingsTests
               "schemaVersion": 4,
               "theme": "neon",
               "uiScale": 137,
-              "motionPreference": "sometimes"
+              "motionPreference": "sometimes",
+              "updateChannel": "nightly"
             }
             """);
 
@@ -131,5 +136,6 @@ public class SettingsTests
         Assert.Equal("dark", loaded.Theme);
         Assert.Equal(135, loaded.UiScale);
         Assert.Equal("system", loaded.MotionPreference);
+        Assert.Equal("auto", loaded.UpdateChannel);
     }
 }

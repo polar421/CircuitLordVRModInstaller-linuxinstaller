@@ -384,5 +384,10 @@
   "yes": "sì",
   "no": "no",
   "noneRegistered": "Nessuno registrato",
-  "steamAccountDetected": "Rilevato (ID account non incluso)"
+  "steamAccountDetected": "Rilevato (ID account non incluso)",
+  "updateChannel": "Canale di aggiornamento",
+  "updateChannelDescription": "Automatico segue il canale di questa build. Stabile ignora le beta; Beta include le prerelease.",
+  "updateChannelAuto": "Automatico",
+  "updateChannelStable": "Stabile",
+  "updateChannelBeta": "Beta"
 }

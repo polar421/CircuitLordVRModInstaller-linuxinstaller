@@ -384,5 +384,10 @@
   "yes": "はい",
   "no": "いいえ",
   "noneRegistered": "登録なし",
-  "steamAccountDetected": "検出済み（アカウント ID は含まれません）"
+  "steamAccountDetected": "検出済み（アカウント ID は含まれません）",
+  "updateChannel": "更新チャンネル",
+  "updateChannelDescription": "自動はこのビルドのチャンネルに従います。安定版はベータを除外し、ベータはプレリリースを含みます。",
+  "updateChannelAuto": "自動",
+  "updateChannelStable": "安定版",
+  "updateChannelBeta": "ベータ"
 }

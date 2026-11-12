@@ -61,6 +61,122 @@ public class ReleaseCheckerTests
     }
 
     [Fact]
+    public async Task StableChannelSkipsPrereleasesWhileBetaChannelIncludesThem()
+    {
+        const string json = """
+            [
+              {
+                "tag_name": "v1.0.6-beta.1",
+                "html_url": "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.6-beta.1",
+                "draft": false,
+                "prerelease": true,
+                "assets": [
+                  {
+                    "name": "circuitlord-vrmodinstaller-1.0.6-beta.1-linux-x64.tar.gz",
+                    "browser_download_url": "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/download/v1.0.6-beta.1/circuitlord-vrmodinstaller-1.0.6-beta.1-linux-x64.tar.gz",
+                    "size": 12345
+                  },
+                  {
+                    "name": "circuitlord-vrmodinstaller-1.0.6-beta.1-linux-x64.tar.gz.sha256",
+                    "browser_download_url": "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/download/v1.0.6-beta.1/circuitlord-vrmodinstaller-1.0.6-beta.1-linux-x64.tar.gz.sha256",
+                    "size": 116
+                  }
+                ]
+              },
+              {
+                "tag_name": "v1.0.5",
+                "html_url": "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.5",
+                "draft": false,
+                "prerelease": false,
+                "assets": [
+                  {
+                    "name": "circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz",
+                    "browser_download_url": "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/download/v1.0.5/circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz",
+                    "size": 12345
+                  },
+                  {
+                    "name": "circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz.sha256",
+                    "browser_download_url": "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/download/v1.0.5/circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz.sha256",
+                    "size": 116
+                  }
+                ]
+              }
+            ]
+            """;
+
+        using var http = new HttpClient(new StubHandler(json));
+        var checker = new ReleaseChecker(http);
+
+        var stable = await checker.CheckAsync(
+            new Version(1, 0, 3), includePrereleases: false, CancellationToken.None);
+        Assert.True(stable.UpdateAvailable);
+        Assert.Equal("v1.0.5", stable.LatestTag);
+        Assert.False(stable.IsPrerelease);
+
+        var stableOnLatest = await checker.CheckAsync(
+            new Version(1, 0, 5), includePrereleases: false, CancellationToken.None);
+        Assert.False(stableOnLatest.UpdateAvailable);
+        Assert.Equal("v1.0.5", stableOnLatest.LatestTag);
+
+        var beta = await checker.CheckAsync(
+            new Version(1, 0, 5), includePrereleases: true, CancellationToken.None);
+        Assert.True(beta.UpdateAvailable);
+        Assert.Equal("v1.0.6-beta.1", beta.LatestTag);
+        Assert.True(beta.IsPrerelease);
+    }
+
+    [Fact]
+    public async Task StableChannelAlsoRejectsTheGitHubPrereleaseFlagWithoutATagSuffix()
+    {
+        const string json = """
+            [
+              {
+                "tag_name": "v1.0.9",
+                "html_url": "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.9",
+                "draft": false,
+                "prerelease": true
+              }
+            ]
+            """;
+
+        using var http = new HttpClient(new StubHandler(json));
+        var checker = new ReleaseChecker(http);
+
+        var stable = await checker.CheckAsync(
+            new Version(1, 0, 5), includePrereleases: false, CancellationToken.None);
+        Assert.False(stable.UpdateAvailable);
+        Assert.Null(stable.LatestTag);
+
+        var beta = await checker.CheckAsync(
+            new Version(1, 0, 5), includePrereleases: true, CancellationToken.None);
+        Assert.True(beta.UpdateAvailable);
+        Assert.Equal("v1.0.9", beta.LatestTag);
+        Assert.True(beta.IsPrerelease);
+    }
+
+    [Fact]
+    public async Task StableChannelAlsoRejectsAnUnmarkedPrereleaseTag()
+    {
+        const string json = """
+            [
+              {
+                "tag_name": "v1.0.7-beta.1",
+                "html_url": "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.7-beta.1",
+                "draft": false,
+                "prerelease": false
+              }
+            ]
+            """;
+
+        using var http = new HttpClient(new StubHandler(json));
+        var result = await new ReleaseChecker(http).CheckAsync(
+            new Version(1, 0, 5), includePrereleases: false, CancellationToken.None);
+
+        Assert.False(result.UpdateAvailable);
+        Assert.Null(result.LatestTag);
+    }
+
+    [Fact]
     public async Task ReleaseWithoutChecksumCannotAutoUpdate()
     {
         const string json = """

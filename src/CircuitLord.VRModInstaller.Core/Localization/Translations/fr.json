@@ -384,5 +384,10 @@
   "yes": "oui",
   "no": "non",
   "noneRegistered": "Aucun enregistré",
-  "steamAccountDetected": "Détecté (identifiant de compte masqué)"
+  "steamAccountDetected": "Détecté (identifiant de compte masqué)",
+  "updateChannel": "Canal de mise à jour",
+  "updateChannelDescription": "Automatique suit le canal de cette version. Stable ignore les bêtas ; Bêta inclut les préversions.",
+  "updateChannelAuto": "Automatique",
+  "updateChannelStable": "Stable",
+  "updateChannelBeta": "Bêta"
 }

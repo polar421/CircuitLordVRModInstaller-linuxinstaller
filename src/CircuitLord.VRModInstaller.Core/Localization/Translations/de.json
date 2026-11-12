@@ -384,5 +384,10 @@
   "yes": "ja",
   "no": "nein",
   "noneRegistered": "Nicht registriert",
-  "steamAccountDetected": "Erkannt (Konto-ID nicht enthalten)"
+  "steamAccountDetected": "Erkannt (Konto-ID nicht enthalten)",
+  "updateChannel": "Update-Kanal",
+  "updateChannelDescription": "Automatisch folgt dem Kanal dieses Builds. Stabil überspringt Betas; Beta enthält Vorabversionen.",
+  "updateChannelAuto": "Automatisch",
+  "updateChannelStable": "Stabil",
+  "updateChannelBeta": "Beta"
 }

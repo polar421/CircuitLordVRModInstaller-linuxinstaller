@@ -384,5 +384,10 @@
   "yes": "tak",
   "no": "nie",
   "noneRegistered": "Nie zarejestrowano",
-  "steamAccountDetected": "Wykryto (identyfikator konta pominięty)"
+  "steamAccountDetected": "Wykryto (identyfikator konta pominięty)",
+  "updateChannel": "Kanał aktualizacji",
+  "updateChannelDescription": "Automatyczny używa kanału tej kompilacji. Stabilny pomija wersje beta; Beta obejmuje wersje przedpremierowe.",
+  "updateChannelAuto": "Automatyczny",
+  "updateChannelStable": "Stabilny",
+  "updateChannelBeta": "Beta"
 }

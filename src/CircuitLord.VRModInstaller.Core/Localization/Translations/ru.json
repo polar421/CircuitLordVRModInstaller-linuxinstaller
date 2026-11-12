@@ -384,5 +384,10 @@
   "yes": "да",
   "no": "нет",
   "noneRegistered": "Не зарегистрировано",
-  "steamAccountDetected": "Обнаружено (идентификатор аккаунта скрыт)"
+  "steamAccountDetected": "Обнаружено (идентификатор аккаунта скрыт)",
+  "updateChannel": "Канал обновлений",
+  "updateChannelDescription": "Автоматически использует канал этой сборки. Стабильный пропускает беты; Бета включает предварительные версии.",
+  "updateChannelAuto": "Автоматически",
+  "updateChannelStable": "Стабильный",
+  "updateChannelBeta": "Бета"
 }

@@ -14,7 +14,8 @@ public sealed record ReleaseCheckResult(
     string? ReleaseUrl,
     string? Error,
     ReleaseAsset? Archive = null,
-    ReleaseAsset? Checksum = null)
+    ReleaseAsset? Checksum = null,
+    bool IsPrerelease = false)
 {
     /// <summary>True when the release contains both files the updater needs.</summary>
     public bool CanAutoUpdate => Archive is not null && Checksum is not null;
@@ -41,7 +42,13 @@ public sealed class ReleaseChecker
         _http.DefaultRequestHeaders.Accept.TryParseAdd("application/vnd.github+json");
     }
 
-    public async Task<ReleaseCheckResult> CheckAsync(Version current, CancellationToken cancellationToken)
+    public Task<ReleaseCheckResult> CheckAsync(Version current, CancellationToken cancellationToken) =>
+        CheckAsync(current, includePrereleases: false, cancellationToken);
+
+    public async Task<ReleaseCheckResult> CheckAsync(
+        Version current,
+        bool includePrereleases,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -77,11 +84,20 @@ public sealed class ReleaseChecker
                     continue;
                 }
 
+                var isPrerelease = IsPrereleaseRelease(release, tag);
+                if (!includePrereleases && isPrerelease)
+                {
+                    continue;
+                }
+
                 var (archive, checksum) = ReadAssets(release);
-                return new ReleaseCheckResult(IsNewer(tag, current), tag, url, null, archive, checksum);
+                return new ReleaseCheckResult(
+                    IsNewer(tag, current), tag, url, null, archive, checksum, isPrerelease);
             }
 
-            return new ReleaseCheckResult(false, null, null, "No published releases were found.");
+            return new ReleaseCheckResult(false, null, null, includePrereleases
+                ? "No published releases were found."
+                : "No published stable releases were found.");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -164,6 +180,33 @@ public sealed class ReleaseChecker
 
     private static bool IsHttpsUrl(string? value) =>
         Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps;
+
+    /// <summary>
+    /// GitHub normally sets <c>prerelease</c>, but the tag suffix is also part
+    /// of this project's channel convention. Treat either signal as a beta so
+    /// a mislabelled release cannot reach a stable install.
+    /// </summary>
+    private static bool IsPrereleaseRelease(JsonElement release, string tag)
+    {
+        if (release.TryGetProperty("prerelease", out var flag) && flag.ValueKind == JsonValueKind.True)
+        {
+            return true;
+        }
+
+        var value = tag.Trim();
+        if (value.StartsWith('v') || value.StartsWith('V'))
+        {
+            value = value[1..];
+        }
+
+        var metadata = value.IndexOf('+');
+        if (metadata >= 0)
+        {
+            value = value[..metadata];
+        }
+
+        return value.Contains('-');
+    }
 
     /// <summary>
     /// Compares the numeric core of a release tag with the running app version.

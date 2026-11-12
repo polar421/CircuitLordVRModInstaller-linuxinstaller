@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -75,7 +76,11 @@ public sealed class InstallerViewModel
     private readonly AppUpdateService _appUpdater;
     private static readonly Version CurrentVersion =
         typeof(InstallerViewModel).Assembly.GetName().Version ?? new Version(1, 0, 0);
-    private bool _checkingUpdates;
+    private static readonly string BuildInformationalVersion =
+        typeof(InstallerViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? string.Empty;
+    private static readonly bool BuildIsBeta = BuildInformationalVersion.Contains('-');
+    private int _updateCheckGeneration;
     private bool _appUpdateInProgress;
     private string _updateStatusKey = "updatesNotChecked";
     private object?[] _updateStatusArgs = Array.Empty<object?>();
@@ -146,6 +151,9 @@ public sealed class InstallerViewModel
     public int UiScalePercent => _settings.UiScale;
     public string MotionSetting => _settings.MotionPreference;
     public bool AutoCheckForAppUpdates => _settings.CheckForAppUpdates;
+    public string UpdateChannelSetting => _settings.UpdateChannel;
+    public bool IsBetaUpdateChannel => ReleaseChannelPreference.IncludesPrereleases(
+        _settings.UpdateChannel, BuildIsBeta);
     public bool UpdateBackendAutomatically => _settings.UpdateBackendAutomatically;
     public bool ConfirmSteamRestart => _settings.ConfirmSteamRestart;
     public string? LatestReleaseUrl { get; private set; }
@@ -841,14 +849,20 @@ public sealed class InstallerViewModel
 
     public void RestoreDefaults()
     {
-        // Preferences only. Channel, Steam account and integration choices are
-        // selection state, not preferences, and are preserved.
+        // Preferences only. The backend release choice, Steam account and
+        // integration choices are selection state, not preferences, and are preserved.
         _settings = new AppSettings
         {
             SelectedToken = _settings.SelectedToken,
             SelectedSteamInstallationId = _settings.SelectedSteamInstallationId,
             SelectedSteamAccountId = _settings.SelectedSteamAccountId,
         };
+        _updateCheckGeneration++;
+        _latestAppRelease = null;
+        _latestAppTag = null;
+        LatestReleaseUrl = null;
+        UpdateAvailable = false;
+        SetUpdateStatus("updatesNotChecked");
         AppearanceManager.SetTheme(ThemePreference.Dark);
         AppearanceManager.SetScale(UiScale.DefaultPercent);
         AppearanceManager.SetMotion(MotionPreference.System);
@@ -1170,6 +1184,26 @@ public sealed class InstallerViewModel
         RaiseChanged();
     }
 
+    public void SetUpdateChannel(string channel)
+    {
+        var normalized = ReleaseChannelPreference.Normalize(channel);
+        if (_settings.UpdateChannel == normalized)
+        {
+            return;
+        }
+        _settings.UpdateChannel = normalized;
+        // Drop the previous channel's result and ignore any check already in
+        // flight before the new check runs, so Stable cannot briefly offer a beta.
+        _updateCheckGeneration++;
+        _latestAppRelease = null;
+        _latestAppTag = null;
+        LatestReleaseUrl = null;
+        UpdateAvailable = false;
+        SetUpdateStatus("updatesNotChecked");
+        SavePreferences();
+        RaiseChanged();
+    }
+
     public void SetUpdateBackendAutomatically(bool enabled)
     {
         if (_settings.UpdateBackendAutomatically == enabled)
@@ -1321,16 +1355,21 @@ public sealed class InstallerViewModel
 
     public async Task CheckForUpdatesAsync()
     {
-        if (_checkingUpdates)
-        {
-            return;
-        }
-        _checkingUpdates = true;
+        var generation = ++_updateCheckGeneration;
         SetUpdateStatus("checkingUpdates");
         RaiseChanged();
         try
         {
-            var result = await _releaseChecker.CheckAsync(CurrentVersion, _lifetime.Token);
+            var includePrereleases = ReleaseChannelPreference.IncludesPrereleases(
+                _settings.UpdateChannel, BuildIsBeta);
+            var result = await _releaseChecker.CheckAsync(
+                CurrentVersion, includePrereleases, _lifetime.Token);
+            if (generation != _updateCheckGeneration)
+            {
+                // The channel changed while this request was running; its
+                // result belongs to the old channel and must not be applied.
+                return;
+            }
             _latestAppRelease = result;
             if (result.Error is not null)
             {
@@ -1365,8 +1404,10 @@ public sealed class InstallerViewModel
         }
         finally
         {
-            _checkingUpdates = false;
-            RaiseChanged();
+            if (generation == _updateCheckGeneration)
+            {
+                RaiseChanged();
+            }
         }
     }
 

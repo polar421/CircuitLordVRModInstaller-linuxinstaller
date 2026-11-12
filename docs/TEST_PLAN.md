@@ -7,7 +7,7 @@ dotnet test tests/CircuitLord.VRModInstaller.Core.Tests
 dotnet build CircuitLord.VRModInstaller.Linux.slnx
 ```
 
-## Automated (86 tests, all passing on 2026-11-12)
+## Automated (100 tests, all passing on 2026-11-12)
 
 | Area | Coverage |
 |---|---|
@@ -18,7 +18,7 @@ dotnet build CircuitLord.VRModInstaller.Linux.slnx
 | VDF | Round trip, unknown-field preservation, idempotent upsert, same-name conflict refusal, owned-only removal |
 | Steam transaction | Running → shutdown → backup → write → verify → reopen; refusal to restart; shutdown timeout writes nothing; write failure still reopens; reopen failure = recovery required; initially-closed stays closed |
 | Appearance | KDE/GNOME/GTK theme detection, Dark fallback, explicit preference precedence, live system-theme and motion events; KDE/GNOME reduced-motion detection; scale clamping/snapping/factors; settings persistence |
-| Localization | Ten complete catalogs (386 keys each), placeholder preservation, English fallback, unsupported-locale normalization, technical identifiers, unused-key detection, culture-aware formatting |
+| Localization | Ten complete catalogs (391 keys each), placeholder preservation, English fallback, unsupported-locale normalization, technical identifiers, unused-key detection, culture-aware formatting |
 | Installer updater | Release archive/checksum discovery; installed-copy detection including symlinks; SHA-256 validation; safe extraction; verified package staging; mismatched archive rejection |
 
 ## Packaging (verified 2026-11-12)
@@ -26,7 +26,8 @@ dotnet build CircuitLord.VRModInstaller.Linux.slnx
 | Check | Command | Result |
 |---|---|---|
 | Release build | `dotnet build -c Release` | 0 warnings, 0 errors |
-| Release tests | `dotnet test -c Release` | 86/86 |
+| Release tests | `dotnet test -c Release` | 100/100 |
+| Update channels | Stable skips GitHub prereleases and beta-suffixed tags; Beta includes them; Automatic follows the build channel; the choice persists in schema 5 |
 | Two clean package builds | `packaging/build-release.sh` twice | identical SHA-256 (`41479bfb…`) |
 | No game/mod payload | archive guard in the build script | pass |
 | Menu entry validity | `desktop-file-validate` on the rendered entry | valid |
@@ -38,8 +39,8 @@ dotnet build CircuitLord.VRModInstaller.Linux.slnx
 | Packaged UI assets | installed archive launched after the UI change | serif font, icon, badge and footer render from the package |
 | Native Wayland | KWin session, packaged binary | rendered without an X11 window; `libwayland-client` loaded |
 | X11 fallback | `WAYLAND_DISPLAY` unset | window rendered through X11 |
-| Settings persistence | change theme, scale, motion, corners and language, restart | `settings.json` schema 4 records the choices and the UI reflects them after restart |
-| Settings migration | schema 2 and 3 → 4 with existing Steam/VR/update preferences | defaults are added without discarding existing values; a backup is retained |
+| Settings persistence | change theme, scale, motion, corners and language, restart | `settings.json` schema 5 records the choices and the UI reflects them after restart |
+| Settings migration | schema 2 and 3 → 5 with existing Steam/VR/update preferences | defaults are added without discarding existing values; a backup is retained |
 | Settings migration / backend rollback | schema 2 → 3; invalid remote commit | defaults migrate with Steam confirmation enabled; the failed helper update is rolled back to the preserved valid commit |
 | Dependency audit | `dotnet list package --vulnerable --include-transitive` | no vulnerable packages |
 
@@ -97,7 +98,7 @@ render is serif, so the port bundles OFL-licensed Liberation Serif in `Assets/Fo
 
 | Check | Result |
 |---|---|
-| Build after the UI change | succeeds, 0 warnings; 86/86 tests |
+| Build after the UI change | succeeds, 0 warnings; 100/100 tests |
 | 800×740 | icon + `CircuitLord VR Mod Install unofficial-port for Linux` + `1.0.5 · Linux · Unofficial` title bar, serif headings/cards, centred NEW badge, pinned footer |
 | 640×560 and 560×520 (minimum) | footer stays at the bottom, cards and title bar intact, nothing overlaps or clips |
 | Maximise / restore | 1920×1080 and back to 800×740 with content top-aligned and footer pinned |
@@ -127,7 +128,7 @@ GNOME detector.
 | Scale 150% | 800×740: root child 534×494, Settings border 510×470, scrollable content 452×367; 560×520: Settings 350×323 with a 292×220 scroll viewport |
 | Scale 80% | Root logical size 1000×925, rendered into 800×740; no text truncation or invisible controls in the inspected Settings screen |
 | Dropdowns / modals | Light and Dark dropdown popups, Settings sheet, confirm/runtime/log overlays and the scaled release picker inspected; the 150% release picker stayed inside the 800×740 window |
-| Languages | All ten catalogs have 386/386 keys; English, Japanese and Simplified Chinese installer screens plus Japanese Settings were inspected; Japanese/Simplified Chinese rendered with Noto Sans CJK and Russian resolved to Liberation Serif |
+| Languages | All ten catalogs have 391/391 keys; English, Japanese and Simplified Chinese installer screens plus Japanese Settings were inspected; Japanese/Simplified Chinese rendered with Noto Sans CJK and Russian resolved to Liberation Serif |
 | Live language switch | English → Japanese → Simplified Chinese → Russian → English updated the window title, Settings labels, closed Theme/Motion dropdown text, installer labels and release-picker labels |
 | Formatting | Culture-aware number/date formatting is covered by tests; version strings and backend tokens remain unchanged |
 | Reduced motion | Reduced motion set the `reduced-motion` window class and removed button transitions; Full animations restored them. Follow system, explicit Reduced and explicit Full precedence are covered by Core tests |

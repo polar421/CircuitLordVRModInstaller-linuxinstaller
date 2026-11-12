@@ -384,5 +384,10 @@
   "yes": "yes",
   "no": "no",
   "noneRegistered": "None registered",
-  "steamAccountDetected": "Detected (account ID withheld)"
+  "steamAccountDetected": "Detected (account ID withheld)",
+  "updateChannel": "Update channel",
+  "updateChannelDescription": "Automatic follows this build’s channel. Stable skips betas; Beta includes prereleases.",
+  "updateChannelAuto": "Automatic",
+  "updateChannelStable": "Stable",
+  "updateChannelBeta": "Beta"
 }

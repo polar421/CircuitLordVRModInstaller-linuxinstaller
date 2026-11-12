@@ -71,10 +71,10 @@ on a mismatch or an unsafe checksum path.
 |---|---|
 | Native Linux UI (Avalonia, no Wine) | Implemented; original layout, serif typography, icon title bar, NEW badge and support footer |
 | Native Wayland with X11 fallback | Implemented on Avalonia 12.1; exercised on KWin Wayland and X11 |
-| Settings screen (appearance, language, updates, VR/Steam integration, diagnostics, About, Restore Defaults) | Implemented; preferences persist in `settings.json` schema 4 |
+| Settings screen (appearance, language, updates, VR/Steam integration, diagnostics, About, Restore Defaults) | Implemented; preferences persist in `settings.json` schema 5 |
 | Appearance | System/Dark/Light themes, 80–150% UI scaling in 5% steps, and Follow system/Reduced/Full motion, applied live and persisted |
 | Interface languages | English, German, Spanish, French, Brazilian Portuguese, Italian, Polish, Russian, Japanese and Simplified Chinese; see [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md) |
-| Automatic installer updates and helper updates | Implemented; release archives are checksum-verified and applied by a detached helper; helper updates remain origin-verified |
+| Automatic installer updates and helper updates | Implemented; stable/beta update channels filter prereleases, release archives are checksum-verified and applied by a detached helper; helper updates remain origin-verified |
 | Managed `tf2vr-linux` checkout with origin verification and safe update | Implemented |
 | Live catalogue from `install.sh --list-versions` | Implemented, exercised against the real backend (19 entries) |
 | Stable/beta mapping (choice 1 → `latest`, 2 → `beta`, other ordinals → exact token) | Implemented and unit tested |
@@ -85,7 +85,7 @@ on a mismatch or an unsafe checksum path.
 | Steam shortcut with graceful close → backup → verified write → reopen | Implemented and fixture tested; not verified against a live Steam client |
 | Manifest release notes | Implemented (HTTPS, cache, validation) |
 | Reproducible self-contained release + user-level installer | Implemented; see `docs/RELEASE.md` |
-| Automated tests | 86 passing |
+| Automated tests | 100 passing |
 
 ## Limitations
 

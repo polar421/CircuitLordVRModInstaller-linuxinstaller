@@ -134,6 +134,18 @@
                 <ToggleSwitch Grid.Column="1" Name="AppUpdatesToggle" VerticalAlignment="Center"
                               OnContent="" OffContent="" IsCheckedChanged="AppUpdates_Changed" />
               </Grid>
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="2" Margin="0,0,16,0">
+                  <TextBlock Text="{loc:Tr Key=updateChannel}" FontSize="12" />
+                  <TextBlock Text="{loc:Tr Key=updateChannelDescription}" Classes="small" TextWrapping="Wrap" />
+                </StackPanel>
+                <ComboBox Grid.Column="1" Name="UpdateChannelCombo" MinWidth="160" VerticalAlignment="Center"
+                          SelectionChanged="UpdateChannel_SelectionChanged">
+                  <ComboBoxItem Content="{loc:Tr Key=updateChannelAuto}" Tag="auto" />
+                  <ComboBoxItem Content="{loc:Tr Key=updateChannelStable}" Tag="stable" />
+                  <ComboBoxItem Content="{loc:Tr Key=updateChannelBeta}" Tag="beta" />
+                </ComboBox>
+              </Grid>
               <TextBlock Name="SettingsUpdateStatus" Text="{loc:Tr Key=updatesNotChecked}" Classes="small"
                          TextWrapping="Wrap" />
               <ProgressBar Name="SettingsAppUpdateProgress" IsIndeterminate="True" IsVisible="False" Height="3" />

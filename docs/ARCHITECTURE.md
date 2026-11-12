@@ -29,7 +29,7 @@ Presentation (Avalonia) → Application services → Domain models → Infrastru
 | `SteamShortcutManager` | Backup → parse → upsert → temp write → verify → atomic commit → relaunch obligation |
 | `LauncherService` | Launches the installed `tf2vr`; classifies missing/non-executable/config cases |
 | `RuntimeService` | Read-only OpenXR runtime and WiVRn/Monado/SteamVR process inspection |
-| `SettingsStore` | Versioned settings (schema 4), exact-token persistence, atomic writes, backup on migration |
+| `SettingsStore` | Versioned settings (schema 5), exact-token persistence, atomic writes, backup on migration |
 | `ThemeService` | KDE/GNOME/GTK appearance detection, Dark fallback, explicit System/Dark/Light precedence |
 | `MotionService` | KDE/GNOME/GTK reduced-motion detection with explicit Follow system/Reduced/Full precedence |
 | `UiScale` | Clamp/snap to 80–150% in 5% steps and produce the application scale factor |
