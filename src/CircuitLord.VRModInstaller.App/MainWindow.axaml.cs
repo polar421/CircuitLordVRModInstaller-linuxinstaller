@@ -7,6 +7,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using Avalonia.Platform;
 using CircuitLord.VRModInstaller.Localization;
 
@@ -19,11 +20,14 @@ public partial class MainWindow : Window
 
     private readonly InstallerViewModel _vm = new();
     private TaskCompletionSource<bool>? _confirmation;
-    private bool _updatingVersions;
+    private bool _changelogExpanded;
 
     public MainWindow()
     {
         InitializeComponent();
+        // Resolve the placement target explicitly so the flyout is anchored to
+        // the release selector instead of falling back to the window centre.
+        VersionPopup.PlacementTarget = this.FindControl<Button>("VersionPickerButton");
         // Tunnel Escape so Settings closes even when focus is on a control that
         // consumes the bubbling key event (for example a dropdown or text box).
         AddHandler(KeyDownEvent, SettingsEscape_Handler, RoutingStrategies.Tunnel);
@@ -43,7 +47,18 @@ public partial class MainWindow : Window
 
     private void SettingsEscape_Handler(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape && SettingsPanel.HandleEscape())
+        if (e.Key != Key.Escape)
+        {
+            return;
+        }
+        var popup = this.FindControl<Popup>("VersionPopup");
+        if (popup?.IsOpen == true)
+        {
+            popup.IsOpen = false;
+            e.Handled = true;
+            return;
+        }
+        if (SettingsPanel.HandleEscape())
         {
             e.Handled = true;
         }
@@ -51,63 +66,108 @@ public partial class MainWindow : Window
 
     private void RefreshUi()
     {
-        this.FindControl<TextBlock>("InstalledText")!.Text = _vm.InstalledText;
         this.FindControl<TextBlock>("InstalledVersionValue")!.Text = _vm.InstalledVersionText;
+        this.FindControl<TextBlock>("InstalledVersionBadgeText")!.Text = _vm.InstalledCardStatusText;
+        var installedBadge = this.FindControl<Border>("InstalledVersionBadge")!;
+        installedBadge.IsVisible = _vm.IsInstalled;
+        installedBadge.BorderBrush = BrushFor(_vm.StableUpdateAvailable ? "Amber" : "Green");
+        this.FindControl<TextBlock>("InstalledVersionBadgeText")!.Foreground =
+            BrushFor(_vm.StableUpdateAvailable ? "Amber" : "Green");
         this.FindControl<TextBlock>("ChannelValue")!.Text = _vm.InstalledChannelText;
-        this.FindControl<TextBlock>("HeroInstalledVersion")!.Text = _vm.InstalledVersionText;
-        this.FindControl<TextBlock>("HeroChannel")!.Text = _vm.InstalledChannelText;
         // Not installed is already the primary state; repeating it under
         // "Installed version" and in the hero adds no information.
-        var showChannel = _vm.IsInstalled;
-        this.FindControl<TextBlock>("ChannelValue")!.IsVisible = showChannel;
-        this.FindControl<TextBlock>("HeroChannelSeparator")!.IsVisible = showChannel;
-        this.FindControl<TextBlock>("HeroChannel")!.IsVisible = showChannel;
+        this.FindControl<TextBlock>("ChannelValue")!.IsVisible = _vm.IsInstalled;
+
+        this.FindControl<TextBlock>("HeroInstalledVersion")!.Text = _vm.InstalledVersionText;
+        this.FindControl<TextBlock>("HeroSelectedChannel")!.Text = _vm.SelectedChannelText;
+        this.FindControl<TextBlock>("HeroUpdateText")!.Text = _vm.ModUpdateStateText;
+        this.FindControl<TextBlock>("HeroUpdateText")!.Foreground = BrushFor(
+            !_vm.IsInstalled ? "TextDim" : _vm.StableUpdateAvailable ? "Amber" : "Green");
         this.FindControl<TextBlock>("HeroStatusText")!.Text = _vm.IsInstalled
             ? Loc.Get("overviewInstalled")
             : Loc.Get("overviewNotInstalled");
         this.FindControl<TextBlock>("LatestStableValue")!.Text = _vm.LatestStableVersionText;
         this.FindControl<TextBlock>("LatestBetaValue")!.Text = _vm.LatestBetaVersionText;
+        this.FindControl<Border>("LatestStableBadge")!.IsVisible = _vm.LatestStableBadgeVisible;
+        this.FindControl<TextBlock>("LatestStableBadgeText")!.Text = _vm.LatestStableBadgeText;
+        this.FindControl<Border>("LatestBetaBadge")!.IsVisible = _vm.LatestBetaBadgeVisible;
+        this.FindControl<TextBlock>("LatestBetaBadgeText")!.Text = _vm.LatestBetaBadgeText;
+
         this.FindControl<TextBlock>("BackendText")!.Text = _vm.BackendText;
         this.FindControl<TextBlock>("BackendDetailText")!.Text = _vm.BackendLastUpdateSummary;
         this.FindControl<TextBlock>("CatalogueText")!.Text = _vm.CatalogueText;
-        this.FindControl<TextBlock>("LastOperationText")!.Text = _vm.LastOperationText;
-        this.FindControl<TextBlock>("ChangelogPreview")!.Text = _vm.ChangelogPreview;
+        this.FindControl<TextBlock>("InstallationHistoryText")!.Text = _vm.InstallationHistoryText;
+        this.FindControl<TextBlock>("LastOperationDetailText")!.Text = _vm.LastOperationDetailText;
         this.FindControl<TextBlock>("GameText")!.Text = _vm.GameText;
         this.FindControl<TextBlock>("PreflightText")!.Text = _vm.PreflightText;
         this.FindControl<TextBlock>("DesktopText")!.Text = _vm.DesktopText;
         this.FindControl<TextBlock>("SteamText")!.Text = _vm.SteamText;
         this.FindControl<TextBlock>("RuntimeText")!.Text = _vm.RuntimeText;
-        this.FindControl<TextBlock>("ManifestText")!.Text = _vm.ManifestText;
         this.FindControl<TextBlock>("StageText")!.Text = _vm.StageText;
         this.FindControl<TextBlock>("TitanfallStatus")!.Text = _vm.IsInstalled
-            ? Loc.Format("installedStatus", _vm.InstalledText)
+            ? _vm.InstalledText
             : Loc.Get("readyStatus");
 
+        this.FindControl<TextBlock>("VersionPickerTitle")!.Text = _vm.SelectedVersionTitle;
+        this.FindControl<TextBlock>("VersionPickerMeta")!.Text = _vm.SelectedVersionMeta;
+        var versionGroups = this.FindControl<ItemsControl>("VersionGroupsList");
+        if (versionGroups is not null)
+        {
+            versionGroups.ItemsSource = _vm.VersionGroups;
+        }
+
+        var primary = this.FindControl<Button>("PrimaryActionButton")!;
+        primary.Content = _vm.PrimaryActionLabel;
+        primary.IsEnabled = _vm.CanPrimaryAction && !_vm.Busy;
+        this.FindControl<TextBlock>("PrimaryActionHint")!.Text = _vm.PrimaryActionHint;
+        ToolTip.SetTip(primary, primary.IsEnabled ? null : _vm.PrimaryActionHint);
+        var launch = this.FindControl<Button>("HeroLaunchButton")!;
+        launch.IsVisible = _vm.CanLaunch;
+        launch.IsEnabled = _vm.CanLaunch && !_vm.Busy;
         this.FindControl<ProgressBar>("Progress")!.IsVisible = _vm.Busy;
-        var installButton = this.FindControl<Button>("InstallButton")!;
-        installButton.IsVisible = !_vm.IsInstalled;
-        installButton.IsEnabled = _vm.CanInstall && !_vm.Busy;
-        var updateButton = this.FindControl<Button>("UpdateButton")!;
-        updateButton.IsVisible = _vm.IsInstalled;
-        updateButton.IsEnabled = _vm.CanUpdateSelected && !_vm.Busy;
-        ToolTip.SetTip(updateButton, updateButton.IsEnabled ? null : Loc.Get("updateUnavailable"));
-        var reinstallButton = this.FindControl<Button>("ReinstallButton")!;
-        reinstallButton.IsVisible = _vm.IsInstalled;
-        reinstallButton.IsEnabled = _vm.CanReinstall && !_vm.Busy;
-        this.FindControl<Button>("LaunchButton")!.IsEnabled = _vm.CanLaunch && !_vm.Busy;
         this.FindControl<Button>("UninstallButton")!.IsEnabled = _vm.CanUninstall && !_vm.Busy;
         this.FindControl<Button>("SteamButton")!.IsEnabled = _vm.HasSteamAccount && !_vm.Busy;
         this.FindControl<Button>("SteamRemoveButton")!.IsEnabled = _vm.HasSteamAccount && !_vm.Busy;
 
-        var combo = this.FindControl<ComboBox>("VersionCombo")!;
-        _updatingVersions = true;
-        combo.ItemsSource = _vm.Versions;
-        combo.SelectedItem = _vm.SelectedVersion;
-        _updatingVersions = false;
+        this.FindControl<TextBlock>("ChangelogChannelText")!.Text = _vm.ChangelogChannelText;
+        this.FindControl<TextBlock>("ChangelogOverlayChannel")!.Text = _vm.ChangelogChannelText;
+        this.FindControl<TextBlock>("ChangelogUpdatedText")!.Text = _vm.ChangelogUpdatedText;
+        var source = this.FindControl<TextBlock>("ChangelogSourceText")!;
+        source.Text = _vm.ChangelogSourceText;
+        source.Foreground = BrushFor(_vm.ChangelogSourceText == Loc.Get("cachedData") ? "Amber" : "Green");
+        var preview = this.FindControl<TextBlock>("ChangelogPreview")!;
+        preview.Text = _changelogExpanded ? _vm.ChangelogFullText : _vm.ChangelogPreview;
+        preview.MaxHeight = _changelogExpanded ? double.PositiveInfinity : 82;
+        var expand = this.FindControl<Button>("ChangelogExpandButton")!;
+        expand.IsVisible = _vm.ChangelogCanExpand;
+        expand.Content = Loc.Get(_changelogExpanded ? "showLess" : "showAll");
+        this.FindControl<TextBlock>("ChangelogBody")!.Text = _vm.ChangelogFullText;
+        this.FindControl<TextBlock>("ChangelogOverlayMeta")!.Text =
+            _vm.ChangelogUpdatedText + " · " + _vm.ChangelogSourceText;
+        this.FindControl<Button>("OpenChangelogButton")!.Content = Loc.Get("openChangelog");
+
+        SetStatusText("GameDetectedStatus", _vm.GameDetected, "gameDetected", "gameNotDetected");
+        SetStatusText("BackendVerifiedStatus", _vm.BackendVerified, "backendVerified", "backendMissing");
+        SetStatusText("OpenXrDetectedStatus", _vm.OpenXrDetected, "openXrRuntimeDetected", "openXrRuntimeMissing");
+        SetStatusText("DesktopInstalledStatus", _vm.DesktopEntryInstalled, "desktopEntryDetected", "desktopEntryMissingShort");
+        SetStatusText("SteamShortcutStatusCompact", _vm.SteamShortcutInstalled, "steamShortcutInstalledShort", "steamShortcutMissingShort");
 
         this.FindControl<ListBox>("LogsList")!.ItemsSource = _vm.LogLines;
-        this.FindControl<ItemsControl>("ChangelogList")!.ItemsSource = _vm.ChangelogLines;
     }
+
+    private void SetStatusText(string name, bool ok, string okKey, string missingKey)
+    {
+        var block = this.FindControl<TextBlock>(name);
+        if (block is null)
+        {
+            return;
+        }
+        block.Text = "● " + Loc.Get(ok ? okKey : missingKey);
+        block.Foreground = BrushFor(ok ? "Green" : "TextDim");
+    }
+
+    private static IBrush BrushFor(string key) =>
+        Application.Current?.Resources[key] as IBrush ?? Brushes.White;
 
     private static void ApplyCornerStyle(bool rounded)
     {
@@ -154,6 +214,7 @@ public partial class MainWindow : Window
 
     private void SelectTitanfall_Click(object? sender, RoutedEventArgs e)
     {
+        CloseVersionPicker();
         this.FindControl<StackPanel>("GameSelect")!.IsVisible = false;
         this.FindControl<StackPanel>("GameFooter")!.IsVisible = false;
         this.FindControl<StackPanel>("InstallerView")!.IsVisible = true;
@@ -162,6 +223,7 @@ public partial class MainWindow : Window
 
     private void Back_Click(object? sender, RoutedEventArgs e)
     {
+        CloseVersionPicker();
         this.FindControl<StackPanel>("GameSelect")!.IsVisible = true;
         this.FindControl<StackPanel>("GameFooter")!.IsVisible = true;
         this.FindControl<StackPanel>("InstallerView")!.IsVisible = false;
@@ -189,6 +251,7 @@ public partial class MainWindow : Window
 
     private void OpenSettings_Click(object? sender, RoutedEventArgs e)
     {
+        CloseVersionPicker();
         _vm.RefreshLocalState();
         this.FindControl<SettingsView>("SettingsPanel")!.Open(_vm);
     }
@@ -289,21 +352,44 @@ public partial class MainWindow : Window
         RefreshUi();
     }
 
-    private void Version_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private void VersionPicker_Click(object? sender, RoutedEventArgs e)
     {
-        if (_updatingVersions)
-        {
-            return;
-        }
-        if (sender is ComboBox combo && combo.SelectedItem is VersionOption option)
+        var popup = this.FindControl<Popup>("VersionPopup")!;
+        popup.IsOpen = !popup.IsOpen;
+    }
+
+    private void CloseVersionPicker_Click(object? sender, RoutedEventArgs e) => CloseVersionPicker();
+
+    private void VersionOption_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: VersionOption option })
         {
             _vm.SelectVersion(option);
+            CloseVersionPicker();
+            RefreshUi();
         }
     }
 
-    private void Changelog_Click(object? sender, PointerPressedEventArgs e)
+    private void CloseVersionPicker()
     {
+        var popup = this.FindControl<Popup>("VersionPopup");
+        if (popup is not null)
+        {
+            popup.IsOpen = false;
+        }
+    }
+
+    private void ChangelogExpand_Click(object? sender, RoutedEventArgs e)
+    {
+        _changelogExpanded = !_changelogExpanded;
+        RefreshUi();
+    }
+
+    private void Changelog_Click(object? sender, RoutedEventArgs e)
+    {
+        _changelogExpanded = true;
         this.FindControl<Border>("ChangelogOverlay")!.IsVisible = true;
+        RefreshUi();
     }
 
     private void CloseChangelog_Click(object? sender, RoutedEventArgs e)

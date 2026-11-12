@@ -44,7 +44,7 @@
     </Grid>
 
     <Grid Grid.Row="1" RowDefinitions="*,Auto">
-      <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="18,4,18,0">
+      <ScrollViewer Name="MainScroll" Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="18,6,18,0">
         <StackPanel>
 
           <!-- game selection -->
@@ -97,142 +97,278 @@
 
           <!-- game overview -->
           <StackPanel Name="InstallerView" IsVisible="False" Spacing="0">
-            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+            <!-- The large banner owns the title and install state; this row is navigation only. -->
+            <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
               <Button Classes="ghost" Width="32" Height="32" Padding="0" Click="Back_Click"
                       ToolTip.Tip="{loc:Tr Key=backToGames}" AutomationProperties.Name="Back to games">
                 <Path Data="M 6,0 L 0,6 L 6,12" Width="7" Height="12" Stretch="None"
                       Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.4" />
               </Button>
-              <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="Titanfall 2 VR" FontSize="18" FontWeight="SemiBold" />
-                <TextBlock Name="InstalledText" Text="{loc:Tr Key=notInstalled}" Classes="small" />
-              </StackPanel>
-              <Border Grid.Column="2" Classes="badge" VerticalAlignment="Center">
-                <TextBlock Text="LINUX · TF2VR" Classes="badge-text" />
-              </Border>
+              <TextBlock Grid.Column="1" Text="{loc:Tr Key=modInstallation}" Classes="small"
+                         VerticalAlignment="Center" Margin="10,0,0,0" />
             </Grid>
 
-            <!-- large artwork hero with live installation state -->
-            <Border Height="204" CornerRadius="{DynamicResource CornerCard}" ClipToBounds="True" Margin="0,0,0,10">
+            <!-- large artwork hero with the useful installation state in one place -->
+            <Border Height="250" CornerRadius="{DynamicResource CornerCard}" ClipToBounds="True" Margin="0,0,0,10">
               <Grid>
                 <Border>
                   <Border.Background>
                     <ImageBrush Source="avares://CircuitLordVRModInstaller/Assets/titanfall-2.jpg" Stretch="UniformToFill" />
                   </Border.Background>
                 </Border>
-                <Border>
+                <Border IsHitTestVisible="False">
                   <Border.Background>
                     <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                      <GradientStop Offset="0" Color="#0014171C" />
-                      <GradientStop Offset="0.42" Color="#5514171C" />
-                      <GradientStop Offset="1" Color="#F214171C" />
+                      <GradientStop Offset="0" Color="#2214171C" />
+                      <GradientStop Offset="0.36" Color="#9914171C" />
+                      <GradientStop Offset="1" Color="#FA14171C" />
                     </LinearGradientBrush>
                   </Border.Background>
                 </Border>
-                <Border Name="HeroStatusChip" Background="#D914171C" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
-                        CornerRadius="{DynamicResource CornerPill}" Padding="10,4" HorizontalAlignment="Right" VerticalAlignment="Top"
-                        Margin="14">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Ellipse Width="6" Height="6" Fill="{StaticResource Accent}" VerticalAlignment="Center" />
-                    <TextBlock Name="HeroStatusText" Text="{loc:Tr Key=overviewNotInstalled}" FontSize="10.5" />
-                  </StackPanel>
+                <Border IsHitTestVisible="False">
+                  <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                      <GradientStop Offset="0" Color="#D914171C" />
+                      <GradientStop Offset="0.62" Color="#3314171C" />
+                      <GradientStop Offset="1" Color="#0014171C" />
+                    </LinearGradientBrush>
+                  </Border.Background>
                 </Border>
-                <StackPanel VerticalAlignment="Bottom" Margin="20,0,20,16" Spacing="2">
-                  <TextBlock Text="Titanfall 2 VR" FontSize="27" FontWeight="Bold" Foreground="#FFFFFF" />
-                  <TextBlock Text="{loc:Tr Key=overviewTagline}" FontSize="12" Foreground="#E6FFFFFF" />
-                  <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
-                    <TextBlock Name="HeroInstalledVersion" FontSize="11.5" FontWeight="SemiBold" Foreground="#FFFFFF" />
-                    <TextBlock Name="HeroChannelSeparator" Text="·" FontSize="11.5" Foreground="#B3FFFFFF" />
-                    <TextBlock Name="HeroChannel" FontSize="11.5" Foreground="#E6FFFFFF" />
-                  </StackPanel>
-                </StackPanel>
+                <Grid Margin="20,16,20,18" RowDefinitions="Auto,*,Auto">
+                  <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="TITANFALL 2 · VR" FontSize="10.5" FontWeight="Bold" Foreground="#B3FFFFFF"
+                               VerticalAlignment="Center" />
+                    <Border Grid.Column="1" Name="HeroStatusChip" Background="#D914171C" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                            CornerRadius="{DynamicResource CornerPill}" Padding="10,4">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Ellipse Width="6" Height="6" Fill="{StaticResource Accent}" VerticalAlignment="Center" />
+                        <TextBlock Name="HeroStatusText" Text="{loc:Tr Key=overviewNotInstalled}" FontSize="10.5" Foreground="#E6FFFFFF" />
+                      </StackPanel>
+                    </Border>
+                  </Grid>
+
+                  <Grid Grid.Row="2" ColumnDefinitions="*,Auto" VerticalAlignment="Bottom">
+                    <StackPanel Spacing="2" Margin="0,0,14,0">
+                      <TextBlock Text="Titanfall 2 VR" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" />
+                      <TextBlock Text="{loc:Tr Key=overviewTagline}" FontSize="12" Foreground="#E6FFFFFF" />
+                      <WrapPanel Margin="0,10,0,0">
+                        <Border Classes="hero-chip" Margin="0,0,7,0">
+                          <StackPanel Spacing="1">
+                            <TextBlock Text="{loc:Tr Key=installedVersion}" Classes="hero-chip-label" />
+                            <TextBlock Name="HeroInstalledVersion" Classes="hero-chip-value" />
+                          </StackPanel>
+                        </Border>
+                        <Border Classes="hero-chip" Margin="0,0,7,0">
+                          <StackPanel Spacing="1">
+                            <TextBlock Text="{loc:Tr Key=selectedChannel}" Classes="hero-chip-label" />
+                            <TextBlock Name="HeroSelectedChannel" Classes="hero-chip-value" />
+                          </StackPanel>
+                        </Border>
+                        <Border Classes="hero-chip">
+                          <StackPanel Spacing="1">
+                            <TextBlock Text="{loc:Tr Key=update}" Classes="hero-chip-label" />
+                            <TextBlock Name="HeroUpdateText" Classes="hero-chip-value" />
+                          </StackPanel>
+                        </Border>
+                      </WrapPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1" Name="HeroLaunchButton" Classes="primary hero-action"
+                            Click="Launch_Click" IsVisible="False" VerticalAlignment="Bottom">
+                      <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Path Data="M 0,0 L 0,12 L 10,6 Z" Fill="{Binding $parent[Button].Foreground}"
+                              Width="10" Height="12" Stretch="None" />
+                        <TextBlock Text="{loc:Tr Key=launchVr}" Foreground="{Binding $parent[Button].Foreground}" />
+                      </StackPanel>
+                    </Button>
+                  </Grid>
+                </Grid>
               </Grid>
             </Border>
 
             <!-- live release summary -->
             <Grid ColumnDefinitions="*,*,*" Margin="0,0,0,0">
-              <Border Grid.Column="0" Classes="card" Padding="13,10" Margin="0,0,8,8">
-                <StackPanel Spacing="2">
+              <Border Grid.Column="0" Classes="card" Padding="14,11" Margin="0,0,8,10">
+                <StackPanel Spacing="3">
                   <TextBlock Text="{loc:Tr Key=installedVersion}" Classes="small" />
                   <TextBlock Name="InstalledVersionValue" Text="{loc:Tr Key=notInstalled}" FontSize="17" FontWeight="SemiBold" />
                   <TextBlock Name="ChannelValue" Text="{loc:Tr Key=channelUnknown}" Classes="small" TextTrimming="CharacterEllipsis" />
+                  <!-- Reserve the row so the three version cards keep equal heights. -->
+                  <Grid Height="18" Margin="0,2,0,0">
+                    <Border Name="InstalledVersionBadge" Classes="status-pill" IsVisible="False"
+                            HorizontalAlignment="Left" VerticalAlignment="Center">
+                      <TextBlock Name="InstalledVersionBadgeText" Classes="status-pill-text" />
+                    </Border>
+                  </Grid>
                 </StackPanel>
               </Border>
-              <Border Grid.Column="1" Classes="card" Padding="13,10" Margin="0,0,8,8">
-                <StackPanel Spacing="2">
+              <Border Grid.Column="1" Classes="card" Padding="14,11" Margin="0,0,8,10">
+                <StackPanel Spacing="3">
                   <TextBlock Text="{loc:Tr Key=latestStable}" Classes="small" />
-                  <TextBlock Name="LatestStableValue" Text="{loc:Tr Key=notAvailable}" FontSize="17" FontWeight="SemiBold" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Name="LatestStableValue" Text="{loc:Tr Key=notAvailable}" FontSize="17" FontWeight="SemiBold" />
+                    <Border Name="LatestStableBadge" Classes="status-pill" IsVisible="False" VerticalAlignment="Center">
+                      <TextBlock Name="LatestStableBadgeText" Classes="status-pill-text" />
+                    </Border>
+                  </StackPanel>
                   <TextBlock Text="{loc:Tr Key=channelStable}" Classes="small" />
                 </StackPanel>
               </Border>
-              <Border Grid.Column="2" Classes="card" Padding="13,10" Margin="0,0,0,8">
-                <StackPanel Spacing="2">
+              <Border Grid.Column="2" Classes="card" Padding="14,11" Margin="0,0,0,10">
+                <StackPanel Spacing="3">
                   <TextBlock Text="{loc:Tr Key=latestBeta}" Classes="small" />
-                  <TextBlock Name="LatestBetaValue" Text="{loc:Tr Key=notAvailable}" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource Accent}" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Name="LatestBetaValue" Text="{loc:Tr Key=notAvailable}" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource Accent}" />
+                    <Border Name="LatestBetaBadge" Classes="status-pill" IsVisible="False" VerticalAlignment="Center">
+                      <TextBlock Name="LatestBetaBadgeText" Classes="status-pill-text" />
+                    </Border>
+                  </StackPanel>
                   <TextBlock Text="{loc:Tr Key=channelBeta}" Classes="small" />
                 </StackPanel>
               </Border>
             </Grid>
 
-            <!-- release picker and main actions -->
+            <!-- release picker and main action -->
             <Border Classes="card">
-              <StackPanel Spacing="9">
+              <StackPanel Spacing="10">
                 <Grid ColumnDefinitions="*,Auto">
                   <TextBlock Text="{loc:Tr Key=release}" Classes="h2" />
                   <TextBlock Grid.Column="1" Name="CatalogueText" Classes="small" TextWrapping="Wrap" VerticalAlignment="Center"
                              TextAlignment="Right" MaxWidth="330" />
                 </Grid>
-                <ComboBox Name="VersionCombo" HorizontalAlignment="Stretch" FontSize="12"
-                          SelectionChanged="Version_SelectionChanged" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Button Name="InstallButton" Content="{loc:Tr Key=install}" Classes="primary" Padding="16,7"
+
+                <Button Name="VersionPickerButton" Classes="selector" HorizontalAlignment="Stretch"
+                        Click="VersionPicker_Click" AutomationProperties.Name="{loc:Tr Key=chooseRelease}">
+                  <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                    <StackPanel Spacing="1">
+                      <TextBlock Name="VersionPickerTitle" FontSize="12.5" FontWeight="SemiBold" />
+                      <TextBlock Name="VersionPickerMeta" Classes="small" />
+                    </StackPanel>
+                    <Path Grid.Column="1" Data="M 0,0 L 5,5 L 10,0" Stroke="{StaticResource TextDim}"
+                          StrokeThickness="1.5" Width="10" Height="6" Stretch="None" Margin="10,0,0,0" />
+                  </Grid>
+                </Button>
+
+                <Popup Name="VersionPopup" PlacementTarget="{Binding #VersionPickerButton}" Placement="Bottom"
+                       IsLightDismissEnabled="True" VerticalOffset="6">
+                  <Border Classes="popup" Width="520" MaxHeight="340">
+                    <Grid RowDefinitions="Auto,*">
+                      <Grid ColumnDefinitions="*,Auto" Margin="12,10,12,7">
+                        <StackPanel Spacing="1">
+                          <TextBlock Text="{loc:Tr Key=chooseRelease}" FontSize="12" FontWeight="SemiBold" />
+                          <TextBlock Text="{loc:Tr Key=releasesFromCatalogue}" Classes="small" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="×" Classes="ghost" Width="26" Height="26" Padding="0"
+                                Click="CloseVersionPicker_Click" ToolTip.Tip="{loc:Tr Key=close}" />
+                      </Grid>
+                      <ScrollViewer Grid.Row="1" MaxHeight="286" VerticalScrollBarVisibility="Auto"
+                                    HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl Name="VersionGroupsList" Margin="6,0,6,7">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <StackPanel Margin="0,0,0,8">
+                                <StackPanel Margin="10,4,10,4" Spacing="1">
+                                  <TextBlock Text="{Binding Title}" FontSize="10.5" FontWeight="Bold"
+                                             Foreground="{StaticResource Accent}" />
+                                  <TextBlock Text="{Binding Hint}" Classes="small" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <ItemsControl ItemsSource="{Binding Options}">
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                      <Button Classes="versionrow" Classes.selected="{Binding IsSelected}"
+                                              Click="VersionOption_Click">
+                                        <Grid ColumnDefinitions="4,18,*,Auto" VerticalAlignment="Center">
+                                          <Border Grid.Column="0" Width="3" Height="26" CornerRadius="2"
+                                                  Background="{StaticResource Accent}" IsVisible="{Binding IsSelected}"
+                                                  VerticalAlignment="Center" />
+                                          <Path Grid.Column="1" Data="M 1,5 L 4,8 L 9,1" Width="10" Height="10"
+                                                Stretch="None" Stroke="{StaticResource Green}" StrokeThickness="1.6"
+                                                IsVisible="{Binding IsInstalled}" VerticalAlignment="Center"
+                                                ToolTip.Tip="{loc:Tr Key=installed}" />
+                                          <StackPanel Grid.Column="2" Spacing="1" Margin="2,0,8,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                              <TextBlock Text="{Binding DisplayLabel}" FontSize="12" FontWeight="SemiBold" />
+                                              <Border Classes="accent-pill" IsVisible="{Binding IsSelected}" VerticalAlignment="Center">
+                                                <TextBlock Text="{loc:Tr Key=selected}" Classes="pill-text" />
+                                              </Border>
+                                              <Border Classes="status-pill" IsVisible="{Binding IsUpToDate}" VerticalAlignment="Center">
+                                                <TextBlock Text="{loc:Tr Key=upToDateShort}" Classes="status-pill-text" />
+                                              </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding VersionText}" Classes="small" />
+                                            <TextBlock Text="{Binding Description}" Classes="small" TextWrapping="Wrap" />
+                                          </StackPanel>
+                                          <Border Grid.Column="3" Classes="kind-pill" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding KindLabel}" Classes="kind-pill-text" />
+                                          </Border>
+                                        </Grid>
+                                      </Button>
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                              </StackPanel>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </ScrollViewer>
+                    </Grid>
+                  </Border>
+                </Popup>
+
+                <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                  <Button Name="PrimaryActionButton" Classes="primary" Padding="18,8"
                           Click="Install_Click" IsEnabled="False" />
-                  <Button Name="UpdateButton" Content="{loc:Tr Key=update}" Classes="primary" Padding="16,7"
-                          Click="Install_Click" IsVisible="False" IsEnabled="False" />
-                  <Button Name="ReinstallButton" Content="{loc:Tr Key=reinstall}" Classes="ghost" Padding="14,7"
-                          Click="Install_Click" IsVisible="False" IsEnabled="False" />
-                  <Button Name="LaunchButton" Content="{loc:Tr Key=launchVr}" Classes="ghost" Padding="14,7"
-                          Click="Launch_Click" IsEnabled="False" />
-                </StackPanel>
+                  <TextBlock Grid.Column="1" Name="PrimaryActionHint" Classes="small" Margin="10,0,0,0"
+                             TextWrapping="Wrap" VerticalAlignment="Center" />
+                </Grid>
                 <ProgressBar Name="Progress" IsIndeterminate="True" IsVisible="False" Height="4" />
                 <TextBlock Name="StageText" Classes="small" TextWrapping="Wrap" />
                 <TextBlock Text="{loc:Tr Key=releasesFromCatalogue}" Classes="small" />
               </StackPanel>
             </Border>
 
-            <!-- backend and last operation -->
+            <!-- backend and install history -->
             <Border Classes="card">
-              <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                <StackPanel Spacing="3" Margin="0,0,12,0">
-                  <TextBlock Text="{loc:Tr Key=linuxBackend}" Classes="h2" />
-                  <TextBlock Name="BackendText" Classes="small" TextWrapping="Wrap" />
-                  <TextBlock Name="BackendDetailText" Classes="small" TextWrapping="Wrap" />
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
-                  <Button Content="{loc:Tr Key=updateHelper}" Classes="ghost" FontSize="11" Padding="7,4" Click="UpdateBackend_Click" />
-                  <Button Content="{loc:Tr Key=refresh}" Classes="ghost" FontSize="11" Padding="7,4" Click="Refresh_Click" />
-                </StackPanel>
-                <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{StaticResource Bg}" BorderBrush="{StaticResource Stroke}"
-                        BorderThickness="1" CornerRadius="{DynamicResource CornerInner}" Padding="10,7" Margin="0,9,0,0">
-                  <Grid ColumnDefinitions="Auto,*">
-                    <TextBlock Text="{loc:Tr Key=lastOperation}" Classes="small" Margin="0,0,10,0" />
-                    <TextBlock Grid.Column="1" Name="LastOperationText" Classes="small" TextWrapping="Wrap" Foreground="{StaticResource Text}" />
-                  </Grid>
+              <StackPanel Spacing="7">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{loc:Tr Key=linuxBackend}" Classes="h2" />
+                    <TextBlock Name="BackendText" Classes="small" TextWrapping="Wrap" />
+                    <TextBlock Name="BackendDetailText" Classes="small" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+                    <Button Content="{loc:Tr Key=updateHelper}" Classes="ghost" FontSize="11" Padding="7,4" Click="UpdateBackend_Click" />
+                    <Button Content="{loc:Tr Key=refresh}" Classes="ghost" FontSize="11" Padding="7,4" Click="Refresh_Click" />
+                  </StackPanel>
+                </Grid>
+                <Border Background="{StaticResource Bg}" BorderBrush="{StaticResource Stroke}"
+                        BorderThickness="1" CornerRadius="{DynamicResource CornerInner}" Padding="10,8">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{loc:Tr Key=installationHistory}" Classes="h2" />
+                    <TextBlock Name="InstallationHistoryText" FontSize="11.5" TextWrapping="Wrap" />
+                    <TextBlock Name="LastOperationDetailText" Classes="small" TextWrapping="Wrap" />
+                  </StackPanel>
                 </Border>
-              </Grid>
+              </StackPanel>
             </Border>
 
             <!-- changelog preview -->
             <Border Classes="card">
-              <StackPanel Spacing="5">
+              <StackPanel Spacing="7">
                 <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="{loc:Tr Key=releaseNotes}" Classes="h2" />
-                  <TextBlock Grid.Column="1" Name="ChangelogButton" Classes="small" Text="{loc:Tr Key=openChangelog}"
-                             TextDecorations="Underline" Cursor="Hand" PointerPressed="Changelog_Click" />
+                  <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:Tr Key=releaseNotes}" Classes="h2" />
+                    <Border Classes="accent-pill" VerticalAlignment="Center">
+                      <TextBlock Name="ChangelogChannelText" Classes="pill-text" />
+                    </Border>
+                    <TextBlock Name="ChangelogSourceText" Classes="small" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Name="OpenChangelogButton" Classes="changelog" Click="Changelog_Click" />
                 </Grid>
-                <TextBlock Name="ChangelogPreview" FontSize="11.5" TextWrapping="Wrap" MaxHeight="74"
-                           Foreground="{StaticResource TextDim}" />
-                <TextBlock Name="ManifestText" Classes="small" TextWrapping="Wrap" />
+                <TextBlock Name="ChangelogUpdatedText" Classes="small" />
+                <TextBlock Name="ChangelogPreview" FontSize="11.5" TextWrapping="Wrap" MaxHeight="82"
+                           LineHeight="18" Foreground="{StaticResource TextDim}" />
+                <Button Name="ChangelogExpandButton" Classes="ghost" FontSize="11" Padding="8,4"
+                        HorizontalAlignment="Left" IsVisible="False" Click="ChangelogExpand_Click" />
               </StackPanel>
             </Border>
 
@@ -241,9 +377,18 @@
               <Expander Name="DetailsExpander" IsExpanded="False" HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch">
                 <Expander.Header>
-                  <StackPanel Spacing="1" Margin="4,2">
-                    <TextBlock Text="{loc:Tr Key=installerDetails}" FontSize="13" FontWeight="SemiBold" />
-                    <TextBlock Text="{loc:Tr Key=installerDetailsHint}" Classes="small" />
+                  <StackPanel Spacing="4" Margin="4,2">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{loc:Tr Key=installerDetails}" FontSize="13" FontWeight="SemiBold" />
+                      <TextBlock Text="{loc:Tr Key=installerDetailsHint}" Classes="small" />
+                    </StackPanel>
+                    <WrapPanel Margin="0,2,0,0">
+                      <TextBlock Name="GameDetectedStatus" Classes="small" Margin="0,0,12,0" />
+                      <TextBlock Name="BackendVerifiedStatus" Classes="small" Margin="0,0,12,0" />
+                      <TextBlock Name="OpenXrDetectedStatus" Classes="small" Margin="0,0,12,0" />
+                      <TextBlock Name="DesktopInstalledStatus" Classes="small" Margin="0,0,12,0" />
+                      <TextBlock Name="SteamShortcutStatusCompact" Classes="small" />
+                    </WrapPanel>
                   </StackPanel>
                 </Expander.Header>
                 <StackPanel Spacing="10" Margin="16,0,16,14">
@@ -349,18 +494,19 @@
     <!-- changelog overlay -->
     <Border Name="ChangelogOverlay" Grid.Row="0" Grid.RowSpan="2" Background="#D914171C" IsVisible="False">
       <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
-              CornerRadius="{DynamicResource CornerCard}" Padding="22,18" Width="520" HorizontalAlignment="Center" VerticalAlignment="Center">
+              CornerRadius="{DynamicResource CornerCard}" Padding="22,18" Width="560" HorizontalAlignment="Center" VerticalAlignment="Center">
         <StackPanel Spacing="10">
-          <TextBlock Text="{loc:Tr Key=changelogTitle}" FontSize="16" FontWeight="SemiBold" />
-          <TextBlock Name="ChangelogSubtitle" Classes="small" Text="{loc:Tr Key=changelogSubtitle}" />
-          <ScrollViewer MaxHeight="380" VerticalScrollBarVisibility="Auto">
-            <ItemsControl Name="ChangelogList">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4" />
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr Key=changelogTitle}" FontSize="16" FontWeight="SemiBold" />
+              <TextBlock Name="ChangelogOverlayMeta" Classes="small" />
+            </StackPanel>
+            <Border Grid.Column="1" Classes="accent-pill" VerticalAlignment="Center">
+              <TextBlock Name="ChangelogOverlayChannel" Classes="pill-text" />
+            </Border>
+          </Grid>
+          <ScrollViewer MaxHeight="410" VerticalScrollBarVisibility="Auto">
+            <TextBlock Name="ChangelogBody" FontSize="12" TextWrapping="Wrap" LineHeight="18" />
           </ScrollViewer>
           <Button Content="{loc:Tr Key=close}" Classes="ghost" HorizontalAlignment="Right" Click="CloseChangelog_Click" />
         </StackPanel>

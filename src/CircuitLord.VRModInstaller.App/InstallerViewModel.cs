@@ -27,7 +27,24 @@ public sealed class VersionOption
     public required string DisplayLabel { get; init; }
     public required string Token { get; init; }
     public required string? Version { get; init; }
+    public string GroupKey { get; init; } = "pinned";
+    public string GroupTitle { get; init; } = "Pinned";
+    public string KindLabel { get; init; } = "Fixed version";
+    public string Description { get; init; } = string.Empty;
+    public bool IsInstalled { get; init; }
+    public bool IsSelected { get; init; }
+    public bool IsUpToDate { get; init; }
+    public string VersionText => Version ?? "—";
     public override string ToString() => DisplayLabel;
+}
+
+public sealed class VersionGroup
+{
+    public required string Key { get; init; }
+    public required string Title { get; init; }
+    public required string Hint { get; init; }
+    public required IReadOnlyList<VersionOption> Options { get; init; }
+    public bool HasOptions => Options.Count > 0;
 }
 
 /// <summary>
@@ -73,6 +90,9 @@ public sealed class InstallerViewModel
     private string? _installedVersionRaw;
     private string? _installedToken;
     private InstallerOperationRecord? _lastOperation;
+    private InstallerOperationRecord? _lastSuccessfulInstall;
+    private ManifestSnapshot? _manifestSnapshot;
+    private bool _historyUnavailable;
 
     private BackendInstallation? _backendState;
     private AppSettings _settings = new();
@@ -104,7 +124,6 @@ public sealed class InstallerViewModel
     /// <summary>Raised after the detached updater helper is ready and the window should close.</summary>
     public event EventHandler? RestartRequested;
     public ObservableCollection<string> LogLines { get; } = new();
-    public ObservableCollection<string> ChangelogLines { get; } = new();
 
     public string AppTitle => "CircuitLord's VR Mod Installer";
     public string CurrentAppVersion => CurrentVersion.ToString(3);
@@ -235,7 +254,7 @@ public sealed class InstallerViewModel
 
     public string BackendText { get; private set; } = "Checking the Linux backend...";
     public string CatalogueText { get; private set; } = "Loading version catalogue...";
-    public string InstalledText { get; private set; } = "Not installed";
+    public string InstalledText { get; private set; } = Loc.Get("notInstalled");
     public string InstalledVersionText => IsInstalled
         ? ModVersion(_installedVersionRaw) ?? Loc.Get("versionUnknown")
         : Loc.Get("notInstalled");
@@ -253,28 +272,80 @@ public sealed class InstallerViewModel
         _catalogue?.FindByToken("latest")?.ResolvedVersion ?? Loc.Get("notAvailable");
     public string LatestBetaVersionText =>
         _catalogue?.FindByToken("beta")?.ResolvedVersion ?? Loc.Get("notAvailable");
-    public string LastOperationText => _lastOperation is null
-        ? Loc.Get("noInstallRecord")
-        : (_lastOperation.FinishedAt ?? _lastOperation.StartedAt).ToLocalTime().ToString("g")
-          + " · "
-          + (_lastOperation.Result switch
-          {
-              "Succeeded" => Loc.Get("operationSucceeded"),
-              "Running" => Loc.Get("operationRunning"),
-              _ => Loc.Get("operationFailed"),
-          })
-          + (_lastOperation.NewVersion is null
-              ? string.Empty
-              : " · " + (ModVersion(_lastOperation.NewVersion) ?? _lastOperation.NewVersion));
-    public string ChangelogPreview => ChangelogLines.Count == 0
-        ? Loc.Get("changelogUnavailable")
-        : string.Join('\n', ChangelogLines.Take(4)).Trim();
+    public string SelectedVersionTitle => SelectedVersion?.DisplayLabel ?? Loc.Get("chooseRelease");
+    public string SelectedVersionMeta => SelectedVersion is null
+        ? Loc.Get("chooseRelease")
+        : SelectedVersion.KindLabel + " · " + SelectedVersion.VersionText;
+    public string SelectedChannelText => SelectedVersion is null
+        ? Loc.Get("channelUnknown")
+        : GroupTitleFor(SelectedVersion.GroupKey);
+    public string ModUpdateStateText => !IsInstalled
+        ? Loc.Get("notInstalled")
+        : StableUpdateAvailable
+            ? Loc.Get("updateAvailableShort")
+            : SelectedVersion is not null && !IsSameRelease(SelectedVersion)
+                ? Loc.Get("selectedReleasePending")
+                : Loc.Get("upToDateShort");
+    public string InstalledCardStatusText => !IsInstalled
+        ? Loc.Get("notInstalled")
+        : StableUpdateAvailable ? Loc.Get("updateAvailableShort") : Loc.Get("upToDateShort");
+    public string LatestStableBadgeText => Loc.Get("installed");
+    public string LatestBetaBadgeText => Loc.Get("installed");
+    public bool LatestStableBadgeVisible => IsInstalled && !IsOnBeta
+        && IsSameVersion(ModVersion(_installedVersionRaw), LatestStableVersionText);
+    public bool LatestBetaBadgeVisible => IsInstalled && IsOnBeta
+        && IsSameVersion(ModVersion(_installedVersionRaw), LatestBetaVersionText);
+    public string InstallationHistoryText
+    {
+        get
+        {
+            if (_historyUnavailable)
+            {
+                return Loc.Get("historyUnavailable");
+            }
+            if (!IsInstalled)
+            {
+                return Loc.Get("noInstallRecord");
+            }
+            if (IsVerifiedInstallRecord())
+            {
+                return Loc.Format("historyInstalledByApp", OperationDateText(_lastSuccessfulInstall));
+            }
+            return _lastOperation is null
+                ? Loc.Get("historyExistingInstall")
+                : Loc.Get("historyExistingWithActivity");
+        }
+    }
+    public string LastOperationDetailText => _lastOperation is null
+        ? string.Empty
+        : Loc.Format(
+            "historyLastAttempt",
+            OperationDateText(_lastOperation),
+            _lastOperation.Result switch
+            {
+                "Succeeded" => Loc.Get("operationSucceeded"),
+                "Running" => Loc.Get("operationRunning"),
+                _ => Loc.Get("operationFailed"),
+            });
+    public string ChangelogPreview { get; private set; } = Loc.Get("changelogUnavailable");
+    public string ChangelogFullText { get; private set; } = Loc.Get("changelogUnavailable");
+    public bool ChangelogCanExpand { get; private set; }
+    public string ChangelogChannelText => SelectedVersion is null
+        ? Loc.Get("stableLabel")
+        : GroupTitleFor(SelectedVersion.GroupKey);
+    public string ChangelogUpdatedText => _manifestSnapshot is null
+        ? Loc.Get("notLoaded")
+        : Loc.Format("lastRefreshed", _manifestSnapshot.RetrievedAt.ToLocalTime().ToString("g"));
+    public string ChangelogSourceText => _manifestSnapshot is null
+        ? Loc.Get("notLoaded")
+        : _manifestSnapshot.IsFromCache ? Loc.Get("cachedData") : Loc.Get("liveData");
     public bool CanReinstall => IsInstalled && CanInstall;
     public bool CanUpdateSelected => IsInstalled
         && CanInstall
         && SelectedVersion is not null
-        && (!string.Equals(ModVersion(_installedVersionRaw), SelectedVersion.Version, StringComparison.Ordinal)
-            || (SelectedVersion.Version is null && !string.Equals(_installedToken, SelectedVersion.Token, StringComparison.Ordinal)));
+        && !IsSameRelease(SelectedVersion);
+    public bool CanPrimaryAction => CanInstall && !Busy;
+    public string PrimaryActionHint { get; private set; } = Loc.Get("primaryHintInstall");
     public string GameText { get; private set; } = "Titanfall 2 VR install state unknown.";
     public string PreflightText { get; private set; } = "Run the backend check to see game, Proton and runtime details.";
     public string DesktopText { get; private set; } = "WiVRn desktop entry: not checked.";
@@ -282,7 +353,7 @@ public sealed class InstallerViewModel
     public string RuntimeText { get; private set; } = "OpenXR runtime: not checked.";
     public string ManifestText { get; private set; } = string.Empty;
     public string StageText { get; private set; } = "Starting";
-    public string PrimaryActionLabel { get; private set; } = "Install";
+    public string PrimaryActionLabel { get; private set; } = Loc.Get("install");
     public string BigWalkText { get; private set; } = "Not available on Linux — no installation backend exists for Big Walk VR.";
 
     public bool Busy { get; private set; }
@@ -292,8 +363,17 @@ public sealed class InstallerViewModel
     public bool IsInstalled { get; private set; }
     public bool IsSteamRunning => _steamInstallation is not null && _steamProcess.IsClientRunning(_steamInstallation);
     public bool HasSteamAccount => _steamAccount is not null;
+    public bool BackendVerified => _backendState?.ValidationStatus == BackendValidationStatus.Validated;
+    public bool GameDetected => _backendPaths.TryGetValue("GAME_DIR", out var gameDir)
+        && !string.IsNullOrWhiteSpace(gameDir) && Directory.Exists(gameDir);
+    public bool OpenXrDetected => _runtimeInfo is not null
+        && (_runtimeInfo.RuntimeName is not null || _runtimeInfo.SteamVrAvailable || _runtimeInfo.WiVrnAvailable || _runtimeInfo.MonadoAvailable);
+    public bool DesktopEntryInstalled => _desktopStatus?.State == DesktopIntegrationState.Installed;
+    public bool StableUpdateAvailable => IsInstalled
+        && IsNewer(LatestStableVersionText, ModVersion(_installedVersionRaw));
     public VersionOption? SelectedVersion { get; set; }
     public List<VersionOption> Versions { get; private set; } = new();
+    public IReadOnlyList<VersionGroup> VersionGroups => BuildVersionGroups();
 
     public async Task InitializeAsync()
     {
@@ -342,29 +422,30 @@ public sealed class InstallerViewModel
 
     private async Task LoadManifestAsync()
     {
-        var snapshot = await _manifest.GetAsync(forceRefresh: false, _lifetime.Token);
-        ChangelogLines.Clear();
+                var snapshot = await _manifest.GetAsync(forceRefresh: false, _lifetime.Token);
+        _manifestSnapshot = snapshot;
         if (snapshot.Titanfall2Vr is null)
         {
-            ManifestText = snapshot.ValidationWarning ?? "Release notes unavailable.";
+            ChangelogPreview = Loc.Get("changelogUnavailable");
+            ChangelogFullText = ChangelogPreview;
+            ChangelogCanExpand = false;
+            ManifestText = snapshot.ValidationWarning ?? Loc.Get("changelogUnavailable");
+            RaiseChanged();
             return;
         }
 
         var product = snapshot.Titanfall2Vr;
-        foreach (var change in product.Changes)
-        {
-            ChangelogLines.Add($"v{change.Version}{(change.Date is null ? string.Empty : "  " + change.Date)}");
-            ChangelogLines.Add(change.Notes);
-            ChangelogLines.Add(string.Empty);
-        }
-
-        ManifestText = (snapshot.IsFromCache ? "Release notes from cache" : "Release notes current")
+        ChangelogPreview = FormatChangelog(product.Changes, 2);
+        ChangelogFullText = FormatChangelog(product.Changes, int.MaxValue);
+        ChangelogCanExpand = product.Changes.Count > 2 || ChangelogFullText.Length > 260;
+        ManifestText = (snapshot.IsFromCache ? Loc.Get("cachedData") : Loc.Get("liveData"))
             + $" · stable {product.Version}"
             + (product.Channels.Count > 0 ? $" · beta {product.Channels[0].Version}" : string.Empty);
         if (snapshot.ValidationWarning is not null)
         {
             ManifestText += " · " + snapshot.ValidationWarning;
         }
+        RaiseChanged();
     }
 
     public async Task RefreshCatalogueAsync()
@@ -406,9 +487,12 @@ public sealed class InstallerViewModel
         Versions = catalogue.Entries
             .Select(e => new VersionOption
             {
-                DisplayLabel = e.DisplayLabel + (e.ResolvedVersion is null ? string.Empty : $"  ({e.ResolvedVersion})"),
+                DisplayLabel = e.DisplayName,
                 Token = e.BackendToken,
                 Version = e.ResolvedVersion,
+                GroupKey = GroupKeyFor(e),
+                KindLabel = e.IsPinnedRelease ? Loc.Get("fixedVersion") : Loc.Get("channel"),
+                Description = e.Description ?? string.Empty,
             })
             .ToList();
 
@@ -1097,11 +1181,23 @@ public sealed class InstallerViewModel
         _backendPaths = ReadPathsEnv(_paths.BackendPathsFile);
         _installedVersionRaw = _backend.ReadInstalledVersion();
         _installedToken = _backend.ReadSelectionToken();
-        _lastOperation = _logger.ReadHistory().FirstOrDefault();
+        try
+        {
+            var history = _logger.ReadHistory();
+            _lastOperation = history.FirstOrDefault();
+            _lastSuccessfulInstall = history.FirstOrDefault(IsSuccessfulInstallRecord);
+            _historyUnavailable = false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _lastOperation = null;
+            _lastSuccessfulInstall = null;
+            _historyUnavailable = true;
+        }
         var version = _installedVersionRaw;
         IsInstalled = !string.IsNullOrWhiteSpace(version) || _launcher.LauncherExists;
         InstalledText = version is not null
-            ? Loc.Format("backendState", version)
+            ? Loc.Format("installedStatus", ModVersion(version) ?? Loc.Get("versionUnknown"))
             : (_launcher.LauncherExists ? Loc.Get("launcherVersionUnknown") : Loc.Get("notInstalled"));
 
         CanLaunch = _launcher.LauncherExists && _launcher.HasBackendConfig;
@@ -1200,18 +1296,203 @@ public sealed class InstallerViewModel
         _ => status.Detail ?? status.State.ToString(),
     };
 
-    private void UpdatePrimaryAction()
+    private IReadOnlyList<VersionGroup> BuildVersionGroups()
     {
-        PrimaryActionLabel = IsInstalled ? Loc.Get("updateReinstall") : Loc.Get("install");
-        if (_catalogue is not null && SelectedVersion is not null && IsInstalled)
+        var definitions = new (string Key, string Title, string Hint)[]
         {
-            var installedToken = _backend.ReadSelectionToken();
-            if (installedToken is not null && installedToken != SelectedVersion.Token)
+            ("stable", Loc.Get("stableReleases"), Loc.Get("stableReleasesHint")),
+            ("beta", Loc.Get("betaReleases"), Loc.Get("betaReleasesHint")),
+            ("pinned", Loc.Get("pinnedReleases"), Loc.Get("pinnedReleasesHint")),
+        };
+        var selectedToken = SelectedVersion?.Token;
+        var groups = new List<VersionGroup>();
+        foreach (var definition in definitions)
+        {
+            var options = Versions
+                .Where(v => v.GroupKey == definition.Key)
+                .Select(v =>
+                {
+                    var installed = IsVersionInstalled(v);
+                    return new VersionOption
+                    {
+                        DisplayLabel = v.DisplayLabel,
+                        Token = v.Token,
+                        Version = v.Version,
+                        GroupKey = definition.Key,
+                        GroupTitle = definition.Title,
+                        KindLabel = Loc.Get(definition.Key == "pinned" ? "fixedVersion" : "channel"),
+                        Description = v.Description,
+                        IsInstalled = installed,
+                        IsSelected = string.Equals(selectedToken, v.Token, StringComparison.Ordinal),
+                        IsUpToDate = installed && definition.Key == "stable" && !StableUpdateAvailable,
+                    };
+                })
+                .ToList();
+            if (options.Count > 0)
             {
-                PrimaryActionLabel = Loc.Get("switchVersion");
+                groups.Add(new VersionGroup
+                {
+                    Key = definition.Key,
+                    Title = definition.Title,
+                    Hint = definition.Hint,
+                    Options = options,
+                });
             }
         }
+        return groups;
     }
+
+    private static string GroupTitleFor(string key) => key switch
+    {
+        "stable" => Loc.Get("stableReleases"),
+        "beta" => Loc.Get("betaReleases"),
+        _ => Loc.Get("pinnedReleases"),
+    };
+
+    private static string GroupKeyFor(VersionCatalogueEntry entry)
+    {
+        if (entry.IsPinnedRelease)
+        {
+            return "pinned";
+        }
+        if (entry.BackendToken == "beta" || entry.ChannelId == "beta")
+        {
+            return "beta";
+        }
+        return "stable";
+    }
+
+    private bool IsVersionInstalled(VersionOption option)
+    {
+        var installedVersion = ModVersion(_installedVersionRaw);
+        if (!string.IsNullOrWhiteSpace(option.Version) && !string.IsNullOrWhiteSpace(installedVersion))
+        {
+            return IsSameVersion(option.Version, installedVersion);
+        }
+        return !string.IsNullOrWhiteSpace(_installedToken)
+            && string.Equals(option.Token, _installedToken, StringComparison.Ordinal);
+    }
+
+    private bool IsSameRelease(VersionOption selected)
+    {
+        var installedVersion = ModVersion(_installedVersionRaw);
+        if (!string.IsNullOrWhiteSpace(selected.Version) && !string.IsNullOrWhiteSpace(installedVersion))
+        {
+            return IsSameVersion(selected.Version, installedVersion);
+        }
+        return string.Equals(selected.Token, _installedToken, StringComparison.Ordinal);
+    }
+
+    private bool IsOnBeta => _installedToken == "beta"
+        || (_installedToken?.StartsWith("beta-", StringComparison.Ordinal) ?? false);
+
+    private static bool IsSuccessfulInstallRecord(InstallerOperationRecord record) =>
+        string.Equals(record.Result, "Succeeded", StringComparison.Ordinal)
+        && record.Kind is BackendOperationKind.Install or BackendOperationKind.Update or BackendOperationKind.Reinstall;
+
+    private bool IsVerifiedInstallRecord()
+    {
+        if (_lastSuccessfulInstall is null)
+        {
+            return false;
+        }
+        var recorded = ModVersion(_lastSuccessfulInstall.NewVersion);
+        var installed = ModVersion(_installedVersionRaw);
+        // A stale record must not claim an installation this app did not perform.
+        return string.IsNullOrWhiteSpace(recorded)
+            || string.IsNullOrWhiteSpace(installed)
+            || IsSameVersion(recorded, installed);
+    }
+
+    private static string OperationDateText(InstallerOperationRecord? record) =>
+        (record?.FinishedAt ?? record?.StartedAt ?? DateTimeOffset.Now).ToLocalTime().ToString("g");
+
+    private static string FormatChangelog(IReadOnlyList<ManifestChange> changes, int maxEntries)
+    {
+        var selected = changes.Take(maxEntries).ToList();
+        return selected.Count == 0
+            ? Loc.Get("changelogUnavailable")
+            : string.Join("\n\n", selected.Select(change =>
+                "v" + change.Version
+                + (change.Date is null ? string.Empty : "  ·  " + change.Date)
+                + "\n" + change.Notes.Trim()));
+    }
+
+    private void UpdatePrimaryAction()
+    {
+        if (!CanInstall)
+        {
+            PrimaryActionLabel = Loc.Get("install");
+            PrimaryActionHint = Loc.Get("primaryUnavailable");
+            return;
+        }
+        if (IsInstallationIncomplete)
+        {
+            PrimaryActionLabel = Loc.Get("repair");
+            PrimaryActionHint = Loc.Get("primaryHintRepair");
+            return;
+        }
+        var selected = SelectedVersion;
+        if (!IsInstalled)
+        {
+            PrimaryActionLabel = selected?.GroupKey switch
+            {
+                "beta" => Loc.Get("installBeta"),
+                "pinned" => Loc.Get("installSelectedVersion"),
+                _ => Loc.Get("install"),
+            };
+            PrimaryActionHint = Loc.Get("primaryHintInstall");
+            return;
+        }
+        if (selected is null)
+        {
+            PrimaryActionLabel = Loc.Get("install");
+            PrimaryActionHint = Loc.Get("primaryHintInstall");
+            return;
+        }
+        if (IsSameRelease(selected))
+        {
+            PrimaryActionLabel = Loc.Get("reinstall");
+            PrimaryActionHint = Loc.Get("primaryHintReinstall");
+            return;
+        }
+        if (selected.GroupKey == "beta")
+        {
+            PrimaryActionLabel = IsOnBeta ? Loc.Get("installBeta") : Loc.Get("switchToBeta");
+            PrimaryActionHint = Loc.Get("primaryHintUpdate");
+            return;
+        }
+        if (selected.GroupKey == "stable")
+        {
+            PrimaryActionLabel = IsOnBeta || !IsNewer(selected.Version, ModVersion(_installedVersionRaw))
+                ? Loc.Get("switchToStable")
+                : Loc.Get("update");
+            PrimaryActionHint = Loc.Get("primaryHintUpdate");
+            return;
+        }
+        PrimaryActionLabel = Loc.Get("installSelectedVersion");
+        PrimaryActionHint = Loc.Get("primaryHintUpdate");
+    }
+
+    public bool IsInstallationIncomplete => IsInstalled
+        && (!CanLaunch || string.IsNullOrWhiteSpace(ModVersion(_installedVersionRaw)));
+
+    private static bool IsSameVersion(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return false;
+        }
+        return string.Equals(left, right, StringComparison.OrdinalIgnoreCase)
+            || (Version.TryParse(left, out var leftVersion)
+                && Version.TryParse(right, out var rightVersion)
+                && leftVersion == rightVersion);
+    }
+
+    private static bool IsNewer(string? candidate, string? baseline) =>
+        Version.TryParse(candidate, out var candidateVersion)
+        && Version.TryParse(baseline, out var baselineVersion)
+        && candidateVersion > baselineVersion;
 
     private bool TryEnter(string operation, out string reason)
     {

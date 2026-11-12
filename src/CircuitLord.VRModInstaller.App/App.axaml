@@ -15,7 +15,7 @@
     <SolidColorBrush x:Key="Hover" Color="#252A33" />
     <SolidColorBrush x:Key="Stroke" Color="#2C323C" />
     <SolidColorBrush x:Key="Text" Color="#E9ECF2" />
-    <SolidColorBrush x:Key="TextDim" Color="#939CAB" />
+    <SolidColorBrush x:Key="TextDim" Color="#A7B1C0" />
     <SolidColorBrush x:Key="TextOnFill" Color="#0E1216" />
     <SolidColorBrush x:Key="Accent" Color="#4FA3E3" />
     <SolidColorBrush x:Key="AccentHover" Color="#66B4EE" />
@@ -124,6 +124,11 @@
       <Setter Property="Foreground" Value="{StaticResource TextOnFill}" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="MinHeight" Value="34" />
+    </Style>
+    <Style Selector="Button.primary:disabled">
+      <Setter Property="Opacity" Value="0.55" />
     </Style>
     <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="{StaticResource AccentHover}" />
@@ -257,14 +262,122 @@
       <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="{DynamicResource CornerCard}" />
-      <Setter Property="Padding" Value="16,13" />
-      <Setter Property="Margin" Value="0,0,0,8" />
+      <Setter Property="Padding" Value="16,14" />
+      <Setter Property="Margin" Value="0,0,0,10" />
     </Style>
     <Style Selector="ComboBox">
       <Setter Property="Background" Value="{StaticResource Hover}" />
       <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
       <Setter Property="CornerRadius" Value="{DynamicResource CornerInner}" />
       <Setter Property="Padding" Value="10,6" />
+    </Style>
+
+    <!-- version picker and grouped release rows -->
+    <Style Selector="Button.selector">
+      <Setter Property="Background" Value="{StaticResource Bg}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerInner}" />
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.selector:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Hover}" />
+    </Style>
+    <Style Selector="Border.popup">
+      <Setter Property="Background" Value="{StaticResource Panel}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerCard}" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Button.versionrow">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="8,7" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerInner}" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.versionrow:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Hover}" />
+    </Style>
+    <Style Selector="Button.versionrow.selected">
+      <Setter Property="Background" Value="{StaticResource AccentFill}" />
+    </Style>
+    <Style Selector="Button.versionrow.selected:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource AccentFill}" />
+    </Style>
+
+    <!-- compact status language used by the cards, picker and details header -->
+    <Style Selector="Border.status-pill">
+      <Setter Property="Background" Value="{StaticResource GreenFill}" />
+      <Setter Property="BorderBrush" Value="#665FC98B" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerPill}" />
+      <Setter Property="Padding" Value="6,2" />
+    </Style>
+    <Style Selector="TextBlock.status-pill-text">
+      <Setter Property="FontSize" Value="9.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource Green}" />
+    </Style>
+    <Style Selector="Border.accent-pill">
+      <Setter Property="Background" Value="{StaticResource AccentFill}" />
+      <Setter Property="BorderBrush" Value="#664FA3E3" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerPill}" />
+      <Setter Property="Padding" Value="6,2" />
+    </Style>
+    <Style Selector="TextBlock.pill-text">
+      <Setter Property="FontSize" Value="9.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource Accent}" />
+    </Style>
+    <Style Selector="Border.kind-pill">
+      <Setter Property="Background" Value="{StaticResource Hover}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerPill}" />
+      <Setter Property="Padding" Value="6,2" />
+    </Style>
+    <Style Selector="TextBlock.kind-pill-text">
+      <Setter Property="FontSize" Value="9.5" />
+      <Setter Property="Foreground" Value="{StaticResource TextDim}" />
+    </Style>
+
+    <!-- hero metadata and prominent launch action -->
+    <Style Selector="Border.hero-chip">
+      <Setter Property="Background" Value="#B314171C" />
+      <Setter Property="BorderBrush" Value="#33FFFFFF" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerInner}" />
+      <Setter Property="Padding" Value="8,4" />
+    </Style>
+    <Style Selector="TextBlock.hero-chip-label">
+      <Setter Property="FontSize" Value="9.5" />
+      <Setter Property="Foreground" Value="#B3FFFFFF" />
+    </Style>
+    <Style Selector="TextBlock.hero-chip-value">
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="Button.hero-action">
+      <Setter Property="Padding" Value="18,10" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="MinWidth" Value="132" />
+    </Style>
+    <Style Selector="Button.changelog">
+      <Setter Property="Background" Value="{StaticResource AccentFill}" />
+      <Setter Property="BorderBrush" Value="#664FA3E3" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="{StaticResource Accent}" />
+      <Setter Property="Padding" Value="10,5" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
   </Application.Styles>
 </Application>
