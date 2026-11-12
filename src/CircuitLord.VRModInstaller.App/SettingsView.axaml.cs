@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -21,19 +22,47 @@ namespace CircuitLord.VRModInstaller;
 /// </summary>
 public partial class SettingsView : UserControl
 {
+    private static readonly TimeSpan OpenBackdropDuration = TimeSpan.FromMilliseconds(180);
+    private static readonly TimeSpan OpenDialogDuration = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan OpenTransformDuration = TimeSpan.FromMilliseconds(220);
+    private static readonly TimeSpan CloseBackdropDuration = TimeSpan.FromMilliseconds(140);
+    private static readonly TimeSpan CloseDialogDuration = TimeSpan.FromMilliseconds(150);
+    private static readonly TimeSpan CloseTransformDuration = TimeSpan.FromMilliseconds(160);
+
     private InstallerViewModel? _vm;
     private TaskCompletionSource<bool>? _confirmation;
     private bool _loading;
+    private SettingsAnimationState _settingsState;
+    private CancellationTokenSource? _settingsAnimationCts;
+    private long _settingsAnimationVersion;
 
     public SettingsView()
     {
         InitializeComponent();
         AppearanceManager.Theme.Changed += (_, _) =>
             Avalonia.Threading.Dispatcher.UIThread.Post(UpdateThemeStatus);
+        AppearanceManager.MotionChanged += (_, _) =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(ApplyMotionPreference);
     }
+
+    public event EventHandler? Closed;
 
     public void Open(InstallerViewModel vm)
     {
+        // Repeated clicks while the sheet is opening or open must not create
+        // another overlay or restart the entrance animation.
+        if (_settingsState is SettingsAnimationState.Opening or SettingsAnimationState.Open)
+        {
+            return;
+        }
+
+        var reopening = _settingsState == SettingsAnimationState.Closing;
+        CancelSettingsAnimation();
+        var cts = new CancellationTokenSource();
+        _settingsAnimationCts = cts;
+        var generation = ++_settingsAnimationVersion;
+        _settingsState = SettingsAnimationState.Opening;
+
         if (!ReferenceEquals(_vm, vm))
         {
             if (_vm is not null)
@@ -46,11 +75,22 @@ public partial class SettingsView : UserControl
         }
 
         _loading = true;
-        this.FindControl<Border>("SettingsOverlay")!.IsVisible = true;
+        var overlay = this.FindControl<Border>("SettingsOverlay")!;
+        var backdrop = this.FindControl<Border>("SettingsBackdrop")!;
+        var dialog = this.FindControl<Border>("SettingsDialog")!;
+        overlay.IsVisible = true;
         IsVisible = true;
         this.FindControl<Border>("RuntimeOverlay")!.IsVisible = false;
         this.FindControl<Border>("LogsOverlay")!.IsVisible = false;
         this.FindControl<Border>("ConfirmOverlay")!.IsVisible = false;
+        if (!reopening)
+        {
+            // Start from the current hidden state. This is also what makes the
+            // animation deterministic if a previous close was interrupted.
+            ModalTransitions.Configure(backdrop, dialog, animate: false,
+                OpenBackdropDuration, OpenDialogDuration, OpenTransformDuration);
+            ModalTransitions.SetInitial(backdrop, dialog);
+        }
         this.FindControl<ToggleSwitch>("RoundedCornersToggle")!.IsChecked = vm.RoundedCorners;
         this.FindControl<ToggleSwitch>("AppUpdatesToggle")!.IsChecked = vm.AutoCheckForAppUpdates;
         this.FindControl<ComboBox>("UpdateChannelCombo")!.SelectedIndex = UpdateChannelIndex(vm.UpdateChannelSetting);
@@ -75,13 +115,29 @@ public partial class SettingsView : UserControl
         this.FindControl<ScrollViewer>("SettingsScroll")!.Offset = new Vector(0, 0);
         _loading = false;
         RefreshAll();
+
+        var animated = AppearanceManager.AnimationsEnabled;
+        ModalTransitions.Configure(backdrop, dialog, animated,
+            OpenBackdropDuration, OpenDialogDuration, OpenTransformDuration);
+        if (animated)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(
+                () => _ = StartOpenAnimationAsync(backdrop, dialog, cts, generation),
+                Avalonia.Threading.DispatcherPriority.Loaded);
+        }
+        else
+        {
+            ModalTransitions.ApplyOpen(backdrop, dialog);
+            _settingsState = SettingsAnimationState.Open;
+        }
+
         // The overlay is only becoming visible in this pass. Move keyboard
         // focus after layout so it cannot remain on the title-bar gear behind
         // the modal sheet.
         Avalonia.Threading.Dispatcher.UIThread.Post(
             () =>
             {
-                if (IsVisible)
+                if (IsVisible && _settingsState is SettingsAnimationState.Opening or SettingsAnimationState.Open)
                 {
                     // Move through the sheet itself first; Avalonia otherwise
                     // leaves the old title-bar focus adorner painted until the
@@ -93,14 +149,128 @@ public partial class SettingsView : UserControl
             Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
+    private async Task StartOpenAnimationAsync(
+        Border backdrop, Border dialog, CancellationTokenSource cts, long generation)
+    {
+        try
+        {
+            if (generation != _settingsAnimationVersion
+                || _settingsState != SettingsAnimationState.Opening)
+            {
+                return;
+            }
+            ModalTransitions.ApplyOpen(backdrop, dialog);
+            await Task.Delay(OpenTransformDuration, cts.Token);
+            if (generation == _settingsAnimationVersion
+                && _settingsState == SettingsAnimationState.Opening)
+            {
+                _settingsState = SettingsAnimationState.Open;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // A close or reduced-motion change interrupted the entrance.
+        }
+    }
+
     private void CloseSettings()
     {
-        this.FindControl<Border>("SettingsOverlay")!.IsVisible = false;
+        if (_settingsState is SettingsAnimationState.Closed or SettingsAnimationState.Closing)
+        {
+            return;
+        }
+
+        _settingsState = SettingsAnimationState.Closing;
+        CancelSettingsAnimation();
+        var cts = new CancellationTokenSource();
+        _settingsAnimationCts = cts;
+        var generation = ++_settingsAnimationVersion;
+        var backdrop = this.FindControl<Border>("SettingsBackdrop")!;
+        var dialog = this.FindControl<Border>("SettingsDialog")!;
+        var animated = AppearanceManager.AnimationsEnabled;
+        ModalTransitions.Configure(backdrop, dialog, animated,
+            CloseBackdropDuration, CloseDialogDuration, CloseTransformDuration);
+        ModalTransitions.ApplyClosed(backdrop, dialog);
+        if (!animated)
+        {
+            FinishClose();
+            return;
+        }
+
+        _ = FinishCloseAfterAsync(cts, generation);
+    }
+
+    private async Task FinishCloseAfterAsync(CancellationTokenSource cts, long generation)
+    {
+        try
+        {
+            await Task.Delay(CloseTransformDuration, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (generation == _settingsAnimationVersion
+            && _settingsState == SettingsAnimationState.Closing)
+        {
+            FinishClose();
+        }
+    }
+
+    private void FinishClose()
+    {
+        _settingsState = SettingsAnimationState.Closed;
+        _settingsAnimationCts?.Dispose();
+        _settingsAnimationCts = null;
+        var overlay = this.FindControl<Border>("SettingsOverlay")!;
+        var backdrop = this.FindControl<Border>("SettingsBackdrop")!;
+        var dialog = this.FindControl<Border>("SettingsDialog")!;
+        overlay.IsVisible = false;
         IsVisible = false;
+        ModalTransitions.ResetHidden(backdrop, dialog);
         if (_vm is not null)
         {
             _vm.Changed -= ViewModel_Changed;
             _vm = null;
+        }
+        Closed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void CancelSettingsAnimation()
+    {
+        _settingsAnimationCts?.Cancel();
+        _settingsAnimationCts?.Dispose();
+        _settingsAnimationCts = null;
+        _settingsAnimationVersion++;
+    }
+
+    private void ApplyMotionPreference()
+    {
+        if (AppearanceManager.AnimationsEnabled
+            || _settingsState == SettingsAnimationState.Closed)
+        {
+            return;
+        }
+
+        var backdrop = this.FindControl<Border>("SettingsBackdrop")!;
+        var dialog = this.FindControl<Border>("SettingsDialog")!;
+        CancelSettingsAnimation();
+        ModalTransitions.Configure(backdrop, dialog, animate: false,
+            CloseBackdropDuration, CloseDialogDuration, CloseTransformDuration);
+        switch (_settingsState)
+        {
+            case SettingsAnimationState.Opening:
+                ModalTransitions.ApplyOpen(backdrop, dialog);
+                _settingsState = SettingsAnimationState.Open;
+                break;
+            case SettingsAnimationState.Closing:
+                ModalTransitions.ApplyClosed(backdrop, dialog);
+                FinishClose();
+                break;
+            default:
+                ModalTransitions.ApplyOpen(backdrop, dialog);
+                break;
         }
     }
 
@@ -644,6 +814,8 @@ public partial class SettingsView : UserControl
         this.FindControl<Button>("ConfirmOkButton")!.Content = okLabel;
         this.FindControl<Button>("ConfirmCancelButton")!.IsVisible = true;
         overlay.IsVisible = true;
+        this.FindControl<ScrollViewer>("ConfirmScroll")?.SetCurrentValue(
+            ScrollViewer.OffsetProperty, default);
         SetBackgroundInteraction(enabled: false);
         // The dialog was measured while hidden. Force a fresh measure so both
         // the rendered panel and its hit-test bounds use the wrapped text height.
@@ -710,5 +882,13 @@ public partial class SettingsView : UserControl
         {
             Trace.WriteLine($"Could not open {path}: {ex.Message}");
         }
+    }
+
+    private enum SettingsAnimationState
+    {
+        Closed,
+        Opening,
+        Open,
+        Closing,
     }
 }

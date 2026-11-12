@@ -42,8 +42,9 @@ Technical names are not translated. This includes `WiVRn`, `OpenXR`, `Monado`,
 | Reinstall | Reinstall | Neu installieren | Reinstalar | Réinstaller | Reinstalar | Reinstalla | Zainstaluj ponownie | Переустановить | 再インストール | 重新安装 |
 | Stable | Stable | Stabil | Estable | Stable | Estável | Stabile | Stabilna | Стабильная | 安定版 | 稳定版 |
 | Beta | Beta | Beta | Beta | Bêta | Beta | Beta | Beta | Бета | ベータ版 | Beta 版 |
-| Pinned release | Pinned releases | Angeheftete Versionen | Lanzamientos fijados | Versions épinglées | Versões fixadas | Rilasci bloccati | Przypięte wydania | Закрепленные выпуски | ピン留めされたリリース | 固定版本 |
+| Older version | Older versions | Ältere Versionen | Versiones anteriores | Versions antérieures | Versões anteriores | Versioni precedenti | Starsze wersje | Старые версии | 以前のバージョン | 旧版本 |
 | Channel | Channel | Kanal | Canal | Chaîne | Canal | Canale | Kanał | Канал | チャンネル | 频道 |
+| Latest output | Latest | Neueste | Más reciente | Dernière sortie | Mais recente | Più recente | Najnowsze | Последние | 最新 | 最新 |
 | Settings | Settings | Einstellungen | Configuración | Paramètres | Configurações | Impostazioni | Ustawienia | Настройки | 設定 | 设置 |
 | Diagnostics | Diagnostics | Diagnose | Diagnóstico | Diagnostic | Diagnóstico | Diagnostica | Diagnostyka | Диагностика | 診断 | 诊断 |
 
@@ -83,7 +84,7 @@ Technical names are not translated. This includes `WiVRn`, `OpenXR`, `Monado`,
    The tests fail on missing/empty keys, placeholder changes, unused keys,
    missing technical identifiers, or locale-formatting regressions.
 
-The current catalogs contain 391 keys per language. Automated tests prove key
+The current catalogs contain 393 keys per language. Automated tests prove key
 completeness and placeholder consistency; they do not replace native-speaker
 review of tone. Raw backend and git output is deliberately preserved in its
 original language.

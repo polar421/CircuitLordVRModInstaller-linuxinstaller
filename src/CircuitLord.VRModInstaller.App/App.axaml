@@ -1,5 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:scrolling="using:CircuitLord.VRModInstaller.Scrolling"
              x:Class="CircuitLord.VRModInstaller.App"
              RequestedThemeVariant="Dark">
 
@@ -79,9 +80,19 @@
         <Color x:Key="HeroShadeTop">#D914171C</Color>
         <Color x:Key="HeroShadeMid">#3314171C</Color>
         <Color x:Key="HeroShadeClear">#0014171C</Color>
-        <Color x:Key="ScrollBarThumbBackgroundColor">#4A5362</Color>
-        <SolidColorBrush x:Key="ScrollBarThumbFillPointerOver" Color="#778397" />
-        <SolidColorBrush x:Key="ScrollBarThumbFillPressed" Color="#9AA7BA" />
+        <Color x:Key="ScrollBarThumbBackgroundColor">#5C687A</Color>
+        <Color x:Key="ScrollBarPanningThumbBackgroundColor">#5C687A</Color>
+        <SolidColorBrush x:Key="ScrollBarPanningThumbBackground" Color="#5C687A" />
+        <SolidColorBrush x:Key="ScrollBarThumbFillPointerOver" Color="#8E9BAE" />
+        <SolidColorBrush x:Key="ScrollBarThumbFillPressed" Color="#B7C1CE" />
+        <SolidColorBrush x:Key="ScrollBarThumbFillDisabled" Color="#3A424E" />
+        <SolidColorBrush x:Key="ScrollBarTrackFill" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarTrackFillPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarTrackStroke" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarTrackStrokePointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarButtonArrowForeground" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarButtonArrowForegroundPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarButtonArrowForegroundPressed" Color="Transparent" />
       </ResourceDictionary>
       <ResourceDictionary x:Key="Light">
         <SolidColorBrush x:Key="Bg" Color="#F3F5F9" />
@@ -150,9 +161,19 @@
         <Color x:Key="HeroShadeTop">#D914171C</Color>
         <Color x:Key="HeroShadeMid">#3314171C</Color>
         <Color x:Key="HeroShadeClear">#0014171C</Color>
-        <Color x:Key="ScrollBarThumbBackgroundColor">#B7C3D2</Color>
-        <SolidColorBrush x:Key="ScrollBarThumbFillPointerOver" Color="#95A6B9" />
-        <SolidColorBrush x:Key="ScrollBarThumbFillPressed" Color="#7B8DA2" />
+        <Color x:Key="ScrollBarThumbBackgroundColor">#91A3B7</Color>
+        <Color x:Key="ScrollBarPanningThumbBackgroundColor">#91A3B7</Color>
+        <SolidColorBrush x:Key="ScrollBarPanningThumbBackground" Color="#91A3B7" />
+        <SolidColorBrush x:Key="ScrollBarThumbFillPointerOver" Color="#74899F" />
+        <SolidColorBrush x:Key="ScrollBarThumbFillPressed" Color="#5F748A" />
+        <SolidColorBrush x:Key="ScrollBarThumbFillDisabled" Color="#C3CDD8" />
+        <SolidColorBrush x:Key="ScrollBarTrackFill" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarTrackFillPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarTrackStroke" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarTrackStrokePointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarButtonArrowForeground" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarButtonArrowForegroundPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="ScrollBarButtonArrowForegroundPressed" Color="Transparent" />
       </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
 
@@ -163,7 +184,7 @@
       <CornerRadius x:Key="CornerCardLeft">9,0,0,9</CornerRadius>
       <CornerRadius x:Key="CornerInner">6</CornerRadius>
       <CornerRadius x:Key="CornerPill">16</CornerRadius>
-      <x:Double x:Key="ScrollBarSize">10</x:Double>
+      <x:Double x:Key="ScrollBarSize">12</x:Double>
 
       <!-- Popups live in separate visual trees, so their metrics are scaled
            explicitly by the appearance manager. -->
@@ -470,6 +491,25 @@
     </Style>
     <Style Selector="Window.reduced-motion Button">
       <Setter Property="Transitions" Value="{x:Null}" />
+    </Style>
+
+    <!-- Keep scrollbars discoverable and give every ScrollViewer, including
+         template/popup scroll viewers, the same subtle wheel smoothing. -->
+    <Style Selector="ScrollViewer">
+      <Setter Property="AllowAutoHide" Value="False" />
+      <Setter Property="scrolling:SmoothScroll.IsEnabled" Value="True" />
+    </Style>
+    <!-- Keep the permanently visible bar to a thumb rather than a full-width
+         track, which is visually heavy on the light theme. -->
+    <Style Selector="ScrollBar /template/ Rectangle#TrackRect">
+      <Setter Property="Fill" Value="Transparent" />
+      <Setter Property="Stroke" Value="Transparent" />
+    </Style>
+    <Style Selector="ScrollBar:pointerover /template/ Thumb">
+      <Setter Property="Background" Value="{DynamicResource ScrollBarThumbFillPointerOver}" />
+    </Style>
+    <Style Selector="ScrollBar /template/ Thumb:pressed">
+      <Setter Property="Background" Value="{DynamicResource ScrollBarThumbFillPressed}" />
     </Style>
 
     <!-- version picker and grouped release rows -->

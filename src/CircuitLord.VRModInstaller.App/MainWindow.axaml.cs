@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Specialized;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -9,6 +11,8 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Platform;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using CircuitLord.VRModInstaller.Appearance;
 using CircuitLord.VRModInstaller.Localization;
 
@@ -23,9 +27,19 @@ public partial class MainWindow : Window
     private TaskCompletionSource<bool>? _confirmation;
     private bool _changelogExpanded;
 
+    private double _gameScrollOffset;
+    private double _installerScrollOffset;
+    private ScrollViewer? _logScrollViewer;
+    private bool _followLogs = true;
+    private double _lastLogOffsetY;
+
     public MainWindow()
     {
         InitializeComponent();
+        // Return keyboard focus to the title-bar action after the closing
+        // animation has removed the modal from the visual tree.
+        SettingsPanel.Closed += (_, _) =>
+            this.FindControl<Button>("SettingsButton")?.Focus();
         // Resolve the placement target explicitly so the flyout is anchored to
         // the release selector instead of falling back to the window centre.
         VersionPopup.PlacementTarget = this.FindControl<Button>("VersionPickerButton");
@@ -43,11 +57,20 @@ public partial class MainWindow : Window
             AppearanceManager.ScaleChanged -= Appearance_Changed;
             AppearanceManager.MotionChanged -= Appearance_Changed;
             AppearanceManager.Theme.Changed -= Theme_Changed;
+            _vm.LogLines.CollectionChanged -= LogLines_CollectionChanged;
+            DetachLogScrollViewer();
         };
         ApplyScale();
         ApplyMotionClasses();
         DataContext = _vm;
         _vm.Changed += (_, _) => RefreshUi();
+        _vm.LogLines.CollectionChanged += LogLines_CollectionChanged;
+        var logsList = this.FindControl<ListBox>("LogsList")!;
+        logsList.Loaded += (_, _) => EnsureLogScrollViewer();
+        logsList.AddHandler(
+            InputElement.PointerWheelChangedEvent,
+            LogsList_PointerWheelChanged,
+            RoutingStrategies.Tunnel);
         // Auto-update starts a detached helper and then asks the window to close.
         // The helper waits for this process before swapping the app directory.
         _vm.RestartRequested += (_, _) => Close();
@@ -241,7 +264,149 @@ public partial class MainWindow : Window
         SetStatusText("DesktopInstalledStatus", _vm.DesktopEntryInstalled, "desktopEntryDetected", "desktopEntryMissingShort");
         SetStatusText("SteamShortcutStatusCompact", _vm.SteamShortcutInstalled, "steamShortcutInstalledShort", "steamShortcutMissingShort");
 
-        this.FindControl<ListBox>("LogsList")!.ItemsSource = _vm.LogLines;
+        var logsList = this.FindControl<ListBox>("LogsList")!;
+        if (!ReferenceEquals(logsList.ItemsSource, _vm.LogLines))
+        {
+            logsList.ItemsSource = _vm.LogLines;
+        }
+        EnsureLogScrollViewer();
+    }
+
+    private void LogLines_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (_followLogs)
+        {
+            ScheduleLogScrollToLatest();
+        }
+    }
+
+    private void LogsList_PointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        // Mouse-wheel-up is an explicit request to inspect older output. Stop
+        // following before the smoothed offset starts moving so an incoming log
+        // line cannot pull the viewport away from the reader.
+        if (e.Delta.Y > 0 && _logScrollViewer is not null
+            && _logScrollViewer.Extent.Height > _logScrollViewer.Viewport.Height + 1)
+        {
+            _followLogs = false;
+            UpdateLogLatestButton();
+        }
+    }
+
+    private void EnsureLogScrollViewer()
+    {
+        if (_logScrollViewer is not null)
+        {
+            return;
+        }
+
+        var viewer = this.FindControl<ListBox>("LogsList")?
+            .GetVisualDescendants()
+            .OfType<ScrollViewer>()
+            .FirstOrDefault();
+        if (viewer is null)
+        {
+            return;
+        }
+
+        _logScrollViewer = viewer;
+        // The attached property on the ListBox is consumed by its own template,
+        // but our resolver sees the inner ScrollViewer. Set it there as well so
+        // the log viewport never chains a boundary wheel into the page.
+        ScrollViewer.SetIsScrollChainingEnabled(viewer, false);
+        _lastLogOffsetY = viewer.Offset.Y;
+        viewer.ScrollChanged += LogsScrollViewer_ScrollChanged;
+        if (_followLogs)
+        {
+            ScheduleLogScrollToLatest();
+        }
+        UpdateLogLatestButton();
+    }
+
+    private void DetachLogScrollViewer()
+    {
+        if (_logScrollViewer is null)
+        {
+            return;
+        }
+
+        _logScrollViewer.ScrollChanged -= LogsScrollViewer_ScrollChanged;
+        _logScrollViewer = null;
+    }
+
+    private void LogsScrollViewer_ScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (_logScrollViewer is null)
+        {
+            return;
+        }
+
+        var max = Math.Max(0, _logScrollViewer.Extent.Height - _logScrollViewer.Viewport.Height);
+        var current = _logScrollViewer.Offset.Y;
+        if (current < _lastLogOffsetY - 0.5 && max - current > 2)
+        {
+            // The reader moved away from the newest output. Never pull them
+            // back while they are inspecting an earlier line.
+            _followLogs = false;
+        }
+        else if (max - current <= 2)
+        {
+            _followLogs = true;
+        }
+
+        _lastLogOffsetY = current;
+        UpdateLogLatestButton();
+    }
+
+    private void ScheduleLogScrollToLatest()
+    {
+        if (!_followLogs)
+        {
+            return;
+        }
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () =>
+            {
+                if (!_followLogs)
+                {
+                    return;
+                }
+
+                // Set the log viewport directly. Calling ListBox.ScrollIntoView
+                // here can bubble a BringIntoView request to the page scroll
+                // viewer and move the whole installer while logs are updating.
+                if (_logScrollViewer is not null)
+                {
+                    var max = Math.Max(0, _logScrollViewer.Extent.Height - _logScrollViewer.Viewport.Height);
+                    _logScrollViewer.SetCurrentValue(
+                        ScrollViewer.OffsetProperty,
+                        new Vector(_logScrollViewer.Offset.X, max));
+                    _lastLogOffsetY = _logScrollViewer.Offset.Y;
+                }
+
+                UpdateLogLatestButton();
+            },
+            Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    private void LogsLatest_Click(object? sender, RoutedEventArgs e)
+    {
+        _followLogs = true;
+        ScheduleLogScrollToLatest();
+    }
+
+    private void UpdateLogLatestButton()
+    {
+        var button = this.FindControl<Button>("LogsLatestButton");
+        if (button is null)
+        {
+            return;
+        }
+
+        var canScroll = _logScrollViewer is not null
+            && _logScrollViewer.Extent.Height > _logScrollViewer.Viewport.Height + 1;
+        button.IsVisible = canScroll && !_followLogs;
     }
 
     private void SetStatusText(string name, bool ok, string okKey, string missingKey)
@@ -314,18 +479,43 @@ public partial class MainWindow : Window
     private void SelectTitanfall_Click(object? sender, RoutedEventArgs e)
     {
         CloseVersionPicker();
+        var scroll = this.FindControl<ScrollViewer>("MainScroll")!;
+        _gameScrollOffset = scroll.Offset.Y;
         this.FindControl<StackPanel>("GameSelect")!.IsVisible = false;
         this.FindControl<StackPanel>("GameFooter")!.IsVisible = false;
         this.FindControl<StackPanel>("InstallerView")!.IsVisible = true;
         RefreshUi();
+        RestoreMainScroll(_installerScrollOffset);
     }
 
     private void Back_Click(object? sender, RoutedEventArgs e)
     {
         CloseVersionPicker();
+        var scroll = this.FindControl<ScrollViewer>("MainScroll")!;
+        _installerScrollOffset = scroll.Offset.Y;
         this.FindControl<StackPanel>("GameSelect")!.IsVisible = true;
         this.FindControl<StackPanel>("GameFooter")!.IsVisible = true;
         this.FindControl<StackPanel>("InstallerView")!.IsVisible = false;
+        RestoreMainScroll(_gameScrollOffset);
+    }
+
+    private void RestoreMainScroll(double offset)
+    {
+        var scroll = this.FindControl<ScrollViewer>("MainScroll");
+        if (scroll is null)
+        {
+            return;
+        }
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () =>
+            {
+                var max = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
+                scroll.SetCurrentValue(
+                    ScrollViewer.OffsetProperty,
+                    new Vector(scroll.Offset.X, Math.Clamp(offset, 0, max)));
+            },
+            Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     private void OpenSupport_Click(object? sender, RoutedEventArgs e) => OpenUrl(SupportUrl);
@@ -461,6 +651,87 @@ public partial class MainWindow : Window
             popup.PlacementTarget = target;
         }
         popup.IsOpen = !popup.IsOpen;
+        if (popup.IsOpen)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(
+                FocusSelectedVersion,
+                Avalonia.Threading.DispatcherPriority.Loaded);
+        }
+    }
+
+    private void FocusSelectedVersion()
+    {
+        var popup = this.FindControl<Popup>("VersionPopup");
+        if (popup?.IsOpen != true)
+        {
+            return;
+        }
+
+        var buttons = VersionButtons();
+        var selected = buttons.FirstOrDefault(button => button.Classes.Contains("selected"));
+        (selected ?? buttons.FirstOrDefault())?.Focus();
+    }
+
+    private void VersionPopup_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            CloseVersionPicker();
+            e.Handled = true;
+            return;
+        }
+
+        var direction = e.Key switch
+        {
+            Key.Up => -1,
+            Key.Down => 1,
+            Key.PageUp => -5,
+            Key.PageDown => 5,
+            _ => 0,
+        };
+        var buttons = VersionButtons();
+        if (buttons.Count == 0)
+        {
+            return;
+        }
+
+        int index;
+        if (e.Key == Key.Home)
+        {
+            index = 0;
+        }
+        else if (e.Key == Key.End)
+        {
+            index = buttons.Count - 1;
+        }
+        else if (direction != 0)
+        {
+            var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Button;
+            var current = focused is null ? -1 : buttons.IndexOf(focused);
+            if (current < 0)
+            {
+                current = buttons.FindIndex(button => button.Classes.Contains("selected"));
+            }
+            index = Math.Clamp(current + direction, 0, buttons.Count - 1);
+        }
+        else
+        {
+            return;
+        }
+
+        buttons[index].Focus();
+        e.Handled = true;
+    }
+
+    private System.Collections.Generic.List<Button> VersionButtons()
+    {
+        var panel = this.FindControl<Border>("VersionPopupPanel");
+        return panel is null
+            ? new System.Collections.Generic.List<Button>()
+            : panel.GetVisualDescendants()
+                .OfType<Button>()
+                .Where(button => button.Classes.Contains("versionrow"))
+                .ToList();
     }
 
     private void CloseVersionPicker_Click(object? sender, RoutedEventArgs e) => CloseVersionPicker();
@@ -486,8 +757,34 @@ public partial class MainWindow : Window
 
     private void ChangelogExpand_Click(object? sender, RoutedEventArgs e)
     {
+        var offset = this.FindControl<ScrollViewer>("MainScroll")?.Offset.Y ?? 0;
         _changelogExpanded = !_changelogExpanded;
         RefreshUi();
+        RestoreMainOffset(offset);
+    }
+
+    private void DetailsExpander_Toggled(object? sender, RoutedEventArgs e)
+    {
+        var offset = this.FindControl<ScrollViewer>("MainScroll")?.Offset.Y ?? 0;
+        RestoreMainOffset(offset);
+    }
+
+    private void RestoreMainOffset(double offset)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () =>
+            {
+                var scroll = this.FindControl<ScrollViewer>("MainScroll");
+                if (scroll is null)
+                {
+                    return;
+                }
+                var max = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
+                scroll.SetCurrentValue(
+                    ScrollViewer.OffsetProperty,
+                    new Vector(scroll.Offset.X, Math.Clamp(offset, 0, max)));
+            },
+            DispatcherPriority.Loaded);
     }
 
     private void Changelog_Click(object? sender, RoutedEventArgs e)
@@ -509,6 +806,7 @@ public partial class MainWindow : Window
         this.FindControl<Button>("ConfirmOkButton")!.Content = okLabel;
         this.FindControl<Button>("ConfirmCancelButton")!.IsVisible = true;
         this.FindControl<Border>("ConfirmOverlay")!.IsVisible = true;
+        ResetConfirmScroll();
 
         _confirmation = new TaskCompletionSource<bool>();
         var result = await _confirmation.Task;
@@ -523,10 +821,23 @@ public partial class MainWindow : Window
         this.FindControl<Button>("ConfirmOkButton")!.Content = Loc.Get("close");
         this.FindControl<Button>("ConfirmCancelButton")!.IsVisible = false;
         this.FindControl<Border>("ConfirmOverlay")!.IsVisible = true;
+        ResetConfirmScroll();
 
         _confirmation = new TaskCompletionSource<bool>();
         await _confirmation.Task;
         this.FindControl<Border>("ConfirmOverlay")!.IsVisible = false;
+    }
+
+    private void ResetConfirmScroll()
+    {
+        var scroll = this.FindControl<ScrollViewer>("ConfirmScroll");
+        if (scroll is null)
+        {
+            return;
+        }
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () => scroll.SetCurrentValue(ScrollViewer.OffsetProperty, default),
+            Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     private void ConfirmOk_Click(object? sender, RoutedEventArgs e) => _confirmation?.TrySetResult(true);

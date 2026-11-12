@@ -256,7 +256,8 @@
                 <Popup Name="VersionPopup" PlacementTarget="{Binding #VersionPickerButton}" Placement="BottomEdgeAlignedLeft"
                        IsLightDismissEnabled="True" VerticalOffset="6">
                   <LayoutTransformControl Name="VersionPopupScale">
-                  <Border Name="VersionPopupPanel" Classes="popup" Width="520" MaxHeight="340">
+                  <Border Name="VersionPopupPanel" Classes="popup" Width="520" MaxHeight="340"
+                          KeyDown="VersionPopup_KeyDown">
                     <Grid RowDefinitions="Auto,*">
                       <Grid ColumnDefinitions="*,Auto" Margin="12,10,12,7">
                         <StackPanel Spacing="1">
@@ -266,22 +267,26 @@
                         <Button Grid.Column="1" Content="×" Classes="ghost" Width="26" Height="26" Padding="0"
                                 Click="CloseVersionPicker_Click" ToolTip.Tip="{loc:Tr Key=close}" />
                       </Grid>
-                      <ScrollViewer Grid.Row="1" MaxHeight="286" VerticalScrollBarVisibility="Auto"
-                                    AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl Name="VersionGroupsList" Margin="6,0,6,7">
+                      <ScrollViewer Name="VersionScroll" Grid.Row="1" MaxHeight="286" VerticalScrollBarVisibility="Auto"
+                                    AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled"
+                                    HorizontalContentAlignment="Stretch"
+                                    ScrollViewer.IsScrollChainingEnabled="False">
+                        <ItemsControl Name="VersionGroupsList" Margin="6,0,6,7"
+                                      HorizontalAlignment="Stretch">
                           <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                              <StackPanel Margin="0,0,0,8">
+                              <StackPanel Margin="0,0,0,8" HorizontalAlignment="Stretch">
                                 <StackPanel Margin="10,4,10,4" Spacing="1">
                                   <TextBlock Text="{Binding Title}" FontSize="10.5" FontWeight="Bold"
                                              Foreground="{DynamicResource Accent}" />
                                   <TextBlock Text="{Binding Hint}" Classes="small" TextWrapping="Wrap" />
                                 </StackPanel>
-                                <ItemsControl ItemsSource="{Binding Options}">
+                                <ItemsControl ItemsSource="{Binding Options}"
+                                              HorizontalAlignment="Stretch">
                                   <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                       <Button Classes="versionrow" Classes.selected="{Binding IsSelected}"
-                                              Click="VersionOption_Click">
+                                              HorizontalAlignment="Stretch" Click="VersionOption_Click">
                                         <Grid ColumnDefinitions="4,18,*,Auto" VerticalAlignment="Center">
                                           <Border Grid.Column="0" Width="3" Height="26" CornerRadius="2"
                                                   Background="{DynamicResource Accent}" IsVisible="{Binding IsSelected}"
@@ -382,7 +387,8 @@
             <!-- everything technical stays available, but out of the way -->
             <Border Classes="card" Padding="0">
               <Expander Name="DetailsExpander" IsExpanded="False" HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Stretch">
+                        HorizontalContentAlignment="Stretch"
+                        Expanded="DetailsExpander_Toggled" Collapsed="DetailsExpander_Toggled">
                 <Expander.Header>
                   <StackPanel Spacing="4" Margin="4,2">
                     <StackPanel Spacing="1">
@@ -442,17 +448,23 @@
                     </StackPanel>
                   </Border>
 
-                  <Grid ColumnDefinitions="*,Auto">
+                  <Grid ColumnDefinitions="*,Auto,Auto">
                     <TextBlock Text="{loc:Tr Key=log}" Classes="h2" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Name="UninstallButton" Content="{loc:Tr Key=uninstall}" Classes="danger" FontSize="11"
+                    <Button Grid.Column="1" Name="LogsLatestButton" Content="{loc:Tr Key=latestOutput}"
+                            Classes="link" FontSize="11" Padding="6,3" Margin="0,0,10,0"
+                            Click="LogsLatest_Click" IsVisible="False"
+                            ToolTip.Tip="{loc:Tr Key=latestOutputTooltip}" />
+                    <Button Grid.Column="2" Name="UninstallButton" Content="{loc:Tr Key=uninstall}" Classes="danger" FontSize="11"
                             Padding="8,4" Click="Uninstall_Click" IsEnabled="False" />
                   </Grid>
                   <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
                           CornerRadius="{DynamicResource CornerInner}">
-                    <ListBox Name="LogsList" Height="130" Background="Transparent" BorderThickness="0" FontSize="10.5">
+                    <ListBox Name="LogsList" Height="130" Background="Transparent" BorderThickness="0" FontSize="10.5"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.IsScrollChainingEnabled="False">
                       <ListBox.ItemTemplate>
                         <DataTemplate>
-                          <TextBlock Text="{Binding}" FontFamily="{DynamicResource UiFont}" TextWrapping="Wrap" />
+                          <SelectableTextBlock Text="{Binding}" FontFamily="{DynamicResource UiFont}" TextWrapping="Wrap" />
                         </DataTemplate>
                       </ListBox.ItemTemplate>
                     </ListBox>
@@ -516,7 +528,9 @@
               <TextBlock Name="ChangelogOverlayChannel" Classes="pill-text" />
             </Border>
           </Grid>
-          <ScrollViewer MaxHeight="410" VerticalScrollBarVisibility="Auto">
+          <ScrollViewer Name="ChangelogScroll" MaxHeight="410" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled"
+                        ScrollViewer.IsScrollChainingEnabled="False">
             <TextBlock Name="ChangelogBody" FontSize="12" TextWrapping="Wrap" LineHeight="18" />
           </ScrollViewer>
           <Button Content="{loc:Tr Key=close}" Classes="ghost" HorizontalAlignment="Right" Click="CloseChangelog_Click" />
@@ -530,7 +544,11 @@
               CornerRadius="{DynamicResource CornerCard}" Padding="22,18" MaxWidth="440" Margin="12" HorizontalAlignment="Stretch" VerticalAlignment="Center">
         <StackPanel Spacing="10">
           <TextBlock Name="ConfirmTitle" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <TextBlock Name="ConfirmText" FontSize="12" Foreground="{DynamicResource TextDim}" TextWrapping="Wrap" />
+          <ScrollViewer Name="ConfirmScroll" MaxHeight="320" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled"
+                        ScrollViewer.IsScrollChainingEnabled="False">
+            <TextBlock Name="ConfirmText" FontSize="12" Foreground="{DynamicResource TextDim}" TextWrapping="Wrap" />
+          </ScrollViewer>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
             <Button Name="ConfirmCancelButton" Content="{loc:Tr Key=cancel}" Classes="ghost" Click="ConfirmCancel_Click" />
             <Button Name="ConfirmOkButton" Content="{loc:Tr Key=restartSteamAdd}" Classes="primary" Click="ConfirmOk_Click" />
@@ -548,7 +566,8 @@
               BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
               CornerRadius="{DynamicResource CornerCard}" Padding="22,18" Margin="12"
               HorizontalAlignment="Stretch" VerticalAlignment="Center">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      ScrollViewer.IsScrollChainingEnabled="False">
         <StackPanel Spacing="12">
           <Grid ColumnDefinitions="Auto,*">
             <Image Source="avares://CircuitLordVRModInstaller/Assets/app-256.png" Width="36" Height="36"
