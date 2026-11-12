@@ -1,0 +1,33 @@
+name: Release Linux beta
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.114"
+
+      - name: Build release archive
+        run: packaging/build-release.sh
+
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --prerelease \
+            --title "CircuitLord's VR Mod Installer — Linux Beta 1" \
+            --notes-file docs/RELEASE_NOTES_BETA.md \
+            artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz \
+            artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz.sha256
