@@ -25,7 +25,7 @@ original but is unavailable on Linux because no backend exists for it.
 > fixture-tested. See [Status](#status) and [Limitations](#limitations) before relying on it.
 >
 > Native Wayland, the settings screen and automatic installer updates are included in the
-> latest `v1.0.4` release.
+> latest `v1.0.5` release.
 
 ## Install the prebuilt release
 
@@ -42,11 +42,11 @@ are needed only for the integrations you use.
 #    https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases
 
 # 2. Verify the download (replace the file name if the version differs).
-sha256sum -c circuitlord-vrmodinstaller-1.0.4-linux-x64.tar.gz.sha256
+sha256sum -c circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz.sha256
 
 # 3. Extract and install for the current user.
-tar -xzf circuitlord-vrmodinstaller-1.0.4-linux-x64.tar.gz
-./circuitlord-vrmodinstaller-1.0.4-linux-x64/install.sh
+tar -xzf circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz
+./circuitlord-vrmodinstaller-1.0.5-linux-x64/install.sh
 ```
 
 This creates:
