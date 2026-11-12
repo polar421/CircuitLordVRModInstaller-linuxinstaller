@@ -66,7 +66,7 @@ on a mismatch or an unsafe checksum path.
 |---|---|
 | Native Linux UI (Avalonia, no Wine) | Implemented; original layout, serif typography, icon title bar, NEW badge and support footer |
 | Native Wayland with X11 fallback | Implemented on Avalonia 12.1; exercised on KWin Wayland and X11 |
-| Settings screen (rounded corners, language, updates) | Implemented; preferences persist in `settings.json` |
+| Settings screen (appearance, language, updates, VR/Steam integration, diagnostics, About, Restore Defaults) | Implemented; preferences persist in `settings.json` |
 | English / German interface | Implemented; backend and git output remain English |
 | Release update check and automatic helper update | Implemented; the check links to GitHub and never installs the app itself |
 | Managed `tf2vr-linux` checkout with origin verification and safe update | Implemented |
@@ -79,7 +79,7 @@ on a mismatch or an unsafe checksum path.
 | Steam shortcut with graceful close → backup → verified write → reopen | Implemented and fixture tested; not verified against a live Steam client |
 | Manifest release notes | Implemented (HTTPS, cache, validation) |
 | Reproducible self-contained release + user-level installer | Implemented; see `docs/RELEASE.md` |
-| Automated tests | 40 passing |
+| Automated tests | 46 passing |
 
 ## Limitations
 

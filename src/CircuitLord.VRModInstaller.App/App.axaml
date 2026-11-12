@@ -46,6 +46,11 @@
       <Setter Property="Background" Value="{StaticResource Bg}" />
       <Setter Property="Foreground" Value="{StaticResource Text}" />
       <Setter Property="FontFamily" Value="avares://CircuitLordVRModInstaller/Assets/Fonts#Liberation Serif" />
+      <!-- Use the desktop arrow instead of falling back to a framework cursor. -->
+      <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Cursor" Value="Ibeam" />
     </Style>
 
     <!-- typography -->
@@ -87,6 +92,10 @@
       <Setter Property="Padding" Value="14,7" />
       <Setter Property="FontSize" Value="12" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button:disabled">
+      <Setter Property="Cursor" Value="Arrow" />
     </Style>
     <Style Selector="Button:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="{StaticResource Stroke}" />

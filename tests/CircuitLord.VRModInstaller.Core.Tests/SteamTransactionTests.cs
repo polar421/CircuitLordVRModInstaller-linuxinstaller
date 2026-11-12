@@ -122,10 +122,16 @@ public class SteamTransactionTests
         };
     }
 
-    private static void SeedShortcut(string path, string name, string exe)
+    private static void SeedShortcut(string path, string name, string exe, string launchOptions = "")
     {
         var document = SteamShortcutsDocument.Empty();
-        document.Upsert(new SteamShortcutRecord { Name = name, Executable = exe, StartDirectory = "/tmp" });
+        document.Upsert(new SteamShortcutRecord
+        {
+            Name = name,
+            Executable = exe,
+            StartDirectory = "/tmp",
+            LaunchOptions = launchOptions,
+        });
         document.SaveVerified(path);
     }
 
@@ -168,6 +174,25 @@ public class SteamTransactionTests
 
         var final = SteamShortcutsDocument.Load(path);
         Assert.Single(final.Entries, e => e.Name == "Titanfall 2 VR");
+    }
+
+    [Fact]
+    public void LegacyShellWrapperIsOwnedAndRepairedToTheNativeLauncher()
+    {
+        using var env = new TempEnv();
+        Account(env, out var path);
+        SeedShortcut(path, "Titanfall 2 VR", "/usr/bin/bash", "-c 'exec \"$HOME/.local/bin/tf2vr\"'");
+
+        var document = SteamShortcutsDocument.Load(path);
+        var match = document.Match("Titanfall 2 VR", env.Launcher, out _);
+        Assert.Equal(ShortcutMatch.Owned, match);
+
+        document.Upsert(new SteamShortcutRecord { Name = "Titanfall 2 VR", Executable = env.Launcher });
+        document.SaveVerified(path);
+
+        var repaired = SteamShortcutsDocument.Load(path).Entries.Single(e => e.Name == "Titanfall 2 VR");
+        Assert.Equal(env.Launcher, repaired.Executable);
+        Assert.Equal(string.Empty, repaired.LaunchOptions);
     }
 
     [Fact]

@@ -46,7 +46,9 @@ public sealed class BackendManager
             return Missing(path, BackendValidationStatus.Missing);
         }
 
-        var origin = await RunGitAsync(path, new[] { "remote", "get-url", "origin" }, cancellationToken);
+        // Read the configured URL rather than `remote get-url`, which applies
+        // url.*.insteadOf rewrites and could hide the configured origin.
+        var origin = await RunGitAsync(path, new[] { "config", "--get", "remote.origin.url" }, cancellationToken);
         if (!origin.Succeeded || !IsExpectedOrigin(origin.StandardOutput.Trim()))
         {
             return Missing(path, BackendValidationStatus.OriginMismatch) with
@@ -136,8 +138,90 @@ public sealed class BackendManager
     }
 
     /// <summary>
+    /// Reads the remote HEAD without changing the checkout. Used by Settings to
+    /// show whether a newer helper commit exists before the user updates.
+    /// </summary>
+    public async Task<BackendUpdateCheck> CheckForUpdateAsync(CancellationToken cancellationToken = default)
+    {
+        var current = await InspectAsync(cancellationToken);
+        if (current.ValidationStatus != BackendValidationStatus.Validated)
+        {
+            return new BackendUpdateCheck
+            {
+                OriginVerified = current.ValidationStatus != BackendValidationStatus.OriginMismatch,
+                CurrentCommit = current.CommitHash,
+                Error = current.ValidationStatus switch
+                {
+                    BackendValidationStatus.OriginMismatch => "The checkout's origin is not the expected tf2vr-linux repository.",
+                    BackendValidationStatus.Incomplete => "The checkout is missing install.sh, tf2vr or tf2vr.desktop.",
+                    BackendValidationStatus.CloneFailed => "The backend clone failed earlier.",
+                    _ => "The backend checkout is not available.",
+                },
+                CheckedAt = DateTimeOffset.Now,
+            };
+        }
+
+        var tree = await RunGitAsync(_paths.BackendCheckout, new[] { "status", "--porcelain" }, cancellationToken);
+        var clean = tree.Succeeded && string.IsNullOrWhiteSpace(tree.StandardOutput);
+        if (!tree.Succeeded)
+        {
+            return new BackendUpdateCheck
+            {
+                OriginVerified = true,
+                CurrentCommit = current.CommitHash,
+                WorkingTreeClean = false,
+                Error = "Could not inspect the backend working tree: " + FirstLine(tree.StandardError),
+                CheckedAt = DateTimeOffset.Now,
+            };
+        }
+
+        var remote = await RunGitAsync(_paths.BackendCheckout, new[] { "ls-remote", "origin", "HEAD" }, cancellationToken);
+        if (!remote.Succeeded)
+        {
+            return new BackendUpdateCheck
+            {
+                OriginVerified = true,
+                CurrentCommit = current.CommitHash,
+                WorkingTreeClean = clean,
+                Error = "Could not reach the backend origin: " + FirstLine(remote.StandardError),
+                CheckedAt = DateTimeOffset.Now,
+            };
+        }
+
+        var remoteCommit = remote.StandardOutput
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault()?.Split('\t', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim();
+        if (string.IsNullOrWhiteSpace(remoteCommit))
+        {
+            return new BackendUpdateCheck
+            {
+                OriginVerified = true,
+                CurrentCommit = current.CommitHash,
+                WorkingTreeClean = clean,
+                Error = "The backend origin did not report a HEAD commit.",
+                CheckedAt = DateTimeOffset.Now,
+            };
+        }
+
+        return new BackendUpdateCheck
+        {
+            OriginVerified = true,
+            WorkingTreeClean = clean,
+            CurrentCommit = current.CommitHash,
+            RemoteCommit = remoteCommit,
+            UpdateAvailable = !string.Equals(current.CommitHash, remoteCommit, StringComparison.OrdinalIgnoreCase),
+            CheckedAt = DateTimeOffset.Now,
+        };
+    }
+
+    /// <summary>
     /// Fetches the newest backend commit. The old commit stays checked out until
     /// the new one is validated; on failure the checkout is restored.
+    ///
+    /// The checkout is application-managed, so a rollback can only run after
+    /// verifying the expected origin and a clean working tree. It preserves a
+    /// ref to the previous commit and never runs while an installer operation
+    /// owns the UI operation lock.
     /// </summary>
     public async Task<BackendUpdateResult> UpdateAsync(CancellationToken cancellationToken = default)
     {
@@ -152,10 +236,56 @@ public sealed class BackendManager
             };
         }
 
+        var tree = await RunGitAsync(_paths.BackendCheckout, new[] { "status", "--porcelain" }, cancellationToken);
+        if (!tree.Succeeded || !string.IsNullOrWhiteSpace(tree.StandardOutput))
+        {
+            return new BackendUpdateResult
+            {
+                Succeeded = false,
+                Message = tree.Succeeded
+                    ? "The backend checkout has uncommitted changes, so it was not updated."
+                    : "The backend working tree could not be inspected: " + FirstLine(tree.StandardError),
+                Installation = current,
+            };
+        }
+
         var previousCommit = current.CommitHash;
+        if (!string.IsNullOrWhiteSpace(previousCommit))
+        {
+            // Keep a named recovery point without changing the working tree.
+            await RunGitAsync(
+                _paths.BackendCheckout,
+                new[] { "update-ref", "refs/circuitlord/previous", previousCommit },
+                cancellationToken);
+        }
+
+        // The first clone is shallow for speed. Before merging we need real
+        // ancestry so --ff-only can prove the update is a fast-forward.
+        var shallow = await RunGitAsync(
+            _paths.BackendCheckout,
+            new[] { "rev-parse", "--is-shallow-repository" },
+            cancellationToken);
+        if (shallow.Succeeded && string.Equals(shallow.StandardOutput.Trim(), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            var unshallow = await RunGitAsync(
+                _paths.BackendCheckout,
+                new[] { "fetch", "--unshallow", "origin" },
+                cancellationToken);
+            if (!unshallow.Succeeded)
+            {
+                return new BackendUpdateResult
+                {
+                    Succeeded = false,
+                    Message = "The backend history could not be completed safely: " + FirstLine(unshallow.StandardError),
+                    Installation = current,
+                    PreviousCommit = previousCommit,
+                };
+            }
+        }
+
         var fetch = await RunGitAsync(
             _paths.BackendCheckout,
-            new[] { "fetch", "--depth", "1", "origin", "HEAD" },
+            new[] { "fetch", "origin", "HEAD" },
             cancellationToken);
 
         if (!fetch.Succeeded)
@@ -189,14 +319,24 @@ public sealed class BackendManager
         var updated = await InspectAsync(cancellationToken);
         if (updated.ValidationStatus != BackendValidationStatus.Validated)
         {
+            var rollbackSucceeded = false;
             if (previousCommit is not null)
             {
-                await RunGitAsync(_paths.BackendCheckout, new[] { "merge", "--ff-only", previousCommit }, cancellationToken);
+                // The tree was verified clean before the fast-forward, so this is
+                // a controlled rollback to the preserved application-managed commit.
+                var rollback = await RunGitAsync(
+                    _paths.BackendCheckout,
+                    new[] { "reset", "--hard", previousCommit },
+                    cancellationToken);
+                rollbackSucceeded = rollback.Succeeded &&
+                    (await InspectAsync(cancellationToken)).ValidationStatus == BackendValidationStatus.Validated;
             }
             return new BackendUpdateResult
             {
                 Succeeded = false,
-                Message = "The updated backend did not pass validation and was rolled back.",
+                Message = rollbackSucceeded
+                    ? "The updated backend did not pass validation and was rolled back to " + ShortCommit(previousCommit) + "."
+                    : "The updated backend did not pass validation; automatic rollback was not possible. Recovery ref: refs/circuitlord/previous.",
                 Installation = await InspectAsync(cancellationToken),
                 PreviousCommit = previousCommit,
             };
@@ -206,8 +346,8 @@ public sealed class BackendManager
         {
             Succeeded = true,
             Message = previousCommit == updated.CommitHash
-                ? "The backend is already at the newest commit."
-                : "Backend updated to " + ShortCommit(updated.CommitHash) + ".",
+                ? "The backend is already at the newest commit. The installed mod was not changed."
+                : "Backend updated to " + ShortCommit(updated.CommitHash) + ". The installed mod was not changed.",
             Installation = updated,
             PreviousCommit = previousCommit,
         };
@@ -270,7 +410,7 @@ public sealed class BackendManager
             };
         }
 
-        var origin = await RunGitAsync(path, new[] { "remote", "get-url", "origin" }, cancellationToken);
+        var origin = await RunGitAsync(path, new[] { "config", "--get", "remote.origin.url" }, cancellationToken);
         if (!origin.Succeeded || !IsExpectedOrigin(origin.StandardOutput.Trim()))
         {
             return new BackendInstallation
@@ -319,6 +459,17 @@ public sealed class BackendManager
 
     private static string ShortCommit(string? commit) =>
         commit is { Length: >= 7 } ? commit[..7] : commit ?? "unknown";
+}
+
+public sealed class BackendUpdateCheck
+{
+    public bool OriginVerified { get; init; }
+    public bool WorkingTreeClean { get; init; }
+    public string? CurrentCommit { get; init; }
+    public string? RemoteCommit { get; init; }
+    public bool UpdateAvailable { get; init; }
+    public string? Error { get; init; }
+    public DateTimeOffset CheckedAt { get; init; }
 }
 
 public sealed class BackendUpdateResult

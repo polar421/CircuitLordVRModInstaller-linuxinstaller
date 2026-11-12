@@ -121,7 +121,7 @@ public sealed class LauncherService
     public string? LaunchLogPath => Path.Combine(_paths.StateHome, "tf2vr", "launch.log");
 }
 
-public sealed class OpenXrRuntimeInfo
+public sealed record OpenXrRuntimeInfo
 {
     public string? RuntimeName { get; init; }
     public string? RuntimePath { get; init; }
@@ -130,6 +130,13 @@ public sealed class OpenXrRuntimeInfo
     public bool WiVrnRunning { get; init; }
     public bool MonadoRunning { get; init; }
     public bool SteamVrRunning { get; init; }
+    public bool SteamVrAvailable { get; init; }
+    public bool WiVrnAvailable { get; init; }
+    public bool MonadoAvailable { get; init; }
+    public string? SteamVrPath { get; init; }
+    public string? OpenVrBridgePath { get; init; }
+    public string? OpenVrBridgeKind { get; init; }
+    public string? OpenVrPathsFile { get; init; }
     public string? ParseWarning { get; init; }
 
     /// <summary>Deliberately limited: a configured runtime is not a connected headset.</summary>
@@ -159,6 +166,7 @@ public sealed class RuntimeService
     {
         var processes = EnumerateCommandLines();
         var jsonPath = ActiveRuntimeJsonPath;
+        var availability = DetectAvailability();
 
         if (!File.Exists(jsonPath))
         {
@@ -169,6 +177,13 @@ public sealed class RuntimeService
                 WiVrnRunning = processes.Any(p => p.Contains("wivrn", StringComparison.OrdinalIgnoreCase)),
                 MonadoRunning = processes.Any(p => p.Contains("monado", StringComparison.OrdinalIgnoreCase)),
                 SteamVrRunning = processes.Any(p => p.Contains("vrserver", StringComparison.OrdinalIgnoreCase)),
+                SteamVrAvailable = availability.SteamVrAvailable,
+                WiVrnAvailable = availability.WiVrnAvailable,
+                MonadoAvailable = availability.MonadoAvailable,
+                SteamVrPath = availability.SteamVrPath,
+                OpenVrBridgePath = availability.OpenVrBridgePath,
+                OpenVrBridgeKind = availability.OpenVrBridgeKind,
+                OpenVrPathsFile = availability.OpenVrPathsFile,
             };
         }
 
@@ -199,6 +214,13 @@ public sealed class RuntimeService
                 WiVrnRunning = processes.Any(p => p.Contains("wivrn", StringComparison.OrdinalIgnoreCase)),
                 MonadoRunning = processes.Any(p => p.Contains("monado", StringComparison.OrdinalIgnoreCase)),
                 SteamVrRunning = processes.Any(p => p.Contains("vrserver", StringComparison.OrdinalIgnoreCase)),
+                SteamVrAvailable = availability.SteamVrAvailable,
+                WiVrnAvailable = availability.WiVrnAvailable,
+                MonadoAvailable = availability.MonadoAvailable,
+                SteamVrPath = availability.SteamVrPath,
+                OpenVrBridgePath = availability.OpenVrBridgePath,
+                OpenVrBridgeKind = availability.OpenVrBridgeKind,
+                OpenVrPathsFile = availability.OpenVrPathsFile,
             };
         }
         catch (Exception ex) when (ex is JsonException or IOException)
@@ -208,9 +230,104 @@ public sealed class RuntimeService
                 ActiveRuntimeJsonPath = jsonPath,
                 JsonFound = true,
                 ParseWarning = "The active runtime file could not be parsed: " + ex.Message,
+                SteamVrAvailable = availability.SteamVrAvailable,
+                WiVrnAvailable = availability.WiVrnAvailable,
+                MonadoAvailable = availability.MonadoAvailable,
+                SteamVrPath = availability.SteamVrPath,
+                OpenVrBridgePath = availability.OpenVrBridgePath,
+                OpenVrBridgeKind = availability.OpenVrBridgeKind,
+                OpenVrPathsFile = availability.OpenVrPathsFile,
             };
         }
     }
+
+    private RuntimeAvailability DetectAvailability()
+    {
+        var steamVrPath = new[]
+        {
+            Path.Combine(_paths.Home, ".local/share/Steam/steamapps/common/SteamVR"),
+            Path.Combine(_paths.Home, ".steam/steam/steamapps/common/SteamVR"),
+            Path.Combine(_paths.Home, ".steam/root/steamapps/common/SteamVR"),
+        }.FirstOrDefault(p => File.Exists(Path.Combine(p, "bin/linux64/vrserver")));
+
+        var wifiVrnAvailable = CommandExists("wivrn-server")
+            || File.Exists(Path.Combine(_paths.Home, ".local/share/flatpak/app/io.github.wivrn.wivrn/current/active/files/bin/wivrn-server"))
+            || File.Exists("/var/lib/flatpak/app/io.github.wivrn.wivrn/current/active/files/bin/wivrn-server");
+        var monadoAvailable = CommandExists("monado-service");
+
+        var openVrPathsFile = Path.Combine(_paths.ConfigHome, "openvr", "openvrpaths.vrpath");
+        var candidates = new List<string>();
+        if (File.Exists(openVrPathsFile))
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(File.ReadAllText(openVrPathsFile));
+                if (document.RootElement.TryGetProperty("runtime", out var runtimes) && runtimes.ValueKind == JsonValueKind.Array)
+                {
+                    candidates.AddRange(runtimes.EnumerateArray()
+                        .Where(v => v.ValueKind == JsonValueKind.String)
+                        .Select(v => v.GetString())
+                        .Where(v => !string.IsNullOrWhiteSpace(v))
+                        .Select(v => v!));
+                }
+            }
+            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+
+        var dataHome = _paths.DataHome;
+        candidates.AddRange(new[]
+        {
+            Path.Combine(dataHome, "xrizer"),
+            Path.Combine(dataHome, "OpenComposite"),
+            Path.Combine(dataHome, "flatpak/app/io.github.wivrn.wivrn/current/active/files"),
+            "/var/lib/flatpak/app/io.github.wivrn.wivrn/current/active/files",
+            "/usr/lib/xrizer",
+            "/usr/lib/OpenComposite",
+            "/usr/lib64/xrizer",
+            "/usr/local/lib/xrizer",
+        });
+
+        string? bridgePath = null;
+        foreach (var candidate in candidates.Distinct(StringComparer.Ordinal))
+        {
+            if (File.Exists(Path.Combine(candidate, "bin/linux64/vrclient.so"))
+                && !File.Exists(Path.Combine(candidate, "bin/linux64/vrserver")))
+            {
+                bridgePath = candidate;
+                break;
+            }
+        }
+
+        var bridgeKind = bridgePath is null
+            ? null
+            : bridgePath.Contains("xrizer", StringComparison.OrdinalIgnoreCase) ? "xrizer"
+            : bridgePath.Contains("OpenComposite", StringComparison.OrdinalIgnoreCase) ? "OpenComposite"
+            : bridgePath.Contains("wivrn", StringComparison.OrdinalIgnoreCase) ? "WiVRn"
+            : "Registered OpenVR runtime";
+
+        return new RuntimeAvailability(
+            steamVrPath is not null, wifiVrnAvailable, monadoAvailable,
+            steamVrPath, bridgePath, bridgeKind, openVrPathsFile);
+    }
+
+    private static bool CommandExists(string command)
+    {
+        var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        return path.Split(':', StringSplitOptions.RemoveEmptyEntries)
+            .Select(directory => Path.Combine(directory, command))
+            .Any(File.Exists);
+    }
+
+    private sealed record RuntimeAvailability(
+        bool SteamVrAvailable,
+        bool WiVrnAvailable,
+        bool MonadoAvailable,
+        string? SteamVrPath,
+        string? OpenVrBridgePath,
+        string? OpenVrBridgeKind,
+        string? OpenVrPathsFile);
 
     private static List<string> EnumerateCommandLines()
     {

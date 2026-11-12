@@ -217,9 +217,11 @@ public sealed class DesktopEntryManager
             try
             {
                 var text = File.ReadAllText(file);
+                // Only entries claiming the canonical name are duplicates. The
+                // backend's "Titanfall 2 VR (Vanilla)" entry intentionally
+                // launches the same tf2vr binary and must not be removed.
                 var isVrEntry = text.Split('\n').Any(l => l.Trim() == "Name=Titanfall 2 VR");
-                var launchesTf2vr = text.Contains("tf2vr", StringComparison.Ordinal);
-                if (isVrEntry || launchesTf2vr)
+                if (isVrEntry)
                 {
                     results.Add(file);
                 }

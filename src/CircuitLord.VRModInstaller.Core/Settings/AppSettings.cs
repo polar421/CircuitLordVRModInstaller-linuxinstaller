@@ -11,7 +11,7 @@ namespace CircuitLord.VRModInstaller.Core.Settings;
 /// </summary>
 public sealed class AppSettings
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     [JsonPropertyName("schemaVersion")]
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
@@ -34,6 +34,22 @@ public sealed class AppSettings
 
     [JsonPropertyName("updateBackendAutomatically")]
     public bool UpdateBackendAutomatically { get; set; }
+
+    /// <summary>Ask before a shortcut operation restarts a running Steam client.</summary>
+    [JsonPropertyName("confirmSteamRestart")]
+    public bool ConfirmSteamRestart { get; set; } = true;
+
+    [JsonPropertyName("lastBackendUpdateAt")]
+    public DateTimeOffset? LastBackendUpdateAt { get; set; }
+
+    [JsonPropertyName("lastBackendUpdateResult")]
+    public string? LastBackendUpdateResult { get; set; }
+
+    [JsonPropertyName("lastSteamIntegrationAt")]
+    public DateTimeOffset? LastSteamIntegrationAt { get; set; }
+
+    [JsonPropertyName("lastSteamIntegrationResult")]
+    public string? LastSteamIntegrationResult { get; set; }
 
     [JsonPropertyName("logRetentionDays")]
     public int LogRetentionDays { get; set; } = 30;

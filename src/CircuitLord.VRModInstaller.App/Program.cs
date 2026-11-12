@@ -13,6 +13,9 @@ internal static class Program
             .UsePlatformDetect()
             // Native Wayland when a compositor is reachable; X11 otherwise.
             .UseWaylandWithFallback()
+            // Must run after platform services exist and before App.axaml parses
+            // cursor values, so Avalonia uses the desktop's Xcursor theme.
+            .AfterPlatformServicesSetup(_ => LinuxSystemCursors.Install())
             .WithInterFont()
             .LogToTrace();
 }

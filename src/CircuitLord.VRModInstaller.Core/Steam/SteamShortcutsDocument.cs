@@ -23,13 +23,24 @@ public sealed class SteamShortcutEntry
 
     public string Name => Map.GetString("AppName") ?? string.Empty;
     public string Executable => Map.GetString("Exe") ?? string.Empty;
+    public string LaunchOptions => Map.GetString("LaunchOptions") ?? string.Empty;
     public string StartDirectory => Map.GetString("StartDir") ?? string.Empty;
     public string Icon => Map.GetString("icon") ?? string.Empty;
     public int AppId => Map.GetInt("appid") ?? 0;
 
-    public bool LaunchesLauncher(string launcherPath) =>
-        string.Equals(Executable, launcherPath, StringComparison.Ordinal)
-        || Executable.EndsWith("/" + Path.GetFileName(launcherPath), StringComparison.Ordinal);
+    public bool LaunchesLauncher(string launcherPath)
+    {
+        var fileName = Path.GetFileName(launcherPath);
+        return string.Equals(Executable, launcherPath, StringComparison.Ordinal)
+            || Executable.EndsWith("/" + fileName, StringComparison.Ordinal)
+            // Older tf2vr-linux shortcuts use a shell wrapper such as
+            // -c 'exec "$HOME/.local/bin/tf2vr"'. It launches the same native
+            // launcher and is repaired to the direct path on the next write.
+            || Executable.Contains("/" + fileName, StringComparison.Ordinal)
+            // Older Steam shortcuts may use /usr/bin/bash and put the launcher
+            // invocation in LaunchOptions. They still launch the native tf2vr.
+            || LaunchOptions.Contains("/" + fileName, StringComparison.Ordinal);
+    }
 }
 
 public enum ShortcutMatch

@@ -22,7 +22,7 @@ dotnet build CircuitLord.VRModInstaller.Linux.slnx
 | Check | Command | Result |
 |---|---|---|
 | Release build | `dotnet build -c Release` | 0 warnings, 0 errors |
-| Release tests | `dotnet test -c Release` | 40/40 |
+| Release tests | `dotnet test -c Release` | 46/46 |
 | Two clean package builds | `packaging/build-release.sh` twice | identical SHA-256 (`6895d52a…`) |
 | No game/mod payload | archive guard in the build script | pass |
 | Menu entry validity | `desktop-file-validate` on the rendered entry | valid |
@@ -34,7 +34,8 @@ dotnet build CircuitLord.VRModInstaller.Linux.slnx
 | Packaged UI assets | installed archive launched after the UI change | serif font, icon, badge and footer render from the package |
 | Native Wayland | KWin session, packaged binary | rendered without an X11 window; `libwayland-client` loaded |
 | X11 fallback | `WAYLAND_DISPLAY` unset | window rendered through X11 |
-| Settings persistence | toggle corners, restart | `settings.json` schema 2 records the choice and the UI reflects it |
+| Settings persistence | toggle corners and language, restart | `settings.json` schema 3 records the choices and the UI reflects them after restart |
+| Settings migration / backend rollback | schema 2 → 3; invalid remote commit | defaults migrate with Steam confirmation enabled; the failed helper update is rolled back to the preserved valid commit |
 | Dependency audit | `dotnet list package --vulnerable --include-transitive` | no vulnerable packages |
 
 ### Packaged binary launch (verified 2026-11-12)
@@ -91,8 +92,8 @@ render is serif, so the port bundles OFL-licensed Liberation Serif in `Assets/Fo
 
 | Check | Result |
 |---|---|
-| Build after the UI change | succeeds, 0 warnings; 40/40 tests |
-| 800×740 | icon + name + `1.0.0 · Linux` title bar, serif headings/cards, centred NEW badge, pinned footer |
+| Build after the UI change | succeeds, 0 warnings; 46/46 tests |
+| 800×740 | icon + name + `1.0.1 · Linux` title bar, serif headings/cards, centred NEW badge, pinned footer |
 | 640×560 and 560×520 (minimum) | footer stays at the bottom, cards and title bar intact, nothing overlaps or clips |
 | Maximise / restore | 1920×1080 and back to 800×740 with content top-aligned and footer pinned |
 | Window icon | title-bar 20 px icon and `_NET_WM_ICON` (128×128) present for the window manager |

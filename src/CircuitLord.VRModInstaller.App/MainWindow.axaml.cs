@@ -20,11 +20,13 @@ public partial class MainWindow : Window
     private readonly InstallerViewModel _vm = new();
     private TaskCompletionSource<bool>? _confirmation;
     private bool _updatingVersions;
-    private bool _loadingSettings;
 
     public MainWindow()
     {
         InitializeComponent();
+        // Tunnel Escape so Settings closes even when focus is on a control that
+        // consumes the bubbling key event (for example a dropdown or text box).
+        AddHandler(KeyDownEvent, SettingsEscape_Handler, RoutingStrategies.Tunnel);
         Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://CircuitLordVRModInstaller/Assets/app-256.png")));
         ApplyCornerStyle(_vm.RoundedCorners);
         DataContext = _vm;
@@ -36,11 +38,31 @@ public partial class MainWindow : Window
         };
     }
 
+    private void SettingsEscape_Handler(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && SettingsPanel.HandleEscape())
+        {
+            e.Handled = true;
+        }
+    }
+
     private void RefreshUi()
     {
         this.FindControl<TextBlock>("InstalledText")!.Text = _vm.InstalledText;
+        this.FindControl<TextBlock>("InstalledVersionValue")!.Text = _vm.InstalledVersionText;
+        this.FindControl<TextBlock>("ChannelValue")!.Text = _vm.InstalledChannelText;
+        this.FindControl<TextBlock>("HeroInstalledVersion")!.Text = _vm.InstalledVersionText;
+        this.FindControl<TextBlock>("HeroChannel")!.Text = _vm.InstalledChannelText;
+        this.FindControl<TextBlock>("HeroStatusText")!.Text = _vm.IsInstalled
+            ? Loc.Get("overviewInstalled")
+            : Loc.Get("overviewNotInstalled");
+        this.FindControl<TextBlock>("LatestStableValue")!.Text = _vm.LatestStableVersionText;
+        this.FindControl<TextBlock>("LatestBetaValue")!.Text = _vm.LatestBetaVersionText;
         this.FindControl<TextBlock>("BackendText")!.Text = _vm.BackendText;
+        this.FindControl<TextBlock>("BackendDetailText")!.Text = _vm.BackendLastUpdateSummary;
         this.FindControl<TextBlock>("CatalogueText")!.Text = _vm.CatalogueText;
+        this.FindControl<TextBlock>("LastOperationText")!.Text = _vm.LastOperationText;
+        this.FindControl<TextBlock>("ChangelogPreview")!.Text = _vm.ChangelogPreview;
         this.FindControl<TextBlock>("GameText")!.Text = _vm.GameText;
         this.FindControl<TextBlock>("PreflightText")!.Text = _vm.PreflightText;
         this.FindControl<TextBlock>("DesktopText")!.Text = _vm.DesktopText;
@@ -53,8 +75,16 @@ public partial class MainWindow : Window
             : Loc.Get("readyStatus");
 
         this.FindControl<ProgressBar>("Progress")!.IsVisible = _vm.Busy;
-        this.FindControl<Button>("InstallButton")!.Content = _vm.PrimaryActionLabel;
-        this.FindControl<Button>("InstallButton")!.IsEnabled = _vm.CanInstall && !_vm.Busy;
+        var installButton = this.FindControl<Button>("InstallButton")!;
+        installButton.IsVisible = !_vm.IsInstalled;
+        installButton.IsEnabled = _vm.CanInstall && !_vm.Busy;
+        var updateButton = this.FindControl<Button>("UpdateButton")!;
+        updateButton.IsVisible = _vm.IsInstalled;
+        updateButton.IsEnabled = _vm.CanUpdateSelected && !_vm.Busy;
+        ToolTip.SetTip(updateButton, updateButton.IsEnabled ? null : Loc.Get("updateUnavailable"));
+        var reinstallButton = this.FindControl<Button>("ReinstallButton")!;
+        reinstallButton.IsVisible = _vm.IsInstalled;
+        reinstallButton.IsEnabled = _vm.CanReinstall && !_vm.Busy;
         this.FindControl<Button>("LaunchButton")!.IsEnabled = _vm.CanLaunch && !_vm.Busy;
         this.FindControl<Button>("UninstallButton")!.IsEnabled = _vm.CanUninstall && !_vm.Busy;
         this.FindControl<Button>("SteamButton")!.IsEnabled = _vm.HasSteamAccount && !_vm.Busy;
@@ -68,8 +98,6 @@ public partial class MainWindow : Window
 
         this.FindControl<ListBox>("LogsList")!.ItemsSource = _vm.LogLines;
         this.FindControl<ItemsControl>("ChangelogList")!.ItemsSource = _vm.ChangelogLines;
-        this.FindControl<TextBlock>("UpdateStatusText")!.Text = _vm.UpdateStatusText;
-        this.FindControl<Button>("OpenReleaseButton")!.IsEnabled = _vm.LatestReleaseUrl is not null;
     }
 
     private static void ApplyCornerStyle(bool rounded)
@@ -152,72 +180,8 @@ public partial class MainWindow : Window
 
     private void OpenSettings_Click(object? sender, RoutedEventArgs e)
     {
-        _loadingSettings = true;
-        this.FindControl<ToggleSwitch>("RoundedCornersToggle")!.IsChecked = _vm.RoundedCorners;
-        this.FindControl<ToggleSwitch>("AppUpdatesToggle")!.IsChecked = _vm.AutoCheckForAppUpdates;
-        this.FindControl<ToggleSwitch>("BackendUpdatesToggle")!.IsChecked = _vm.UpdateBackendAutomatically;
-        this.FindControl<ComboBox>("LanguageCombo")!.SelectedIndex = _vm.Language == "de" ? 1 : 0;
-        this.FindControl<TextBlock>("UpdateStatusText")!.Text = _vm.UpdateStatusText;
-        _loadingSettings = false;
-        this.FindControl<Border>("SettingsOverlay")!.IsVisible = true;
-    }
-
-    private void CloseSettings_Click(object? sender, RoutedEventArgs e)
-    {
-        this.FindControl<Border>("SettingsOverlay")!.IsVisible = false;
-    }
-
-    private void RoundedCorners_Changed(object? sender, RoutedEventArgs e)
-    {
-        if (_loadingSettings)
-        {
-            return;
-        }
-        var enabled = this.FindControl<ToggleSwitch>("RoundedCornersToggle")!.IsChecked == true;
-        _vm.SetRoundedCorners(enabled);
-        ApplyCornerStyle(enabled);
-    }
-
-    private void AppUpdates_Changed(object? sender, RoutedEventArgs e)
-    {
-        if (_loadingSettings)
-        {
-            return;
-        }
-        _vm.SetAutoCheckForAppUpdates(this.FindControl<ToggleSwitch>("AppUpdatesToggle")!.IsChecked == true);
-    }
-
-    private void BackendUpdates_Changed(object? sender, RoutedEventArgs e)
-    {
-        if (_loadingSettings)
-        {
-            return;
-        }
-        _vm.SetUpdateBackendAutomatically(this.FindControl<ToggleSwitch>("BackendUpdatesToggle")!.IsChecked == true);
-    }
-
-    private void Language_SelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (_loadingSettings)
-        {
-            return;
-        }
-        var tag = (this.FindControl<ComboBox>("LanguageCombo")!.SelectedItem as ComboBoxItem)?.Tag as string;
-        _vm.SetLanguage(tag ?? "en");
-    }
-
-    private async void CheckUpdates_Click(object? sender, RoutedEventArgs e)
-    {
-        await _vm.CheckForUpdatesAsync();
-        RefreshUi();
-    }
-
-    private void OpenRelease_Click(object? sender, RoutedEventArgs e)
-    {
-        if (_vm.LatestReleaseUrl is { } url)
-        {
-            OpenUrl(url);
-        }
+        _vm.RefreshLocalState();
+        this.FindControl<SettingsView>("SettingsPanel")!.Open(_vm);
     }
 
     private async void Install_Click(object? sender, RoutedEventArgs e)
@@ -273,7 +237,12 @@ public partial class MainWindow : Window
 
     private async void AddSteam_Click(object? sender, RoutedEventArgs e)
     {
-        if (_vm.IsSteamRunning)
+        if (!_vm.CanModifySteamNow(out var reason))
+        {
+            await ShowInfoAsync(Loc.Get("steamBlockedTitle"), reason ?? Loc.Get("steamBlockedText"));
+            return;
+        }
+        if (_vm.IsSteamRunning && _vm.ConfirmSteamRestart)
         {
             var confirmed = await ConfirmAsync(
                 Loc.Get("addSteamTitle"),
@@ -291,7 +260,12 @@ public partial class MainWindow : Window
 
     private async void RemoveSteam_Click(object? sender, RoutedEventArgs e)
     {
-        if (_vm.IsSteamRunning)
+        if (!_vm.CanModifySteamNow(out var reason))
+        {
+            await ShowInfoAsync(Loc.Get("steamBlockedTitle"), reason ?? Loc.Get("steamBlockedText"));
+            return;
+        }
+        if (_vm.IsSteamRunning && _vm.ConfirmSteamRestart)
         {
             var confirmed = await ConfirmAsync(
                 Loc.Get("removeSteamTitle"),
@@ -333,12 +307,26 @@ public partial class MainWindow : Window
         this.FindControl<TextBlock>("ConfirmTitle")!.Text = title;
         this.FindControl<TextBlock>("ConfirmText")!.Text = text;
         this.FindControl<Button>("ConfirmOkButton")!.Content = okLabel;
+        this.FindControl<Button>("ConfirmCancelButton")!.IsVisible = true;
         this.FindControl<Border>("ConfirmOverlay")!.IsVisible = true;
 
         _confirmation = new TaskCompletionSource<bool>();
         var result = await _confirmation.Task;
         this.FindControl<Border>("ConfirmOverlay")!.IsVisible = false;
         return result;
+    }
+
+    private async Task ShowInfoAsync(string title, string text)
+    {
+        this.FindControl<TextBlock>("ConfirmTitle")!.Text = title;
+        this.FindControl<TextBlock>("ConfirmText")!.Text = text;
+        this.FindControl<Button>("ConfirmOkButton")!.Content = Loc.Get("close");
+        this.FindControl<Button>("ConfirmCancelButton")!.IsVisible = false;
+        this.FindControl<Border>("ConfirmOverlay")!.IsVisible = true;
+
+        _confirmation = new TaskCompletionSource<bool>();
+        await _confirmation.Task;
+        this.FindControl<Border>("ConfirmOverlay")!.IsVisible = false;
     }
 
     private void ConfirmOk_Click(object? sender, RoutedEventArgs e) => _confirmation?.TrySetResult(true);

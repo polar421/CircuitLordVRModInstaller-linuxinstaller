@@ -76,6 +76,22 @@ public class DesktopEntryTests
     }
 
     [Fact]
+    public void VanillaEntryWithADifferentNameIsNotTreatedAsADuplicate()
+    {
+        using var env = new TempEnv();
+        var manager = new DesktopEntryManager(env.Paths);
+        manager.Install(BackendTemplate);
+        File.WriteAllText(
+            Path.Combine(env.Paths.ApplicationEntries, "tf2vr-vanilla.desktop"),
+            "[Desktop Entry]\nName=Titanfall 2 VR (Vanilla)\nExec=" + env.Launcher + "\n");
+
+        var status = manager.GetStatus();
+
+        Assert.Equal(DesktopIntegrationState.Installed, status.State);
+        Assert.Empty(status.DuplicatePaths);
+    }
+
+    [Fact]
     public void MissingLauncherIsReportedInsteadOfClaimingSuccess()
     {
         using var env = new TempEnv();

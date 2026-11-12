@@ -21,6 +21,8 @@ public sealed class SteamShortcutStatus
 {
     public required ShortcutInstallState State { get; init; }
     public required string ShortcutsFilePath { get; init; }
+    public string? Executable { get; init; }
+    public string? LaunchOptions { get; init; }
     public string? Detail { get; init; }
     public bool SteamAccountHasNoShortcutFile { get; init; }
     public int OwnedEntryCount { get; init; }
@@ -85,9 +87,14 @@ public sealed class SteamShortcutManager
                 },
                 ShortcutsFilePath = path,
                 OwnedEntryCount = match == ShortcutMatch.Owned ? entries.Count : 0,
+                Executable = entries.FirstOrDefault()?.Executable,
+                LaunchOptions = entries.FirstOrDefault()?.LaunchOptions,
                 Detail = match == ShortcutMatch.Ambiguous
                     ? "A shortcut named Titanfall 2 VR exists but launches a different program."
-                    : null,
+                    : match == ShortcutMatch.Owned && entries.FirstOrDefault() is { } owned
+                        && !string.Equals(owned.Executable, launcherPath, StringComparison.Ordinal)
+                            ? "Legacy shell wrapper detected; Repair converts it to the direct tf2vr path."
+                            : null,
             };
         }
         catch (Exception ex) when (ex is VdfFormatException or IOException or InvalidDataException)
