@@ -1,44 +1,120 @@
-# Build and packaging
+# Build and release
 
-## Build
+## Prerequisites
+
+- Linux x86-64 (the only packaged runtime identifier: `linux-x64`)
+- .NET SDK **10.0.114** — pinned in `global.json` (`rollForward: latestPatch`)
+- Network access to NuGet during the build (packages are not vendored)
+- No ImageMagick or icon tooling required: the hicolor PNG set is committed
+
+## Exact commands
 
 ```bash
-dotnet restore CircuitLord.VRModInstaller.Linux.slnx
+# 1. Verify the source and pinned dependencies
+cd /path/to/repository
+dotnet restore CircuitLord.VRModInstaller.Linux.slnx --locked-mode
 dotnet build CircuitLord.VRModInstaller.Linux.slnx -c Release
 dotnet test tests/CircuitLord.VRModInstaller.Core.Tests -c Release
+
+# 2. Build the self-contained release (restores, publishes, stages, checksums, tars)
+packaging/build-release.sh
+
+# 3. Inspect the result
+sha256sum -c artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz.sha256
+tar -tzf artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz | head
 ```
 
-Verified locally: SDK 10.0.114, Avalonia 11.3.9, Debug build succeeds and the app runs on a
-Wayland session (`DISPLAY=:0`, `WAYLAND_DISPLAY=wayland-1`).
+`build-release.sh` reads the version from the application project, so bumping `<Version>` in
+`src/CircuitLord.VRModInstaller.App/CircuitLord.VRModInstaller.App.csproj` renames the artifacts.
 
-## Publish
+## What the archive contains
 
-Framework-dependent:
+```
+circuitlord-vrmodinstaller-1.0.0-linux-x64/
+  app/                                   self-contained publish (no .NET runtime needed)
+    CircuitLordVRModInstaller            native ELF apphost
+    *.dll, libSkiaSharp.so, …            Avalonia and .NET runtime files
+  icons/hicolor/<16…256>/apps/circuitlord-vrmodinstaller.png
+  circuitlord-vrmodinstaller.desktop.in  template with @EXEC@ placeholder
+  install.sh                             user-level install / --uninstall
+  SHA256SUMS
+  LICENSE
+  THIRD-PARTY-NOTICES.md
+  README.md
+```
+
+No game files, mod packages, Proton builds, downloads or credentials are included. The build
+script fails if it finds `*.zip`, `*.pak`, `*.vpk`, `*.exe`, `BepInEx*`, `Northstar*`,
+`Titanfall2*` or `Titanfall2VR*` anywhere in the staged tree.
+
+## Install and uninstall
 
 ```bash
-dotnet publish src/CircuitLord.VRModInstaller.App -c Release -r linux-x64 --self-contained false \
-  -o publish/linux-x64
+tar -xzf circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz
+./circuitlord-vrmodinstaller-1.0.0-linux-x64/install.sh
+
+# later
+./circuitlord-vrmodinstaller-1.0.0-linux-x64/install.sh --uninstall
 ```
 
-Self-contained single directory (no .NET runtime required on the target):
+Layout (XDG, no root):
 
-```bash
-dotnet publish src/CircuitLord.VRModInstaller.App -c Release -r linux-x64 --self-contained true \
-  -p:PublishSingleFile=false -o publish/linux-x64
+| Item | Path |
+|---|---|
+| Application | `${XDG_DATA_HOME:-~/.local/share}/circuitlord-vrmodinstaller/app` |
+| Command | `~/.local/bin/circuitlord-vrmodinstaller` |
+| Menu entry | `${XDG_DATA_HOME:-~/.local/share}/applications/circuitlord-vrmodinstaller.desktop` |
+| Icon | `${XDG_DATA_HOME:-~/.local/share}/icons/hicolor/<size>/apps/circuitlord-vrmodinstaller.png` |
+
+`--uninstall` removes only those four items. It deliberately keeps the managed `tf2vr-linux`
+checkout, settings, logs/history/Steam journals, the installed `tf2vr` launcher and the mod, and
+says so in its output.
+
+This is the installer's own menu entry (`Categories=Utility;`). The Titanfall 2 VR game entry with
+`Categories=Game;X-WiVRn-VR;` is created by the app after the mod is installed and is not installed
+by this package.
+
+## Reproducibility
+
+Pinned inputs:
+
+- SDK version via `global.json`
+- every direct and transitive package via `packages.lock.json` in all three projects, restored with
+  `--locked-mode`
+- Avalonia `11.3.9`; `Tmds.DBus.Protocol` pinned to the patched `0.21.3` (CVE-2026-39959 backport)
+
+Deterministic output:
+
+- `Deterministic=true`, `ContinuousIntegrationBuild=true`, no PDBs in the package
+- archive written with `tar --sort=name --owner=0 --group=0 --numeric-owner --mtime=@SOURCE_DATE_EPOCH`
+  (`SOURCE_DATE_EPOCH` defaults to the last commit time)
+
+Measured on 2026-11-12: two consecutive clean builds produced the byte-identical archive
+
+```
+605f395ba956eea63082907a9f828ebce96cb571bf4e656502fbb39ebc23f1f4  circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz
 ```
 
-## Installer desktop entry (optional, for the installer app itself)
+Build is reproducible for the same commit, SDK and package sources; a NuGet package republished
+with different content would change the hash, which is the intended detection.
 
-`packaging/circuitlord-vrmodinstaller.desktop` targets `publish/linux-x64/CircuitLordVRModInstaller`
-and uses a distinct application id. Copy it to `~/.local/share/applications/` only after the binary
-exists at that path. This entry is for the installer UI, not for the VR game; it deliberately does
-not carry the WiVRn category.
+## Verified for this release
 
-## Not done yet
+| Check | Result |
+|---|---|
+| `dotnet build -c Release` | succeeds, 0 warnings |
+| `dotnet test -c Release` | 33/33 pass |
+| Two clean package builds | identical SHA-256 |
+| Archive contents guard | no game/mod payload |
+| `desktop-file-validate` on the shipped menu entry | valid |
+| Install into a throwaway `HOME` | app, symlink, 7 icon sizes, menu entry created |
+| `--uninstall` | app/icon/entry removed; `backend/` preserved |
+| Vulnerability audit (`dotnet list package --vulnerable --include-transitive`) | none |
 
-- AppImage / Flatpak / distribution packages.
-- Icon installation into the hicolor theme.
-- CI pipeline.
+## Known limitations
 
-These are honest gaps: the release build is reproducible but not yet distributed in a packaged
-format, and package-specific desktop/Steam permissions have not been evaluated.
+- `linux-x64` only; no arm64 build.
+- No AppImage, Flatpak or distribution package. A sandboxed package would need verified access to
+  the game directory and Steam configuration before it could be offered.
+- No CI pipeline; the commands above are the manual release procedure.
+- The packaged app is self-contained but not code-signed.

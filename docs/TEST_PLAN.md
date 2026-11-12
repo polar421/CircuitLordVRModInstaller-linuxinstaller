@@ -17,6 +17,19 @@ dotnet build CircuitLord.VRModInstaller.Linux.slnx
 | VDF | Round trip, unknown-field preservation, idempotent upsert, same-name conflict refusal, owned-only removal |
 | Steam transaction | Running → shutdown → backup → write → verify → reopen; refusal to restart; shutdown timeout writes nothing; write failure still reopens; reopen failure = recovery required; initially-closed stays closed |
 
+## Packaging (verified 2026-11-12)
+
+| Check | Command | Result |
+|---|---|---|
+| Release build | `dotnet build -c Release` | 0 warnings, 0 errors |
+| Release tests | `dotnet test -c Release` | 33/33 |
+| Two clean package builds | `packaging/build-release.sh` twice | identical SHA-256 (`605f395b…`) |
+| No game/mod payload | archive guard in the build script | pass |
+| Menu entry validity | `desktop-file-validate` on the rendered entry | valid |
+| Install | packaged `install.sh` with throwaway `HOME` | app + symlink + 7 icons + entry |
+| Uninstall | `install.sh --uninstall` | app/icon/entry removed, `backend/` kept |
+| Dependency audit | `dotnet list package --vulnerable --include-transitive` | no vulnerable packages |
+
 ## Not covered by automated tests
 
 - Real backend install/update/uninstall on a machine with Titanfall 2 installed.

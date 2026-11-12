@@ -448,7 +448,7 @@ public sealed class InstallerViewModel
             AddLog(line);
         }
         AddLog(result.Message);
-        SteamText = result.Message;
+        SteamText = result.Message ?? "Steam shortcut updated.";
         SetStage(result.Restart == RestartOutcome.Verified
             ? "Steam shortcut updated and Steam reopened"
             : result.Shortcut == ShortcutOutcome.Failed ? "Steam shortcut failed" : "Steam shortcut updated");
@@ -466,7 +466,7 @@ public sealed class InstallerViewModel
         var result = await _steamManager.RemoveAsync(
             _steamInstallation, _steamAccount, _launcher.LauncherPath, allowRestart, _lifetime.Token);
         AddLog(result.Message);
-        SteamText = result.Message;
+        SteamText = result.Message ?? "Steam shortcut removed.";
         RaiseChanged();
     }
 
@@ -666,7 +666,7 @@ public sealed class InstallerViewModel
         RaiseChanged();
     }
 
-    public void AddLog(string line)
+    public void AddLog(string? line)
     {
         if (string.IsNullOrWhiteSpace(line))
         {

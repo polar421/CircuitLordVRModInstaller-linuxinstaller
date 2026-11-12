@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- Matches the application so the locked restore for linux-x64 covers the
+         referenced project too. -->
+    <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>

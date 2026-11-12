@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- Pin transitive package versions in packages.lock.json so restores are reproducible. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>

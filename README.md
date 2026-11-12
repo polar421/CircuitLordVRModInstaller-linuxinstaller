@@ -22,9 +22,10 @@ reimplements Proton setup, downloads, checksums or the mod file layout.
 | Steam shortcut + graceful close / write / reopen transaction | Implemented and fixture tested; not tested against a live Steam client |
 | Manifest release notes | Implemented (HTTPS + cache + validation) |
 | Automated tests | 33 passing |
+| Reproducible self-contained `linux-x64` release + user-level installer | Implemented (see `docs/RELEASE.md`) |
 
 Not yet implemented: first-run wizard, dedicated diagnostics/integration pages, installation
-history UI, settings UI, AppImage/native packaging. See `docs/PROJECT_AUDIT.md` for the full
+history UI, settings UI, AppImage/Flatpak packages. See `docs/PROJECT_AUDIT.md` for the full
 feature matrix and `docs/TEST_PLAN.md` for what has and has not been verified.
 
 ## Requirements
@@ -40,7 +41,14 @@ feature matrix and `docs/TEST_PLAN.md` for what has and has not been verified.
 dotnet build CircuitLord.VRModInstaller.Linux.slnx
 dotnet run --project src/CircuitLord.VRModInstaller.App
 dotnet test tests/CircuitLord.VRModInstaller.Core.Tests
+
+# self-contained release archive + installer script for the current user
+packaging/build-release.sh
+./artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64/install.sh
 ```
+
+Packaging never bundles game files, mod packages or Proton builds; the app downloads and verifies
+those through the backend at install time.
 
 ## Safety guarantees
 
