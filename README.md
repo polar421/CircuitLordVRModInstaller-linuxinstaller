@@ -1,6 +1,6 @@
 # CircuitLord's VR Mod Installer — Unofficial Linux Port (beta)
 
-A native Linux desktop port of [CircuitLord's VR Mod Installer](https://github.com/CircuitLord/CircuitLordVRModInstaller).
+This is an **unofficial Linux port** of [CircuitLord's VR Mod Installer](https://github.com/CircuitLord/CircuitLordVRModInstaller).
 The original WPF interface is recreated in .NET 10 + Avalonia, so it runs without Wine.
 
 > **Unofficial Linux port.** This project is independently developed and is not made, developed,

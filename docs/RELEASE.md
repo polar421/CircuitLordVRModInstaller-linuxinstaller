@@ -20,8 +20,8 @@ dotnet test tests/CircuitLord.VRModInstaller.Core.Tests -c Release
 packaging/build-release.sh
 
 # 3. Inspect the result
-sha256sum -c artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz.sha256
-tar -tzf artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz | head
+sha256sum -c artifacts/circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz.sha256
+tar -tzf artifacts/circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz | head
 ```
 
 `build-release.sh` reads the version from the application project, so bumping `<Version>` in
@@ -30,7 +30,7 @@ tar -tzf artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz | head
 ## What the archive contains
 
 ```
-circuitlord-vrmodinstaller-1.0.0-linux-x64/
+circuitlord-vrmodinstaller-1.0.5-linux-x64/
   app/                                   self-contained publish (no .NET runtime needed)
     CircuitLordVRModInstaller            native ELF apphost
     *.dll, libSkiaSharp.so, …            Avalonia and .NET runtime files
@@ -51,15 +51,15 @@ script fails if it finds `*.zip`, `*.pak`, `*.vpk`, `*.exe`, `BepInEx*`, `Norths
 ## Install and uninstall
 
 ```bash
-tar -xzf circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz
-./circuitlord-vrmodinstaller-1.0.0-linux-x64/install.sh
+tar -xzf circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz
+./circuitlord-vrmodinstaller-1.0.5-linux-x64/install.sh
 
 # later
-./circuitlord-vrmodinstaller-1.0.0-linux-x64/install.sh --uninstall
+./circuitlord-vrmodinstaller-1.0.5-linux-x64/install.sh --uninstall
 ```
 
 Before writing anything, `install.sh` verifies every packaged file against the archive's
-`SHA256SUMS` (236 entries for 1.0.0) and prints `Verified <n> files against SHA256SUMS`. It aborts
+`SHA256SUMS` (236 entries for 1.0.5) and prints `Verified <n> files against SHA256SUMS`. It aborts
 with a non-zero exit and a clear message if a checksum mismatches, if the list contains an absolute
 or `..` path, or if `SHA256SUMS` is missing or empty. Nothing is created in the home directory on
 those failure paths.
@@ -105,7 +105,7 @@ Deterministic output:
 Measured on 2026-11-12: two consecutive clean builds produced the byte-identical archive
 
 ```
-6895d52aa7b9e115a1a9a09511469045320ecd34e77b8a0f3c8fcee12937deb2  circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz
+41479bfb1168d8e08ec81edbcd458d3062422197cc22c9ca4ae22fd966fec92d  circuitlord-vrmodinstaller-1.0.5-linux-x64.tar.gz
 ```
 
 Build is reproducible for the same commit, SDK and package sources; a NuGet package republished
@@ -118,15 +118,15 @@ pushed. The workflow runs `packaging/build-release.sh` and uploads the archive a
 The tag name is the release title and the tag annotation is the release body, so write the notes
 in the tag message. Prerelease status is derived from the tag:
 
-- tags with a suffix (anything after a hyphen, e.g. `v1.0.0-beta.1`, `v1.0.0-rc.1`) publish as
+- tags with a suffix (anything after a hyphen, e.g. `v1.0.5-beta.1`, `v1.0.5-rc.1`) publish as
   **prereleases**;
-- plain version tags (`v1.0.0`) publish as **normal releases**.
+- plain version tags (`v1.0.5`) publish as **normal releases**.
 
 Lightweight tags are rejected with a clear error. Example:
 
 ```bash
-git tag -a v1.0.0-beta.2 -m "What changed in this beta"
-git push origin v1.0.0-beta.2
+git tag -a v1.0.5-beta.2 -m "What changed in this beta"
+git push origin v1.0.5-beta.2
 ```
 
 ### Publishing from a release branch
@@ -137,8 +137,8 @@ version and notes, then creates the GitHub Release and its tag with the reposito
 live in `.github/release-notes/v<version>.md`.
 
 ```bash
-git branch release/v1.0.0
-git push origin release/v1.0.0
+git branch release/v1.0.5
+git push origin release/v1.0.5
 ```
 
 ## Verified for this release
@@ -146,8 +146,8 @@ git push origin release/v1.0.0
 | Check | Result |
 |---|---|
 | `dotnet build -c Release` | succeeds, 0 warnings |
-| `dotnet test -c Release` | 40/40 pass |
-| Two clean package builds | identical SHA-256 (`6895d52a…`) |
+| `dotnet test -c Release` | 52/52 pass |
+| Two clean package builds | identical SHA-256 (`41479bfb…`) |
 | Archive contents guard | no game/mod payload |
 | `desktop-file-validate` on the shipped menu entry | valid |
 | Install into a throwaway `HOME` | 236 files verified, app, symlink, 7 icon sizes, menu entry created |
