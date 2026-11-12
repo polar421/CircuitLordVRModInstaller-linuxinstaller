@@ -29,12 +29,38 @@ usage() {
   sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
+# Verifies every packaged file against the release's SHA256SUMS before anything
+# is written to the user's home. A mismatch means the archive is corrupt or was
+# tampered with, so installation stops with a clear message.
+verify_package() {
+  local sums="$HERE/SHA256SUMS"
+  [ -f "$sums" ] || die "SHA256SUMS is missing from this package; refusing to install an unverified archive."
+  command -v sha256sum >/dev/null 2>&1 || die "sha256sum (coreutils) is required to verify the package."
+
+  # Only relative paths that stay inside the extracted archive are acceptable.
+  if awk 'NF && ($2 ~ /^\// || $2 ~ /(^|\/)\.\.(\/|$)/)' "$sums" | grep -q .; then
+    die "SHA256SUMS contains a path outside this package; refusing to install."
+  fi
+
+  local count
+  count=$(awk 'NF' "$sums" | wc -l)
+  [ "$count" -gt 0 ] || die "SHA256SUMS is empty; refusing to install."
+
+  if ! ( cd "$HERE" && sha256sum --check --strict --quiet "$sums" ); then
+    die "package integrity check failed: a file does not match SHA256SUMS. Re-download the release archive and try again."
+  fi
+
+  printf 'Verified %s files against SHA256SUMS\n' "$count"
+}
+
 refresh_caches() {
   command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
   command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q -t -f "$ICON_ROOT" 2>/dev/null || true
 }
 
 install_app() {
+  verify_package
+
   [ -x "$HERE/app/CircuitLordVRModInstaller" ] || die "app/CircuitLordVRModInstaller is missing from the package."
   [ -f "$HERE/circuitlord-vrmodinstaller.desktop.in" ] || die "the desktop entry template is missing from the package."
   [ -d "$HERE/icons/hicolor" ] || die "the icon set is missing from the package."

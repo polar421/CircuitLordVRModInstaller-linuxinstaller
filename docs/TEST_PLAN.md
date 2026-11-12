@@ -23,10 +23,12 @@ dotnet build CircuitLord.VRModInstaller.Linux.slnx
 |---|---|---|
 | Release build | `dotnet build -c Release` | 0 warnings, 0 errors |
 | Release tests | `dotnet test -c Release` | 33/33 |
-| Two clean package builds | `packaging/build-release.sh` twice | identical SHA-256 (`605f395b…`) |
+| Two clean package builds | `packaging/build-release.sh` twice | identical SHA-256 (`fb8a07fa…`) |
 | No game/mod payload | archive guard in the build script | pass |
 | Menu entry validity | `desktop-file-validate` on the rendered entry | valid |
-| Install | packaged `install.sh` with throwaway `HOME` | app + symlink + 7 icons + entry |
+| Install | packaged `install.sh` with throwaway `HOME` | 231 files verified, app + symlink + 7 icons + entry |
+| Tampered archive | modified byte in a packaged `.dll` | aborted, nothing written |
+| Unsafe checksum list | absolute path added to `SHA256SUMS` | aborted, path rejected |
 | Uninstall | `install.sh --uninstall` | app/icon/entry removed, `backend/` kept |
 | Dependency audit | `dotnet list package --vulnerable --include-transitive` | no vulnerable packages |
 

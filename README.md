@@ -52,6 +52,8 @@ those through the backend at install time.
 
 ## Safety guarantees
 
+- The release installer verifies every file against the archive's `SHA256SUMS` before installing and
+  aborts on a mismatch, an unsafe path in the list, or a missing checksum file.
 - The normal Titanfall 2 installation and its Steam entry are never modified.
 - `shortcuts.vdf` is never written while the selected Steam client is running; it is backed up,
   written to a same-directory temporary file, re-parsed and atomically committed.
