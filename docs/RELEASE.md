@@ -39,6 +39,7 @@ circuitlord-vrmodinstaller-1.0.0-linux-x64/
   install.sh                             user-level install / --uninstall
   SHA256SUMS
   LICENSE
+  licenses/LiberationSerif-OFL.txt         bundled serif font licence (SIL OFL 1.1)
   THIRD-PARTY-NOTICES.md
   README.md
 ```
@@ -58,7 +59,7 @@ tar -xzf circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz
 ```
 
 Before writing anything, `install.sh` verifies every packaged file against the archive's
-`SHA256SUMS` (231 entries for 1.0.0) and prints `Verified <n> files against SHA256SUMS`. It aborts
+`SHA256SUMS` (232 entries for 1.0.0) and prints `Verified <n> files against SHA256SUMS`. It aborts
 with a non-zero exit and a clear message if a checksum mismatches, if the list contains an absolute
 or `..` path, or if `SHA256SUMS` is missing or empty. Nothing is created in the home directory on
 those failure paths.
@@ -98,7 +99,7 @@ Deterministic output:
 Measured on 2026-11-12: two consecutive clean builds produced the byte-identical archive
 
 ```
-fb8a07fa8b22816da5c2ba260ed9a5e7e4f8f4869f4e6fd302b972ca469d212b  circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz
+136bd95d550833f5ccbf3e3c110a23aaa08a59aa7bee778df53f63610400e358  circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz
 ```
 
 Build is reproducible for the same commit, SDK and package sources; a NuGet package republished
@@ -113,11 +114,13 @@ with different content would change the hash, which is the intended detection.
 | Two clean package builds | identical SHA-256 |
 | Archive contents guard | no game/mod payload |
 | `desktop-file-validate` on the shipped menu entry | valid |
-| Install into a throwaway `HOME` | 231 files verified, app, symlink, 7 icon sizes, menu entry created |
+| Install into a throwaway `HOME` | 232 files verified, app, symlink, 7 icon sizes, menu entry created |
 | Tampered archive (one byte changed) | install aborted before any write, clear integrity message |
 | Absolute path injected into `SHA256SUMS` | install aborted, path rejected |
 | Missing/empty `SHA256SUMS` | install aborted |
 | `--uninstall` | app/icon/entry removed; `backend/` preserved |
+| Launch from the installed menu entry (`gtk-launch circuitlord-vrmodinstaller` in a throwaway `HOME`) | window `CircuitLord's VR Mod Installer`, 800×740, `IsViewable`; owner's `/proc/<pid>/exe` is the installed binary; first run cloned the `tf2vr-linux` backend into `$XDG_DATA_HOME/circuitlord-vrmodinstaller/backend` |
+| `Exec` and `Icon` of that entry | `Exec` absolute and executable; GTK theme lookup resolved `circuitlord-vrmodinstaller` to the installed 48×48 PNG |
 | Vulnerability audit (`dotnet list package --vulnerable --include-transitive`) | none |
 
 ## Known limitations

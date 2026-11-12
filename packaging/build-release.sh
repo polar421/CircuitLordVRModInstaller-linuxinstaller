@@ -61,6 +61,10 @@ mkdir -p "$STAGE/icons"
 cp -a "$ROOT/packaging/icons/." "$STAGE/icons/"
 install -m 0644 "$ROOT/LICENSE" "$STAGE/LICENSE"
 install -m 0644 "$ROOT/THIRD-PARTY-NOTICES.md" "$STAGE/THIRD-PARTY-NOTICES.md"
+# Bundled font licence must travel with the font (SIL OFL 1.1).
+mkdir -p "$STAGE/licenses"
+install -m 0644 "$ROOT/src/CircuitLord.VRModInstaller.App/Assets/Fonts/LICENSE.txt" \
+  "$STAGE/licenses/LiberationSerif-OFL.txt"
 install -m 0644 "$ROOT/README.md" "$STAGE/README.md"
 
 # --- guards -----------------------------------------------------------------

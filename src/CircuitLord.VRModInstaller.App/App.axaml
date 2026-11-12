@@ -3,6 +3,12 @@
              x:Class="CircuitLord.VRModInstaller.App"
              RequestedThemeVariant="Dark">
 
+  <!--
+    Design system shared by every screen. Typography follows the original
+    CircuitLord installer's look; the original relies on Segoe UI Variable
+    Display, which cannot be redistributed, so the bundled OFL-licensed
+    Liberation Serif is used instead (see Assets/Fonts/LICENSE.txt).
+  -->
   <Application.Resources>
     <SolidColorBrush x:Key="Bg" Color="#14171C" />
     <SolidColorBrush x:Key="Panel" Color="#1C2027" />
@@ -10,7 +16,9 @@
     <SolidColorBrush x:Key="Stroke" Color="#2C323C" />
     <SolidColorBrush x:Key="Text" Color="#E9ECF2" />
     <SolidColorBrush x:Key="TextDim" Color="#939CAB" />
+    <SolidColorBrush x:Key="TextOnFill" Color="#0E1216" />
     <SolidColorBrush x:Key="Accent" Color="#4FA3E3" />
+    <SolidColorBrush x:Key="AccentHover" Color="#66B4EE" />
     <SolidColorBrush x:Key="Green" Color="#5FC98B" />
     <SolidColorBrush x:Key="Amber" Color="#E9A94A" />
     <SolidColorBrush x:Key="Red" Color="#E06C75" />
@@ -18,14 +26,23 @@
     <SolidColorBrush x:Key="GreenFill" Color="#1F5FC98B" />
     <SolidColorBrush x:Key="AmberFill" Color="#1FE9A94A" />
     <SolidColorBrush x:Key="RedFill" Color="#1FE06C75" />
+    <SolidColorBrush x:Key="Support" Color="#FF5E5B" />
+    <SolidColorBrush x:Key="SupportHover" Color="#FF7774" />
+    <SolidColorBrush x:Key="SupportFill" Color="#1FFF5E5B" />
+    <SolidColorBrush x:Key="SupportFillHover" Color="#33FF5E5B" />
+    <SolidColorBrush x:Key="SupportBorder" Color="#73FF5E5B" />
   </Application.Resources>
 
   <Application.Styles>
     <FluentTheme />
+
     <Style Selector="Window">
       <Setter Property="Background" Value="{StaticResource Bg}" />
-      <Setter Property="FontFamily" Value="Inter, Cantarell, Noto Sans, sans-serif" />
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+      <Setter Property="FontFamily" Value="avares://CircuitLordVRModInstaller/Assets/Fonts#Liberation Serif" />
     </Style>
+
+    <!-- typography -->
     <Style Selector="TextBlock">
       <Setter Property="Foreground" Value="{StaticResource Text}" />
     </Style>
@@ -40,10 +57,21 @@
       <Setter Property="FontSize" Value="14" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
+    <Style Selector="TextBlock.card-title">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
     <Style Selector="TextBlock.small">
       <Setter Property="FontSize" Value="11.5" />
       <Setter Property="Foreground" Value="{StaticResource TextDim}" />
     </Style>
+    <Style Selector="TextBlock.footer-note">
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="FontStyle" Value="Italic" />
+      <Setter Property="Foreground" Value="{StaticResource TextDim}" />
+    </Style>
+
+    <!-- buttons -->
     <Style Selector="Button">
       <Setter Property="Background" Value="{StaticResource Hover}" />
       <Setter Property="Foreground" Value="{StaticResource Text}" />
@@ -59,12 +87,12 @@
     </Style>
     <Style Selector="Button.primary">
       <Setter Property="Background" Value="{StaticResource Accent}" />
-      <Setter Property="Foreground" Value="#0E1216" />
+      <Setter Property="Foreground" Value="{StaticResource TextOnFill}" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#66B4EE" />
+      <Setter Property="Background" Value="{StaticResource AccentHover}" />
     </Style>
     <Style Selector="Button.ghost">
       <Setter Property="Background" Value="Transparent" />
@@ -75,14 +103,118 @@
       <Setter Property="BorderBrush" Value="{StaticResource Red}" />
       <Setter Property="Foreground" Value="{StaticResource Red}" />
     </Style>
+
+    <!-- title bar controls, drawn rather than relying on a symbol font -->
     <Style Selector="Button.titlebar">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Width" Value="44" />
-      <Setter Property="Height" Value="34" />
+      <Setter Property="Height" Value="46" />
       <Setter Property="CornerRadius" Value="0" />
-      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Foreground" Value="{StaticResource TextDim}" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
+    <Style Selector="Button.titlebar:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Hover}" />
+    </Style>
+    <Style Selector="Button.titlebar:pointerover">
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+    </Style>
+    <Style Selector="Button.titlebar.close:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#C42B1C" />
+    </Style>
+    <Style Selector="Button.titlebar.close:pointerover">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <!-- game card: rounded, clipped artwork, accent hover/focus like the original -->
+    <Style Selector="Button.gamecard">
+      <Setter Property="Background" Value="{StaticResource Panel}" />
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Name="PART_Card"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  ClipToBounds="True">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="Stretch"
+                              VerticalContentAlignment="Stretch" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="Button.gamecard:pointerover">
+      <Setter Property="Background" Value="{StaticResource Hover}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+    </Style>
+    <Style Selector="Button.gamecard:focus">
+      <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+    </Style>
+    <Style Selector="Button.gamecard:pressed">
+      <Setter Property="Opacity" Value="0.85" />
+    </Style>
+    <Style Selector="Button.gamecard:disabled">
+      <!-- The artwork is dimmed at the call site; keep the title readable like the original. -->
+      <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <!-- small pill badge over artwork, e.g. NEW -->
+    <Style Selector="Border.badge">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="White" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="7,2" />
+    </Style>
+    <Style Selector="TextBlock.badge-text">
+      <Setter Property="FontSize" Value="9.5" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="{StaticResource Bg}" />
+    </Style>
+
+    <!-- support pill, red outline on dark background -->
+    <Style Selector="Button.support">
+      <Setter Property="Background" Value="{StaticResource SupportFill}" />
+      <Setter Property="Foreground" Value="{StaticResource Support}" />
+      <Setter Property="BorderBrush" Value="{StaticResource SupportBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="Padding" Value="16,7" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.support:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource SupportFillHover}" />
+    </Style>
+    <Style Selector="Button.support:pointerover">
+      <Setter Property="BorderBrush" Value="{StaticResource Support}" />
+      <Setter Property="Foreground" Value="{StaticResource SupportHover}" />
+    </Style>
+    <Style Selector="Button.support:pressed">
+      <Setter Property="Opacity" Value="0.9" />
+    </Style>
+
+    <!-- chevron navigation indicator, replaces the Segoe MDL2 glyph used on Windows -->
+    <Style Selector="Path.chevron">
+      <Setter Property="Stroke" Value="{StaticResource TextDim}" />
+      <Setter Property="StrokeThickness" Value="1.5" />
+      <Setter Property="Fill" Value="Transparent" />
+    </Style>
+
     <Style Selector="Border.card">
       <Setter Property="Background" Value="{StaticResource Panel}" />
       <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />

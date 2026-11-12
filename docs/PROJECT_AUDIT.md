@@ -49,7 +49,7 @@ with `Categories=Game;` (no WiVRn category); state at `${XDG_DATA_HOME}/tf2vr` (
 
 | Original feature | Linux status |
 |---|---|
-| Dark original layout, title bar, game cards | Implemented in Avalonia (palette and structure ported) |
+| Dark original layout, title bar, game cards | Implemented in Avalonia; original palette, serif typography, icon title bar, NEW badge, card chevron and pinned support footer, with Linux backend statuses retained |
 | Big Walk VR | Shown, explicitly disabled: no Linux backend exists |
 | Titanfall 2 VR install/update | Implemented via `install.sh` |
 | Version selection | Implemented dynamically from `--list-versions` |

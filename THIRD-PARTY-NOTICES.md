@@ -20,6 +20,17 @@ for it; it is not presented as installable.
 The application clones this repository at runtime into the user's XDG data directory and invokes
 its `install.sh` / `tf2vr` launcher. It is not vendored or redistributed here.
 
+## Liberation Serif
+
+- Source: https://github.com/liberationfonts/liberation-fonts
+- License: SIL Open Font License 1.1 (`src/CircuitLord.VRModInstaller.App/Assets/Fonts/LICENSE.txt`)
+- Copyright (c) 2012 Red Hat, Inc., with Reserved Font Name Liberation
+
+The four serif faces (regular, bold, italic, bold italic) are bundled unmodified as Avalonia
+resources. The original Windows installer specifies Segoe UI Variable Display, which is proprietary
+and cannot be redistributed; Liberation Serif is the licensed stand-in used here to match the serif
+typography of the reference build.
+
 ## Avalonia
 
 - Source: https://github.com/AvaloniaUI/Avalonia

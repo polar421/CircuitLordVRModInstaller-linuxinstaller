@@ -1,14 +1,19 @@
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform;
 
 namespace CircuitLord.VRModInstaller;
 
 public partial class MainWindow : Window
 {
+    // Same destination as the original Windows installer (MainWindow.xaml.cs).
+    private const string SupportUrl = "https://ko-fi.com/circuitlord";
+
     private readonly InstallerViewModel _vm = new();
     private TaskCompletionSource<bool>? _confirmation;
     private bool _updatingVersions;
@@ -16,6 +21,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://CircuitLordVRModInstaller/Assets/app-256.png")));
         DataContext = _vm;
         _vm.Changed += (_, _) => RefreshUi();
         Opened += async (_, _) =>
@@ -69,11 +75,29 @@ public partial class MainWindow : Window
 
     private void Minimize_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
+    private void ResizeNorth_Click(object? sender, PointerPressedEventArgs e) => TryResize(WindowEdge.North, e);
+    private void ResizeSouth_Click(object? sender, PointerPressedEventArgs e) => TryResize(WindowEdge.South, e);
+    private void ResizeWest_Click(object? sender, PointerPressedEventArgs e) => TryResize(WindowEdge.West, e);
+    private void ResizeEast_Click(object? sender, PointerPressedEventArgs e) => TryResize(WindowEdge.East, e);
+    private void ResizeNorthWest_Click(object? sender, PointerPressedEventArgs e) => TryResize(WindowEdge.NorthWest, e);
+    private void ResizeNorthEast_Click(object? sender, PointerPressedEventArgs e) => TryResize(WindowEdge.NorthEast, e);
+    private void ResizeSouthWest_Click(object? sender, PointerPressedEventArgs e) => TryResize(WindowEdge.SouthWest, e);
+    private void ResizeSouthEast_Click(object? sender, PointerPressedEventArgs e) => TryResize(WindowEdge.SouthEast, e);
+
+    private void TryResize(WindowEdge edge, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            BeginResizeDrag(edge, e);
+        }
+    }
+
     private void Close_Click(object? sender, RoutedEventArgs e) => Close();
 
     private void SelectTitanfall_Click(object? sender, RoutedEventArgs e)
     {
         this.FindControl<StackPanel>("GameSelect")!.IsVisible = false;
+        this.FindControl<StackPanel>("GameFooter")!.IsVisible = false;
         this.FindControl<StackPanel>("InstallerView")!.IsVisible = true;
         RefreshUi();
     }
@@ -81,7 +105,26 @@ public partial class MainWindow : Window
     private void Back_Click(object? sender, RoutedEventArgs e)
     {
         this.FindControl<StackPanel>("GameSelect")!.IsVisible = true;
+        this.FindControl<StackPanel>("GameFooter")!.IsVisible = true;
         this.FindControl<StackPanel>("InstallerView")!.IsVisible = false;
+    }
+
+    private void OpenSupport_Click(object? sender, RoutedEventArgs e)
+    {
+        // Desktop-standard URL opening; never spawns a terminal and does not claim success.
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "xdg-open",
+                UseShellExecute = false,
+                ArgumentList = { SupportUrl },
+            });
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Could not open {SupportUrl}: {ex.Message}");
+        }
     }
 
     private async void Install_Click(object? sender, RoutedEventArgs e)
