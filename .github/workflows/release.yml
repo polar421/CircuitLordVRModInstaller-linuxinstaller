@@ -19,7 +19,11 @@ jobs:
           dotnet-version: "10.0.114"
 
       - name: Build release archive
-        run: packaging/build-release.sh
+        id: build
+        run: |
+          version=$(dotnet msbuild src/CircuitLord.VRModInstaller.App/CircuitLord.VRModInstaller.App.csproj -nologo -getProperty:Version | tr -d '\r\n')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          packaging/build-release.sh
 
       - name: Require an annotated tag
         run: |
@@ -28,6 +32,14 @@ jobs:
             echo "Push an annotated tag; its message becomes the release notes." >&2
             exit 1
           fi
+          version="${{ steps.build.outputs.version }}"
+          case "$GITHUB_REF_NAME" in
+            "v$version"|"v$version"-*) ;;
+            *)
+              echo "error: $GITHUB_REF_NAME does not match the application version $version." >&2
+              exit 1
+              ;;
+          esac
 
       - name: Publish release
         env:
@@ -41,6 +53,11 @@ jobs:
           else
             echo "Tag $tag is a plain version; publishing as a normal release."
           fi
+          archive="artifacts/circuitlord-vrmodinstaller-${{ steps.build.outputs.version }}-linux-x64.tar.gz"
+          if [[ ! -f "$archive" ]]; then
+            echo "error: expected release archive not found: $archive" >&2
+            exit 1
+          fi
           gh release create "$tag" "${args[@]}" \
-            artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz \
-            artifacts/circuitlord-vrmodinstaller-1.0.0-linux-x64.tar.gz.sha256
+            "$archive" \
+            "$archive.sha256"
