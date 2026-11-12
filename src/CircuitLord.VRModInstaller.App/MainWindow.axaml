@@ -215,7 +215,7 @@
                 ToolTip.Tip="Opens ko-fi.com/circuitlord in your browser">
           <StackPanel Orientation="Horizontal" Spacing="7">
             <TextBlock Text="♥" FontSize="12" Foreground="{Binding $parent[Button].Foreground}" />
-            <TextBlock Text="Support my work" Foreground="{Binding $parent[Button].Foreground}" />
+            <TextBlock Text="Support CircuitLord" Foreground="{Binding $parent[Button].Foreground}" />
           </StackPanel>
         </Button>
       </StackPanel>
