@@ -10,7 +10,11 @@ namespace CircuitLord.VRModInstaller.Tests;
 
 internal sealed class SettingsUiHost : IDisposable
 {
-    public SettingsUiHost(TemporaryHome home, Action<AppSettings>? configure = null)
+    public SettingsUiHost(
+        TemporaryHome home,
+        Action<AppSettings>? configure = null,
+        int width = 800,
+        int height = 740)
     {
         var paths = home.Paths;
         var store = new SettingsStore(paths);
@@ -35,7 +39,7 @@ internal sealed class SettingsUiHost : IDisposable
         View = new SettingsView();
         // Mirror MainWindow's RootScale so scale-dependent layout is exercised
         // by the headless Settings tests too.
-        var rootScale = new LayoutTransformControl
+        RootScale = new LayoutTransformControl
         {
             LayoutTransform = new ScaleTransform(
                 AppearanceManager.ScaleFactor,
@@ -44,9 +48,9 @@ internal sealed class SettingsUiHost : IDisposable
         };
         Window = new Window
         {
-            Width = 800,
-            Height = 740,
-            Content = rootScale,
+            Width = width,
+            Height = height,
+            Content = RootScale,
         };
 
         Window.Show();
@@ -56,6 +60,8 @@ internal sealed class SettingsUiHost : IDisposable
     }
 
     public Window Window { get; }
+
+    public LayoutTransformControl RootScale { get; }
 
     public SettingsView View { get; }
 

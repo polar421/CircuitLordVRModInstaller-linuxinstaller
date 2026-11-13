@@ -65,15 +65,33 @@ public sealed class SettingsTabUiTests : HeadlessUiTest
     });
 
     [Fact]
-    public Task RestoreDefaultsDoesNotOverlapAtCompactWidthAndMaximumScale() => Dispatch(() =>
+    public Task RestoreDefaultsRemainsUnclippedAtCompactWidthAndMaximumScale() => Dispatch(() =>
     {
-        using var ui = new SettingsUiHost(Home, settings => settings.UiScale = 150);
-        ui.Window.Width = 560;
-        HeadlessUi.Pump(300);
+        try
+        {
+            using var ui = new SettingsUiHost(
+                Home,
+                settings =>
+                {
+                    settings.UiScale = 150;
+                    settings.Language = "de";
+                },
+                width: 560,
+                height: 520);
 
-        Assert.Equal(150, AppearanceManager.ScalePercent);
-        Assert.Equal(150, ui.ViewModel.UiScalePercent);
-        AssertRestoreDefaultsLayout(ui, "560px window at 150% scale");
+            Assert.Equal(150, AppearanceManager.ScalePercent);
+            Assert.Equal(560, ui.Window.Bounds.Width);
+            Assert.Equal(520, ui.Window.Bounds.Height);
+            var scale = Assert.IsType<ScaleTransform>(ui.RootScale.LayoutTransform);
+            Assert.Equal(1.5, scale.ScaleX, 3);
+            var overlay = ui.View.FindControl<Border>("SettingsOverlay")!;
+            Assert.InRange(overlay.Bounds.Width, 560 / 1.5 - 1, 560 / 1.5 + 1);
+            AssertRestoreDefaultsLayout(ui, "560px window at 150% scale, German");
+        }
+        finally
+        {
+            Loc.Use("en");
+        }
     });
 
     [Fact]
@@ -204,22 +222,41 @@ public sealed class SettingsTabUiTests : HeadlessUiTest
     {
         var restoreButton = ui.View.FindControl<Button>("SettingsRestoreButton")!;
         Assert.True(restoreButton.IsVisible, $"Restore Defaults button must be visible ({context})");
-        Assert.Equal(1, Grid.GetColumn(restoreButton));
 
         var restoreDescription = ui.View.FindControl<TextBlock>("SettingsRestoreDescription")!;
         Assert.True(restoreDescription.IsVisible, $"Restore Defaults description must be visible ({context})");
         Assert.Equal(TextWrapping.Wrap, restoreDescription.TextWrapping);
 
+        var footer = ui.View.FindControl<Border>("SettingsFooter")!;
+        var footerBounds = BoundsIn(footer, ui.Window);
         var descriptionBounds = BoundsIn(restoreDescription, ui.Window);
         var buttonBounds = BoundsIn(restoreButton, ui.Window);
+        Assert.True(footerBounds.Width > 0 && footerBounds.Height > 0,
+            $"Restore Defaults footer must have a layout box ({context})");
+        Assert.True(Contains(new Rect(ui.Window.Bounds.Size), footerBounds),
+            $"Restore Defaults footer must remain inside the window ({context})");
         Assert.True(descriptionBounds.Width > 0 && descriptionBounds.Height > 0,
             $"Restore Defaults description must have a layout box ({context})");
         Assert.True(buttonBounds.Width > 0 && buttonBounds.Height > 0,
             $"Restore Defaults button must have a layout box ({context})");
+        Assert.True(Contains(footerBounds, descriptionBounds),
+            $"Restore Defaults description must remain inside its footer ({context})");
+        Assert.True(Contains(footerBounds, buttonBounds),
+            $"Restore Defaults button must remain inside its footer ({context})");
+        Assert.True(restoreDescription.Bounds.Height + 0.5 >= restoreDescription.DesiredSize.Height,
+            $"Restore Defaults description must not be vertically clipped ({context})");
+        Assert.True(restoreButton.Bounds.Width + 0.5 >= restoreButton.DesiredSize.Width,
+            $"Restore Defaults button label must not be horizontally clipped ({context})");
         Assert.False(
             descriptionBounds.Intersects(buttonBounds),
             $"Restore Defaults text must not overlap its button ({context})");
     }
+
+    private static bool Contains(Rect outer, Rect inner) =>
+        inner.X >= outer.X - 0.5
+        && inner.Y >= outer.Y - 0.5
+        && inner.Right <= outer.Right + 0.5
+        && inner.Bottom <= outer.Bottom + 0.5;
 
     private static Rect BoundsIn(Control control, Window relativeTo)
     {
