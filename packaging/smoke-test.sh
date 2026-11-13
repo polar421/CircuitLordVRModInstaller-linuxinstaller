@@ -2,7 +2,7 @@
 # Download a published release, verify its checksum, install it into a
 # throwaway HOME, and assert that its main window opens under Xvfb.
 #
-# Usage: packaging/smoke-test.sh v1.0.9-beta.3
+# Usage: packaging/smoke-test.sh v1.0.9-beta.4
 #
 # Requires curl, Xvfb, xvfb-run, xauth, xdotool and timeout.
 set -euo pipefail

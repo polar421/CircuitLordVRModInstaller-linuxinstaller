@@ -44,7 +44,7 @@ Both run in the release workflows.
 | Menu entry validity | `desktop-file-validate` on the rendered entry | valid |
 | Install | packaged `install.sh` with throwaway `HOME` | 257 files verified, app + symlink + 7 icons + entry |
 | Install upgrade / uninstall | `packaging/test-install.sh` | two package versions; backend/settings/state/tf2vr preserved; only app-owned files removed; resolved XDG paths printed |
-| Published-archive smoke test | `packaging/smoke-test.sh v1.0.9-beta.3` | downloaded archive and `.sha256` verified; 237 internal files verified; installed into throwaway HOME; main window found under Xvfb |
+| Published-archive smoke test | `packaging/smoke-test.sh v1.0.9-beta.4` | downloaded archive and `.sha256` verified; 237 internal files verified; installed into throwaway HOME; main window found under Xvfb |
 | Tampered archive | modified byte in a packaged `.dll` | aborted, nothing written |
 | Unsafe checksum list | absolute path added to `SHA256SUMS` | aborted, path rejected |
 | Uninstall | `install.sh --uninstall` | app/icon/entry removed, `backend/` kept |
