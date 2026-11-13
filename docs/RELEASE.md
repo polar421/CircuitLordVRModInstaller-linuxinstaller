@@ -43,6 +43,20 @@ packaging/build-release.sh
 The normal tag and release-branch workflows never set `VERSION_OVERRIDE`; they always publish the
 version in the project file. Use the override only for deliberate channel builds.
 
+## Packaging smoke test
+
+The release smoke test downloads a published archive, verifies its `.sha256`, installs it into a
+throwaway HOME, and launches the installed binary under Xvfb until its main window appears. It
+requires `curl`, `Xvfb`, `xauth`, `xdotool` and `timeout`.
+
+```bash
+packaging/smoke-test.sh v1.0.9-beta.3
+```
+
+`install.sh` additionally verifies every file against the archive's internal `SHA256SUMS`. The
+release workflows run this smoke test after publishing; a missing window fails the workflow
+instead of being skipped.
+
 ## What the archive contains
 
 ```
@@ -166,6 +180,7 @@ git push origin release/v1.0.9-beta.3
 | `dotnet build -c Release` | succeeds, 0 warnings |
 | `dotnet test -c Release` | 168/168 pass |
 | Local package build and checksum | archive produced; `.sha256` verified |
+| Published-archive smoke test | downloaded archive and `.sha256` verified; temporary-HOME install; main window found under Xvfb |
 | Archive contents guard | no game/mod payload |
 
 ## Historical 1.0.5 release verification

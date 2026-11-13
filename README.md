@@ -125,6 +125,9 @@ dotnet run --project src/CircuitLord.VRModInstaller.App
 
 # Build the self-contained release archive
 packaging/build-release.sh
+
+# Smoke-test a published release (download, checksum, temp-HOME install, window)
+packaging/smoke-test.sh v1.0.9-beta.3
 ```
 
 The packaging script publishes for `linux-x64`, stages the app, icons, menu-entry template and

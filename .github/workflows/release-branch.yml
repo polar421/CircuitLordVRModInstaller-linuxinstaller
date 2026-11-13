@@ -78,3 +78,11 @@ jobs:
           gh release create "$tag" "${args[@]}" \
             "$archive" \
             "$archive.sha256"
+
+      - name: Install smoke-test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xauth xdotool libfontconfig1 fonts-dejavu-core
+
+      - name: Smoke-test downloaded release
+        run: packaging/smoke-test.sh "v${{ steps.build.outputs.version }}"
