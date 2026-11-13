@@ -4,6 +4,13 @@
              x:Class="CircuitLord.VRModInstaller.SettingsTabBar"
              Focusable="False">
 
+  <UserControl.Styles>
+    <!-- Keep all four translated labels visible at 150% in the compact window. -->
+    <Style Selector="Button.tab">
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+  </UserControl.Styles>
+
   <Border BorderBrush="{DynamicResource Stroke}" BorderThickness="0,0,0,1">
     <ScrollViewer Name="SettingsTabScroll" HorizontalScrollBarVisibility="Auto"
                   VerticalScrollBarVisibility="Disabled"

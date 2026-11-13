@@ -58,7 +58,7 @@
                     HorizontalContentAlignment="Center" Click="Close_Click" />
           </Grid>
 
-          <Grid Height="44">
+          <Grid MinHeight="44">
             <Border Height="1" Background="{DynamicResource Stroke}" VerticalAlignment="Top"
                     Margin="42,9,42,0" />
             <Grid ColumnDefinitions="*,*,*">
