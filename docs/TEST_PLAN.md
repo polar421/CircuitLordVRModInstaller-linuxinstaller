@@ -7,7 +7,7 @@ dotnet test CircuitLord.VRModInstaller.Linux.slnx
 dotnet build CircuitLord.VRModInstaller.Linux.slnx
 ```
 
-## Automated (174 tests, all passing on 2026-11-13)
+## Automated (190 tests, all passing on 2026-11-13)
 
 The solution includes the Core service/unit tests and Avalonia headless UI tests.
 Both run in the release workflows.

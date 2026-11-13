@@ -22,6 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Snapshots/**/*.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\CircuitLord.VRModInstaller.App\CircuitLord.VRModInstaller.App.csproj" />
   </ItemGroup>
 

@@ -47,6 +47,7 @@ public partial class MainWindow : Window
     private bool _gamePageOpen;
     private bool _gameTransitionRunning;
     private bool _gameTransitionOpening;
+    private Dictionary<Control, AccessibilityView>? _installerPageAccessibilityViews;
     private CancellationTokenSource? _gameTransitionCts;
     private long _gameTransitionVersion;
     private bool _initializationComplete;
@@ -106,7 +107,7 @@ public partial class MainWindow : Window
         VersionPopup.PlacementTarget = this.FindControl<Button>("VersionPickerButton");
         // Tunnel Escape so Settings closes even when focus is on a control that
         // consumes the bubbling key event (for example a dropdown or text box).
-        AddHandler(KeyDownEvent, SettingsEscape_Handler, RoutingStrategies.Tunnel);
+        AddHandler(KeyDownEvent, BackNavigation_Handler, RoutingStrategies.Tunnel);
         Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://CircuitLordVRModInstaller/Assets/app-256.png")));
         ApplyCornerStyle(_vm.RoundedCorners);
         AppearanceManager.ScaleChanged += Appearance_Changed;
@@ -294,8 +295,24 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SettingsEscape_Handler(object? sender, KeyEventArgs e)
+    private void BackNavigation_Handler(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Back)
+        {
+            // Backspace must remain a text-editing key in search and detail
+            // fields, and must not close the page underneath an overlay.
+            if (IsTextInputFocused() || HasOpenGamePageOverlay())
+            {
+                return;
+            }
+            if (_gamePageOpen)
+            {
+                RequestGamePage(open: false);
+                e.Handled = true;
+            }
+            return;
+        }
+
         if (e.Key != Key.Escape)
         {
             return;
@@ -337,11 +354,37 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
-        if (_gamePageOpen && InstallerTabs.SelectedTab != TitanfallTab.Overview)
+        if (_gamePageOpen)
         {
-            SelectTitanfallTab(TitanfallTab.Overview, focusTab: true);
+            // Escape is a page-level back action, not a tab-level shortcut.
+            // It must leave Titanfall from Overview as well as from every tab.
+            RequestGamePage(open: false);
             e.Handled = true;
         }
+    }
+
+    private bool IsTextInputFocused()
+    {
+        var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
+        return focused is TextBox || focused?.FindAncestorOfType<TextBox>() is not null;
+    }
+
+    private bool HasOpenGamePageOverlay()
+    {
+        var attribution = this.FindControl<Border>("AttributionOverlay");
+        var confirm = this.FindControl<Border>("ConfirmOverlay");
+        var changelog = this.FindControl<Border>("ChangelogOverlay");
+        var versionPopup = this.FindControl<Popup>("VersionPopup");
+        return SettingsPanel.IsVisible
+            || SetupWizardPanel.IsVisible
+            || HistoryPanel.IsVisible
+            || ReleaseExplorerPanel.IsVisible
+            || attribution?.IsVisible == true
+            || confirm?.IsVisible == true
+            || changelog?.IsVisible == true
+            || versionPopup?.IsOpen == true
+            || NotificationCenter.IsOpen
+            || this.GetVisualDescendants().OfType<HelpTip>().Any(tip => tip.IsOpen);
     }
 
     private void RefreshUi()
@@ -739,10 +782,49 @@ public partial class MainWindow : Window
     private void Close_Click(object? sender, RoutedEventArgs e) => Close();
 
     private void SelectTitanfall_Click(object? sender, RoutedEventArgs e)
-        => _ = OpenGamePageAsync();
+        => RequestGamePage(open: true);
 
     private void Back_Click(object? sender, RoutedEventArgs e)
-        => _ = CloseGamePageAsync();
+        => RequestGamePage(open: false);
+
+    private void RequestGamePage(bool open)
+    {
+        HelpTip.CloseOpen();
+        if (_gameTransitionRunning)
+        {
+            if (_gameTransitionOpening == open)
+            {
+                return;
+            }
+
+            // A request during a transition wins. Reduced motion has no useful
+            // reversal frames, so settle synchronously; full motion turns the
+            // in-flight surfaces around from their current opacity and offset.
+            if (!AppearanceManager.AnimationsEnabled)
+            {
+                CancelGameTransition();
+                if (open)
+                {
+                    FinishOpenState();
+                }
+                else
+                {
+                    FinishCloseState();
+                }
+                return;
+            }
+
+            _ = ReverseGamePageTransitionAsync(open);
+            return;
+        }
+
+        if (open == _gamePageOpen)
+        {
+            return;
+        }
+
+        _ = open ? OpenGamePageAsync() : CloseGamePageAsync();
+    }
 
     private void TitanfallTabs_SelectionChanged(object? sender, TabSelectionChangedEventArgs<TitanfallTab> e)
     {
@@ -962,7 +1044,7 @@ public partial class MainWindow : Window
         SelectTitanfallTab(TitanfallTab.Overview, focusTab: false, animate: false);
         installerPage.IsVisible = true;
         installerScroll.IsVisible = true;
-        SetInstallerHeaderVisible(true);
+        SetInstallerPageInert(false);
         CloseVersionPicker();
         _gameScrollOffset = gameScroll.Offset.Y;
         _gamePageOpen = true;
@@ -977,13 +1059,17 @@ public partial class MainWindow : Window
         try
         {
             // The destination is laid out invisibly while the outgoing page
-            // remains interactive only until the transition starts.
+            // remains interactive only until the transition starts. Animate the
+            // whole Titanfall surface so its chrome cannot trail the content.
             gameScroll.IsHitTestVisible = false;
             footer.IsHitTestVisible = false;
+            installerPage.Opacity = 0;
+            installerPage.RenderTransform = IdentityTransform;
+            installerPage.IsHitTestVisible = false;
             installerScroll.IsVisible = true;
-            installerScroll.Opacity = 0;
+            installerScroll.Opacity = 1;
             installerScroll.RenderTransform = IdentityTransform;
-            installerScroll.IsHitTestVisible = false;
+            installerScroll.IsHitTestVisible = true;
             PrepareContentGroups(groups, plan.AnimateContent);
             RefreshUi();
 
@@ -1008,7 +1094,7 @@ public partial class MainWindow : Window
                     thumbnail, gameScroll, hero, installerScroll,
                     out var artworkStart, out var artworkTarget))
             {
-                PreparePage(installerScroll, incoming: true);
+                PreparePage(installerPage, incoming: true);
                 PreparePage(gameScroll, incoming: false);
                 PreparePage(footer, incoming: false);
                 thumbnail.Opacity = 0;
@@ -1018,20 +1104,20 @@ public partial class MainWindow : Window
             else
             {
                 HideArtworkLayer();
-                PreparePage(installerScroll, incoming: true);
+                PreparePage(installerPage, incoming: true);
                 PreparePage(gameScroll, incoming: false);
                 PreparePage(footer, incoming: false);
             }
 
             AnimatePage(gameScroll, incoming: false, plan.PageOutDuration);
-            AnimatePage(installerScroll, incoming: true, plan.PageInDuration);
+            AnimatePage(installerPage, incoming: true, plan.PageInDuration);
             AnimatePage(footer, incoming: false, plan.PageOutDuration);
             var contentReveal = RevealContentAsync(groups, plan, cts.Token);
 
             // The page becomes usable as soon as it is fully opaque; content
             // details may still be settling underneath it.
             await Task.Delay(plan.PageInDuration, cts.Token);
-            installerScroll.IsHitTestVisible = true;
+            installerPage.IsHitTestVisible = true;
             FocusAfterLayout(
                 this.FindControl<Button>("BackToGamesButton"),
                 installerScroll,
@@ -1100,6 +1186,9 @@ public partial class MainWindow : Window
 
         SelectTitanfallTab(TitanfallTab.Overview, focusTab: false, animate: false);
         installerPage.IsVisible = true;
+        installerPage.Opacity = 1;
+        installerPage.RenderTransform = IdentityTransform;
+        installerPage.IsHitTestVisible = false;
         installerScroll.IsVisible = true;
         CloseVersionPicker();
         _installerScrollOffset = installerScroll.Offset.Y;
@@ -1124,10 +1213,9 @@ public partial class MainWindow : Window
             footer.RenderTransform = IdentityTransform;
             footer.IsHitTestVisible = false;
             ResetContentGroups(groups);
-            // The tab strip and back row sit outside the scrolling page. Hide
-            // them with the outgoing page so they cannot linger over the game
-            // selection while its fade-in is running.
-            SetInstallerHeaderVisible(false);
+            // The whole Titanfall surface owns the chrome, so disabling it
+            // makes the nav, tabs, and scroll content inert together.
+            SetInstallerPageInert(true);
 
             if (!plan.AnimatePages)
             {
@@ -1151,7 +1239,7 @@ public partial class MainWindow : Window
                     out var artworkStart, out var artworkTarget))
             {
                 PreparePage(gameScroll, incoming: true);
-                PreparePage(installerScroll, incoming: false);
+                PreparePage(installerPage, incoming: false);
                 PreparePage(footer, incoming: true);
                 thumbnail.Opacity = 0;
                 BeginArtwork(artworkStart, artworkTarget, opening: false, plan.ArtworkDuration);
@@ -1161,11 +1249,11 @@ public partial class MainWindow : Window
             {
                 HideArtworkLayer();
                 PreparePage(gameScroll, incoming: true);
-                PreparePage(installerScroll, incoming: false);
+                PreparePage(installerPage, incoming: false);
                 PreparePage(footer, incoming: true);
             }
 
-            AnimatePage(installerScroll, incoming: false, plan.PageOutDuration);
+            AnimatePage(installerPage, incoming: false, plan.PageOutDuration);
             AnimatePage(gameScroll, incoming: true, plan.PageInDuration);
             AnimatePage(footer, incoming: true, plan.PageInDuration);
 
@@ -1212,6 +1300,118 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task ReverseGamePageTransitionAsync(bool open)
+    {
+        if (!_gameTransitionRunning || _gameTransitionOpening == open)
+        {
+            return;
+        }
+
+        var gameScroll = this.FindControl<ScrollViewer>("GameScroll");
+        var installerScroll = this.FindControl<ScrollViewer>("InstallerScroll");
+        var installerPage = this.FindControl<Grid>("InstallerPage");
+        var footer = this.FindControl<StackPanel>("GameFooter");
+        var back = this.FindControl<Button>("BackToGamesButton");
+        if (gameScroll is null || installerScroll is null || installerPage is null
+            || footer is null || back is null)
+        {
+            return;
+        }
+
+        var plan = GamePageTransitionPlan.For(AppearanceManager.AnimationsEnabled);
+        var groups = InstallerContentGroups();
+
+        // Invalidate the old task before changing visual state. Its finally block
+        // deliberately ignores stale generations, so the replacement owns the
+        // shared cancellation source from here on.
+        CancelGameTransition();
+        _gamePageOpen = open;
+        _gameTransitionOpening = open;
+        var cts = new CancellationTokenSource();
+        _gameTransitionCts = cts;
+        var generation = ++_gameTransitionVersion;
+        try
+        {
+            CloseVersionPicker();
+            HideArtworkLayer();
+            installerPage.IsVisible = true;
+            installerScroll.IsVisible = true;
+            gameScroll.IsVisible = true;
+            footer.IsVisible = true;
+            installerPage.IsHitTestVisible = false;
+            gameScroll.IsHitTestVisible = false;
+            footer.IsHitTestVisible = false;
+            installerScroll.IsHitTestVisible = open;
+            SetInstallerPageInert(!open);
+            ResetContentGroups(groups);
+
+            await RestoreScrollAsync(
+                open ? installerScroll : gameScroll,
+                open ? _installerScrollOffset : _gameScrollOffset);
+            if (generation != _gameTransitionVersion || cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            // Reuse the current animated values as the starting point; this is
+            // what makes an interrupted open/close reverse instead of snapping.
+            AnimatePage(
+                installerPage,
+                incoming: open,
+                open ? plan.PageInDuration : plan.PageOutDuration);
+            AnimatePage(
+                gameScroll,
+                incoming: !open,
+                open ? plan.PageOutDuration : plan.PageInDuration);
+            AnimatePage(
+                footer,
+                incoming: !open,
+                open ? plan.PageOutDuration : plan.PageInDuration);
+
+            await Task.Delay(plan.PageInDuration, cts.Token);
+            if (generation != _gameTransitionVersion || cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (open)
+            {
+                installerPage.IsHitTestVisible = true;
+                installerScroll.IsHitTestVisible = true;
+                FocusAfterLayout(back, installerScroll, _installerScrollOffset);
+                FinishOpenState(focusDestination: false);
+            }
+            else
+            {
+                gameScroll.IsHitTestVisible = true;
+                FinishCloseState();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Another navigation request reversed this transition again.
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Game page reverse transition failed: {ex.Message}");
+            if (generation == _gameTransitionVersion)
+            {
+                FinishGameTransitionNow();
+            }
+        }
+        finally
+        {
+            if (generation == _gameTransitionVersion)
+            {
+                if (ReferenceEquals(_gameTransitionCts, cts))
+                {
+                    _gameTransitionCts = null;
+                }
+                cts.Dispose();
+            }
+        }
+    }
+
     private void FinishOpenState(bool focusDestination = true)
     {
         HideArtworkLayer();
@@ -1219,10 +1419,6 @@ public partial class MainWindow : Window
         var installerScroll = this.FindControl<ScrollViewer>("InstallerScroll");
         var installerPage = this.FindControl<Grid>("InstallerPage");
         var footer = this.FindControl<StackPanel>("GameFooter");
-        if (installerPage is not null)
-        {
-            installerPage.IsVisible = true;
-        }
         if (gameScroll is not null)
         {
             ResetPage(gameScroll);
@@ -1248,8 +1444,14 @@ public partial class MainWindow : Window
             footer.IsVisible = false;
             footer.IsHitTestVisible = true;
         }
+        if (installerPage is not null)
+        {
+            ResetPage(installerPage);
+            installerPage.IsVisible = true;
+            installerPage.IsHitTestVisible = true;
+        }
+        SetInstallerPageInert(false);
         ResetContentGroups(InstallerContentGroups());
-        SetInstallerHeaderVisible(true);
         _gamePageOpen = true;
         _gameTransitionRunning = false;
         if (focusDestination)
@@ -1277,8 +1479,11 @@ public partial class MainWindow : Window
         var footer = this.FindControl<StackPanel>("GameFooter");
         if (installerPage is not null)
         {
+            ResetPage(installerPage);
             installerPage.IsVisible = false;
+            installerPage.IsHitTestVisible = true;
         }
+        SetInstallerPageInert(false);
         if (installerScroll is not null)
         {
             ResetPage(installerScroll);
@@ -1299,7 +1504,6 @@ public partial class MainWindow : Window
             footer.IsHitTestVisible = true;
         }
         ResetContentGroups(InstallerContentGroups());
-        SetInstallerHeaderVisible(false);
         _gamePageOpen = false;
         _gameTransitionRunning = false;
         FocusAfterLayout(
@@ -1308,20 +1512,54 @@ public partial class MainWindow : Window
             _gameScrollOffset);
     }
 
-    private void SetInstallerHeaderVisible(bool visible)
+    private void SetInstallerPageInert(bool inert)
     {
-        var nav = this.FindControl<Grid>("InstallerNav");
-        if (nav is not null)
+        var page = this.FindControl<Grid>("InstallerPage");
+        if (page is null)
         {
-            nav.Opacity = visible ? 1 : 0;
-            nav.IsHitTestVisible = visible;
+            return;
         }
 
-        var tabs = this.FindControl<TitanfallTabBar>("InstallerTabs");
-        if (tabs is not null)
+        if (!inert)
         {
-            tabs.Opacity = visible ? 1 : 0;
-            tabs.IsHitTestVisible = visible;
+            if (_installerPageAccessibilityViews is not null)
+            {
+                foreach (var (control, view) in _installerPageAccessibilityViews)
+                {
+                    AutomationProperties.SetAccessibilityView(control, view);
+                }
+                _installerPageAccessibilityViews = null;
+            }
+            page.IsEnabled = true;
+            return;
+        }
+
+        var hadFocus = page.IsKeyboardFocusWithin;
+        _installerPageAccessibilityViews ??= new Dictionary<Control, AccessibilityView>();
+        foreach (var control in SurfaceControls(page))
+        {
+            if (_installerPageAccessibilityViews.TryAdd(
+                    control, AutomationProperties.GetAccessibilityView(control)))
+            {
+                AutomationProperties.SetAccessibilityView(control, AccessibilityView.Raw);
+            }
+        }
+        page.IsEnabled = false;
+
+        // The page owns the Back button and tabs. Move focus to the game
+        // selection before disabling it can strand focus in hidden chrome.
+        if (hadFocus)
+        {
+            this.FindControl<Button>("TitanfallCard")?.Focus();
+        }
+    }
+
+    private static IEnumerable<Control> SurfaceControls(Control root)
+    {
+        yield return root;
+        foreach (var control in root.GetVisualDescendants().OfType<Control>())
+        {
+            yield return control;
         }
     }
 

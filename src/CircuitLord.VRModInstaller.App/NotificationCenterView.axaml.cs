@@ -58,6 +58,8 @@ public partial class NotificationCenterView : UserControl
         NotificationPopup.IsOpen = false;
     }
 
+    public bool IsOpen => NotificationPopup.IsOpen;
+
     public bool HandleEscape()
     {
         if (!NotificationPopup.IsOpen)
