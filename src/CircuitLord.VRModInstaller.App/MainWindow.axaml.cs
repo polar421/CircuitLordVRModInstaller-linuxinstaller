@@ -962,6 +962,7 @@ public partial class MainWindow : Window
         SelectTitanfallTab(TitanfallTab.Overview, focusTab: false, animate: false);
         installerPage.IsVisible = true;
         installerScroll.IsVisible = true;
+        SetInstallerHeaderVisible(true);
         CloseVersionPicker();
         _gameScrollOffset = gameScroll.Offset.Y;
         _gamePageOpen = true;
@@ -1123,6 +1124,10 @@ public partial class MainWindow : Window
             footer.RenderTransform = IdentityTransform;
             footer.IsHitTestVisible = false;
             ResetContentGroups(groups);
+            // The tab strip and back row sit outside the scrolling page. Hide
+            // them with the outgoing page so they cannot linger over the game
+            // selection while its fade-in is running.
+            SetInstallerHeaderVisible(false);
 
             if (!plan.AnimatePages)
             {
@@ -1244,6 +1249,7 @@ public partial class MainWindow : Window
             footer.IsHitTestVisible = true;
         }
         ResetContentGroups(InstallerContentGroups());
+        SetInstallerHeaderVisible(true);
         _gamePageOpen = true;
         _gameTransitionRunning = false;
         if (focusDestination)
@@ -1293,12 +1299,30 @@ public partial class MainWindow : Window
             footer.IsHitTestVisible = true;
         }
         ResetContentGroups(InstallerContentGroups());
+        SetInstallerHeaderVisible(false);
         _gamePageOpen = false;
         _gameTransitionRunning = false;
         FocusAfterLayout(
             this.FindControl<Button>("TitanfallCard"),
             gameScroll,
             _gameScrollOffset);
+    }
+
+    private void SetInstallerHeaderVisible(bool visible)
+    {
+        var nav = this.FindControl<Grid>("InstallerNav");
+        if (nav is not null)
+        {
+            nav.Opacity = visible ? 1 : 0;
+            nav.IsHitTestVisible = visible;
+        }
+
+        var tabs = this.FindControl<TitanfallTabBar>("InstallerTabs");
+        if (tabs is not null)
+        {
+            tabs.Opacity = visible ? 1 : 0;
+            tabs.IsHitTestVisible = visible;
+        }
     }
 
     private void FinishGameTransitionNow()
