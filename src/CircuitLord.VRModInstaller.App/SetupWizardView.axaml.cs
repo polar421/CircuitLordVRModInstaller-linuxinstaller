@@ -434,7 +434,7 @@ public partial class SetupWizardView : UserControl
         }
         if (!_vm.SteamDetected)
         {
-            return (StatusKind.Neutral, Loc.Get("steamNotDetected"), Loc.Get("steamIntegrationDescription"));
+            return (StatusKind.Neutral, Loc.Get("steamNotDetected"), Loc.Get("wizardSteamNotDetectedDetail"));
         }
         if (!_vm.HasLauncher)
         {
@@ -495,14 +495,6 @@ public partial class SetupWizardView : UserControl
         else if (_step == Step.WiVrn && vm.WiVrnAvailable && !vm.DesktopEntryInstalled && !vm.HasLauncher)
         {
             hint = Loc.Get("wizardWiVrnAfterInstall");
-        }
-        else if (_step == Step.Steam && !vm.SteamDetected)
-        {
-            hint = Loc.Get("steamIntegrationDescription");
-        }
-        else if (_step == Step.Steam && !vm.HasLauncher)
-        {
-            hint = Loc.Get("wizardSteamNeedsLauncherDetail");
         }
         else if (_step == Step.Steam && vm.HasSteamAccount && vm.IsSteamRunning)
         {

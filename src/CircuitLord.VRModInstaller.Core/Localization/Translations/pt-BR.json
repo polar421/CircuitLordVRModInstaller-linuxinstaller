@@ -439,6 +439,7 @@
   "wizardSetupWiVrn": "Configurar entrada do WiVRn",
   "wizardSteamTitle": "Adicionar o atalho da Steam",
   "wizardSteamNeedsLauncherDetail": "O atalho aponta para ~/.local/bin/tf2vr, criado pelo backend após uma instalação bem-sucedida. Você pode adicioná-lo depois nas Configurações.",
+  "wizardSteamNotDetectedDetail": "Instale o Steam, abra-o uma vez e volte aqui. O atalho da Steam é opcional.",
   "wizardReleaseTitle": "Escolher um canal de versão",
   "wizardReleaseBody": "Stable acompanha a versão mais recente. Beta acompanha a compilação beta mais recente. Você pode mudar isso a qualquer momento na tela do instalador.",
   "wizardReleaseChooseDetail": "Escolha Stable ou Beta e continue. A seleção é salva como o token exato do backend.",

@@ -439,6 +439,7 @@
   "wizardSetupWiVrn": "Configura voce WiVRn",
   "wizardSteamTitle": "Aggiungi la scorciatoia Steam",
   "wizardSteamNeedsLauncherDetail": "La scorciatoia punta a ~/.local/bin/tf2vr, creato dal backend dopo un’installazione riuscita. Puoi aggiungerla più tardi dalle Impostazioni.",
+  "wizardSteamNotDetectedDetail": "Installa Steam, avvialo una volta, quindi torna qui. La scorciatoia Steam è facoltativa.",
   "wizardReleaseTitle": "Scegli un canale di versione",
   "wizardReleaseBody": "Stable segue l’ultima versione. Beta segue l’ultima build beta. Puoi cambiarlo in qualsiasi momento nella schermata dell’installer.",
   "wizardReleaseChooseDetail": "Scegli Stable o Beta, poi continua. La scelta viene salvata come token esatto del backend.",

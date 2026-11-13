@@ -439,6 +439,7 @@
   "wizardSetupWiVrn": "Configurar entrada de WiVRn",
   "wizardSteamTitle": "Añadir el acceso directo de Steam",
   "wizardSteamNeedsLauncherDetail": "El acceso directo apunta a ~/.local/bin/tf2vr, que el backend crea tras una instalación correcta. Puedes añadirlo más tarde desde Configuración.",
+  "wizardSteamNotDetectedDetail": "Instala Steam, ábrelo una vez y vuelve aquí. El acceso directo de Steam es opcional.",
   "wizardReleaseTitle": "Elegir un canal de versión",
   "wizardReleaseBody": "Stable sigue la última versión. Beta sigue la última compilación beta. Puedes cambiarlo en cualquier momento en la pantalla del instalador.",
   "wizardReleaseChooseDetail": "Elige Stable o Beta y continúa. La selección se guarda como el token exacto del backend.",

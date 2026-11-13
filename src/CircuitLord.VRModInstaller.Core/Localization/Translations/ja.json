@@ -439,6 +439,7 @@
   "wizardSetupWiVrn": "WiVRn エントリを設定",
   "wizardSteamTitle": "Steam ショートカットを追加",
   "wizardSteamNeedsLauncherDetail": "ショートカットは ~/.local/bin/tf2vr を指します。このファイルはインストール成功後にバックエンドが作成します。後から設定で追加できます。",
+  "wizardSteamNotDetectedDetail": "Steam をインストールして一度起動し、ここに戻ってください。Steam ショートカットは任意です。",
   "wizardReleaseTitle": "リリースチャンネルを選択",
   "wizardReleaseBody": "Stable は最新リリース、Beta は最新ベータビルドに従います。インストーラー画面でいつでも変更できます。",
   "wizardReleaseChooseDetail": "Stable または Beta を選んで続行してください。選択はバックエンドの正確なトークンとして保存されます。",

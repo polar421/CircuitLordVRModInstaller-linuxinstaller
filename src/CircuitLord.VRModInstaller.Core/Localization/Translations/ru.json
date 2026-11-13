@@ -439,6 +439,7 @@
   "wizardSetupWiVrn": "Настроить ярлык WiVRn",
   "wizardSteamTitle": "Добавить ярлык Steam",
   "wizardSteamNeedsLauncherDetail": "Ярлык указывает на ~/.local/bin/tf2vr, который бэкенд создаёт после успешной установки. Его можно добавить позже в настройках.",
+  "wizardSteamNotDetectedDetail": "Установите Steam, запустите его один раз и вернитесь сюда. Ярлык Steam необязателен.",
   "wizardReleaseTitle": "Выбрать канал выпуска",
   "wizardReleaseBody": "Stable следует за последним выпуском. Beta — за последней бета-сборкой. Это можно изменить в любой момент на экране установщика.",
   "wizardReleaseChooseDetail": "Выберите Stable или Beta и продолжите. Выбор сохраняется как точный токен бэкенда.",

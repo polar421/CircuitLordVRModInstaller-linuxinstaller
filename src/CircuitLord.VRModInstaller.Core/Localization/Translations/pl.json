@@ -439,6 +439,7 @@
   "wizardSetupWiVrn": "Skonfiguruj wpis WiVRn",
   "wizardSteamTitle": "Dodaj skrót Steam",
   "wizardSteamNeedsLauncherDetail": "Skrót wskazuje na ~/.local/bin/tf2vr, tworzony przez backend po udanej instalacji. Możesz dodać go później w Ustawieniach.",
+  "wizardSteamNotDetectedDetail": "Zainstaluj Steam, uruchom go raz, a następnie wróć tutaj. Skrót Steam jest opcjonalny.",
   "wizardReleaseTitle": "Wybierz kanał wydania",
   "wizardReleaseBody": "Stable podąża za najnowszym wydaniem. Beta za najnowszą kompilacją beta. Możesz to zmienić w dowolnym momencie na ekranie instalatora.",
   "wizardReleaseChooseDetail": "Wybierz Stable lub Beta i kontynuuj. Wybór jest zapisywany jako dokładny token backendu.",

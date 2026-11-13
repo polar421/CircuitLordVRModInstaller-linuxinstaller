@@ -439,6 +439,7 @@
   "wizardSetupWiVrn": "设置 WiVRn 条目",
   "wizardSteamTitle": "添加 Steam 快捷方式",
   "wizardSteamNeedsLauncherDetail": "快捷方式指向 ~/.local/bin/tf2vr，该文件由后端在成功安装后创建。你可以稍后在设置中添加。",
+  "wizardSteamNotDetectedDetail": "安装 Steam，启动一次，然后返回此处。Steam 快捷方式是可选的。",
   "wizardReleaseTitle": "选择发布通道",
   "wizardReleaseBody": "Stable 跟随最新正式版，Beta 跟随最新测试版。你可以随时在安装器界面更改。",
   "wizardReleaseChooseDetail": "选择 Stable 或 Beta，然后继续。选择会以后端的确切令牌保存。",

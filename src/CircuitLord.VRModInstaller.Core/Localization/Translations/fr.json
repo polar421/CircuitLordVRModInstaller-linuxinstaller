@@ -439,6 +439,7 @@
   "wizardSetupWiVrn": "Configurer l’entrée WiVRn",
   "wizardSteamTitle": "Ajouter le raccourci Steam",
   "wizardSteamNeedsLauncherDetail": "Le raccourci pointe vers ~/.local/bin/tf2vr, créé par le backend après une installation réussie. Vous pourrez l’ajouter plus tard depuis les Paramètres.",
+  "wizardSteamNotDetectedDetail": "Installez Steam, lancez-le une fois, puis revenez ici. Le raccourci Steam est facultatif.",
   "wizardReleaseTitle": "Choisir un canal de version",
   "wizardReleaseBody": "Stable suit la dernière version. Beta suit la dernière version bêta. Vous pouvez modifier ce choix à tout moment dans l’installateur.",
   "wizardReleaseChooseDetail": "Choisissez Stable ou Beta, puis continuez. Le choix est enregistré comme jeton exact du backend.",

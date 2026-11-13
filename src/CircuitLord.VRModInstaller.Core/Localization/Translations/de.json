@@ -439,6 +439,7 @@
   "wizardSetupWiVrn": "WiVRn-Eintrag einrichten",
   "wizardSteamTitle": "Steam-Verknüpfung hinzufügen",
   "wizardSteamNeedsLauncherDetail": "Die Verknüpfung verweist auf ~/.local/bin/tf2vr, das das Backend nach einer erfolgreichen Installation erstellt. Du kannst sie später in den Einstellungen hinzufügen.",
+  "wizardSteamNotDetectedDetail": "Installiere Steam, starte es einmal und kehre dann hierher zurück. Die Steam-Verknüpfung ist optional.",
   "wizardReleaseTitle": "Versionskanal wählen",
   "wizardReleaseBody": "Stable folgt der neuesten Veröffentlichung. Beta folgt dem neuesten Beta-Build. Du kannst dies jederzeit im Installer ändern.",
   "wizardReleaseChooseDetail": "Wähle Stable oder Beta und fahre fort. Die Auswahl wird als exaktes Backend-Token gespeichert.",

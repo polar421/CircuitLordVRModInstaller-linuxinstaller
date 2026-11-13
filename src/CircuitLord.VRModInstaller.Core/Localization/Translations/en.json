@@ -439,6 +439,7 @@
   "wizardSetupWiVrn": "Set up WiVRn entry",
   "wizardSteamTitle": "Add the Steam shortcut",
   "wizardSteamNeedsLauncherDetail": "The shortcut points at ~/.local/bin/tf2vr, which the backend creates after a successful install. You can add it later from Settings.",
+  "wizardSteamNotDetectedDetail": "Install Steam, launch it once, then return here. The Steam shortcut is optional.",
   "wizardReleaseTitle": "Choose a release channel",
   "wizardReleaseBody": "Stable follows the latest release. Beta follows the latest beta build. You can change this at any time on the installer screen.",
   "wizardReleaseChooseDetail": "Choose Stable or Beta, then continue. The selection is saved as the exact backend token.",
