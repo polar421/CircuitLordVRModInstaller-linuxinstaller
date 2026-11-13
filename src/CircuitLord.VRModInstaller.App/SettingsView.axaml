@@ -601,9 +601,10 @@
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
               <StackPanel Spacing="1" VerticalAlignment="Center">
                 <TextBlock Text="{loc:Tr Key=restoreDefaults}" FontSize="12" FontWeight="SemiBold" />
-                <TextBlock Text="{loc:Tr Key=restoreDefaultsDescription}" Classes="small" MaxWidth="300" />
+                <TextBlock Name="SettingsRestoreDescription" Text="{loc:Tr Key=restoreDefaultsDescription}" Classes="small"
+                           TextWrapping="Wrap" />
               </StackPanel>
-              <Button Name="SettingsRestoreButton" Content="{loc:Tr Key=restoreDefaultsButton}" Classes="danger" FontSize="11.5" Padding="8,4"
+              <Button Grid.Column="1" Name="SettingsRestoreButton" Content="{loc:Tr Key=restoreDefaultsButton}" Classes="danger" FontSize="11.5" Padding="8,4"
                       VerticalAlignment="Center" Click="RestoreDefaults_Click" />
             </Grid>
           </Border>

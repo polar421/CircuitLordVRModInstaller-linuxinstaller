@@ -1,6 +1,7 @@
 using System;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using CircuitLord.VRModInstaller.Appearance;
 using CircuitLord.VRModInstaller.Core.Settings;
 using CircuitLord.VRModInstaller.Localization;
@@ -32,11 +33,20 @@ internal sealed class SettingsUiHost : IDisposable
 
         ViewModel = new InstallerViewModel();
         View = new SettingsView();
+        // Mirror MainWindow's RootScale so scale-dependent layout is exercised
+        // by the headless Settings tests too.
+        var rootScale = new LayoutTransformControl
+        {
+            LayoutTransform = new ScaleTransform(
+                AppearanceManager.ScaleFactor,
+                AppearanceManager.ScaleFactor),
+            Child = View,
+        };
         Window = new Window
         {
             Width = 800,
             Height = 740,
-            Content = View,
+            Content = rootScale,
         };
 
         Window.Show();

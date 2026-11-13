@@ -5,6 +5,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.VisualTree;
+using CircuitLord.VRModInstaller.Appearance;
 using CircuitLord.VRModInstaller.Core.Settings;
 using CircuitLord.VRModInstaller.Localization;
 
@@ -32,7 +35,7 @@ public sealed class SettingsTabUiTests : HeadlessUiTest
 
         Assert.True(ui.View.FindControl<Border>("SettingsOverlay")!.IsVisible);
         AssertPane(ui, SettingsTab.General);
-        Assert.True(ui.View.FindControl<Button>("SettingsRestoreButton")!.IsVisible);
+        AssertRestoreDefaultsLayout(ui, "default 800x740 layout");
 
         foreach (var tab in SettingsTabs)
         {
@@ -59,6 +62,18 @@ public sealed class SettingsTabUiTests : HeadlessUiTest
         ui.View.Open(ui.ViewModel);
         HeadlessUi.Pump(260);
         AssertPane(ui, SettingsTab.General);
+    });
+
+    [Fact]
+    public Task RestoreDefaultsDoesNotOverlapAtCompactWidthAndMaximumScale() => Dispatch(() =>
+    {
+        using var ui = new SettingsUiHost(Home, settings => settings.UiScale = 150);
+        ui.Window.Width = 560;
+        HeadlessUi.Pump(300);
+
+        Assert.Equal(150, AppearanceManager.ScalePercent);
+        Assert.Equal(150, ui.ViewModel.UiScalePercent);
+        AssertRestoreDefaultsLayout(ui, "560px window at 150% scale");
     });
 
     [Fact]
@@ -184,6 +199,41 @@ public sealed class SettingsTabUiTests : HeadlessUiTest
         Assert.Equal("beta", restored.SelectedToken);
         Assert.True(restored.SetupWizardCompleted);
     });
+
+    private static void AssertRestoreDefaultsLayout(SettingsUiHost ui, string context)
+    {
+        var restoreButton = ui.View.FindControl<Button>("SettingsRestoreButton")!;
+        Assert.True(restoreButton.IsVisible, $"Restore Defaults button must be visible ({context})");
+        Assert.Equal(1, Grid.GetColumn(restoreButton));
+
+        var restoreDescription = ui.View.FindControl<TextBlock>("SettingsRestoreDescription")!;
+        Assert.True(restoreDescription.IsVisible, $"Restore Defaults description must be visible ({context})");
+        Assert.Equal(TextWrapping.Wrap, restoreDescription.TextWrapping);
+
+        var descriptionBounds = BoundsIn(restoreDescription, ui.Window);
+        var buttonBounds = BoundsIn(restoreButton, ui.Window);
+        Assert.True(descriptionBounds.Width > 0 && descriptionBounds.Height > 0,
+            $"Restore Defaults description must have a layout box ({context})");
+        Assert.True(buttonBounds.Width > 0 && buttonBounds.Height > 0,
+            $"Restore Defaults button must have a layout box ({context})");
+        Assert.False(
+            descriptionBounds.Intersects(buttonBounds),
+            $"Restore Defaults text must not overlap its button ({context})");
+    }
+
+    private static Rect BoundsIn(Control control, Window relativeTo)
+    {
+        var topLeft = control.TranslatePoint(new Point(0, 0), relativeTo)
+            ?? throw new InvalidOperationException("Could not translate control origin to the window.");
+        var bottomRight = control.TranslatePoint(
+                new Point(control.Bounds.Width, control.Bounds.Height), relativeTo)
+            ?? throw new InvalidOperationException("Could not translate control bounds to the window.");
+        return new Rect(
+            topLeft,
+            new Size(
+                Math.Max(0, bottomRight.X - topLeft.X),
+                Math.Max(0, bottomRight.Y - topLeft.Y)));
+    }
 
     private static void AssertPane(SettingsUiHost ui, SettingsTab selected)
     {
