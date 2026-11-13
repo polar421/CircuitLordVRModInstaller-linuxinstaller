@@ -14,6 +14,8 @@ set -euo pipefail
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 APP_ROOT="$DATA_HOME/circuitlord-vrmodinstaller"
 APP_DIR="$APP_ROOT/app"
 BIN_DIR="$HOME/.local/bin"
@@ -134,8 +136,8 @@ uninstall_app() {
   printf '\nRemoved the installer application, its menu entry and its icon.\n'
   printf 'Kept on purpose:\n'
   printf '  %s/backend  (managed tf2vr-linux checkout)\n' "$APP_ROOT"
-  printf '  ${XDG_STATE_HOME:-$HOME/.local/state}/circuitlord-vrmodinstaller  (logs, history, Steam journals)\n'
-  printf '  ${XDG_CONFIG_HOME:-$HOME/.config}/circuitlord-vrmodinstaller  (settings)\n'
+  printf '  %s/circuitlord-vrmodinstaller  (logs, history, Steam journals)\n' "$STATE_HOME"
+  printf '  %s/circuitlord-vrmodinstaller  (settings)\n' "$CONFIG_HOME"
   printf '  ~/.local/bin/tf2vr and the Titanfall 2 VR mod itself, if installed\n'
 }
 
