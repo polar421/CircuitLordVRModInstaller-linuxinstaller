@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -25,27 +28,61 @@ public partial class HistoryView : UserControl
     private IReadOnlyList<InstallerOperationRecord> _records = Array.Empty<InstallerOperationRecord>();
     private InstallerOperationRecord? _selected;
     private string _filter = "all";
+    private string _statusFilter = "all";
+    private string _searchText = string.Empty;
+    private string _sort = "newest";
     private bool _languageSubscribed;
+    private bool _viewModelSubscribed;
+    private bool _embedded;
+    private string _historySignature = string.Empty;
+    private double _savedListOffset;
+    private double _savedDetailOffset;
 
     public HistoryView()
     {
         InitializeComponent();
-        AttachedToVisualTree += (_, _) => SubscribeToLanguage();
-        DetachedFromVisualTree += (_, _) => UnsubscribeFromLanguage();
+        AttachedToVisualTree += (_, _) =>
+        {
+            SubscribeToLanguage();
+            if (_vm is not null)
+            {
+                SubscribeToViewModel(_vm);
+            }
+        };
+        DetachedFromVisualTree += (_, _) =>
+        {
+            UnsubscribeFromLanguage();
+            UnsubscribeFromViewModel();
+        };
     }
 
     public event EventHandler? Closed;
 
-    public void Open(InstallerViewModel vm)
+    public event EventHandler? OverviewRequested;
+
+    public void Open(InstallerViewModel vm, bool embedded = false)
     {
         _vm = vm;
+        _embedded = embedded;
+        HistoryBackButton.IsVisible = !embedded;
         _filter = "all";
+        _statusFilter = "all";
+        _searchText = string.Empty;
+        _sort = "newest";
+        HistorySearchBox.Text = string.Empty;
+        HistorySortCombo.SelectedIndex = 0;
         _selected = null;
-        vm.RefreshLocalState();
+        SubscribeToViewModel(vm);
+        if (!vm.Busy)
+        {
+            vm.RefreshLocalState();
+        }
         _records = vm.OperationHistory;
         IsVisible = true;
         ShowList();
         Render();
+        _savedListOffset = 0;
+        _savedDetailOffset = 0;
         HistoryListScroll.SetCurrentValue(ScrollViewer.OffsetProperty, default);
         Dispatcher.UIThread.Post(
             () =>
@@ -53,10 +90,74 @@ public partial class HistoryView : UserControl
                 if (IsVisible)
                 {
                     Focus();
-                    HistoryBackButton.Focus();
+                    if (_embedded)
+                    {
+                        HistorySearchBox.Focus();
+                    }
+                    else
+                    {
+                        HistoryBackButton.Focus();
+                    }
                 }
             },
             DispatcherPriority.Loaded);
+    }
+
+    /// <summary>Restores an already-open History tab without clearing filters.</summary>
+    public void Activate(InstallerViewModel vm)
+    {
+        _vm = vm;
+        SubscribeToViewModel(vm);
+        IsVisible = true;
+        SyncFilterClasses();
+        if (HistorySignature() != _historySignature)
+        {
+            Render();
+        }
+    }
+
+    /// <summary>Captures the active list/detail scroll offset before hiding.</summary>
+    public void SaveScrollState()
+    {
+        if (HistoryListScroll.IsVisible)
+        {
+            _savedListOffset = HistoryListScroll.Offset.Y;
+        }
+        if (HistoryDetailScroll.IsVisible)
+        {
+            _savedDetailOffset = HistoryDetailScroll.Offset.Y;
+        }
+    }
+
+    /// <summary>Restores the active list/detail scroll offset after layout.</summary>
+    public void RestoreScrollState()
+    {
+        void Restore()
+        {
+            if (!IsVisible)
+            {
+                return;
+            }
+            if (HistoryListScroll.IsVisible)
+            {
+                RestoreScrollOffset(HistoryListScroll, _savedListOffset);
+            }
+            if (HistoryDetailScroll.IsVisible)
+            {
+                RestoreScrollOffset(HistoryDetailScroll, _savedDetailOffset);
+            }
+        }
+
+        Dispatcher.UIThread.Post(Restore, DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(Restore, DispatcherPriority.Background);
+    }
+
+    private static void RestoreScrollOffset(ScrollViewer scroll, double offset)
+    {
+        var max = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
+        scroll.SetCurrentValue(
+            ScrollViewer.OffsetProperty,
+            new Vector(scroll.Offset.X, Math.Clamp(offset, 0, max)));
     }
 
     public bool HandleEscape()
@@ -70,6 +171,11 @@ public partial class HistoryView : UserControl
             BackToHistory();
             return true;
         }
+        if (_embedded)
+        {
+            OverviewRequested?.Invoke(this, EventArgs.Empty);
+            return true;
+        }
         CloseHistory();
         return true;
     }
@@ -78,9 +184,55 @@ public partial class HistoryView : UserControl
     {
         if (IsVisible)
         {
+            SaveScrollState();
             Render();
+            RestoreScrollState();
         }
     }
+
+    private void SubscribeToViewModel(InstallerViewModel vm)
+    {
+        if (_viewModelSubscribed)
+        {
+            if (ReferenceEquals(_vm, vm))
+            {
+                return;
+            }
+            UnsubscribeFromViewModel();
+        }
+
+        _vm = vm;
+        vm.Changed += ViewModelChanged;
+        _viewModelSubscribed = true;
+    }
+
+    private void UnsubscribeFromViewModel()
+    {
+        if (_vm is null || !_viewModelSubscribed)
+        {
+            return;
+        }
+        _vm.Changed -= ViewModelChanged;
+        _viewModelSubscribed = false;
+    }
+
+    private void ViewModelChanged(object? sender, EventArgs e)
+    {
+        if (!IsVisible || _vm is null || HistorySignature() == _historySignature)
+        {
+            return;
+        }
+
+        SaveScrollState();
+        Render();
+        RestoreScrollState();
+    }
+
+    private string HistorySignature()
+        => _vm is null
+            ? string.Empty
+            : string.Join("|", _vm.OperationHistory.Select(record =>
+                record.OperationId + "=" + record.Result));
 
     private void SubscribeToLanguage()
     {
@@ -107,7 +259,9 @@ public partial class HistoryView : UserControl
         {
             if (IsVisible)
             {
+                SaveScrollState();
                 Render();
+                RestoreScrollState();
             }
         });
 
@@ -116,6 +270,12 @@ public partial class HistoryView : UserControl
     private void CloseHistory()
     {
         HelpTip.CloseOpen();
+        if (_embedded)
+        {
+            OverviewRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        UnsubscribeFromViewModel();
         IsVisible = false;
         _selected = null;
         _vm = null;
@@ -157,15 +317,55 @@ public partial class HistoryView : UserControl
             return;
         }
         _filter = filter;
+        _selected = null;
         ShowList();
         Render();
+        HistoryListScroll.SetCurrentValue(ScrollViewer.OffsetProperty, default);
+    }
+
+    private void StatusFilter_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string filter })
+        {
+            return;
+        }
+        _statusFilter = filter;
+        _selected = null;
+        ShowList();
+        Render();
+        HistoryListScroll.SetCurrentValue(ScrollViewer.OffsetProperty, default);
+    }
+
+    private void HistorySearch_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        _searchText = HistorySearchBox.Text ?? string.Empty;
+        if (_selected is not null)
+        {
+            _selected = null;
+            ShowList();
+        }
+        RenderList();
+    }
+
+    private void HistorySort_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        // SelectedIndex is set while the XAML is still being populated; the
+        // fields used by RenderList do not exist yet at that point.
+        if (_vm is null)
+        {
+            return;
+        }
+        _sort = (HistorySortCombo.SelectedItem as ComboBoxItem)?.Tag as string ?? "newest";
+        RenderList();
     }
 
     private void ShowList()
     {
         HistoryListHeader.IsVisible = true;
+        HistoryBackButton.IsVisible = !_embedded;
         HistoryDetailHeader.IsVisible = false;
         HistoryFilters.IsVisible = true;
+        HistoryStatusFilters.IsVisible = true;
         HistoryListScroll.IsVisible = true;
         HistoryDetailScroll.IsVisible = false;
     }
@@ -176,6 +376,7 @@ public partial class HistoryView : UserControl
         HistoryListHeader.IsVisible = false;
         HistoryDetailHeader.IsVisible = true;
         HistoryFilters.IsVisible = false;
+        HistoryStatusFilters.IsVisible = false;
         HistoryListScroll.IsVisible = false;
         HistoryDetailScroll.IsVisible = true;
         RenderDetail(record);
@@ -198,6 +399,7 @@ public partial class HistoryView : UserControl
         }
 
         _records = _vm.OperationHistory;
+        _historySignature = HistorySignature();
         if (_selected is not null)
         {
             var selectedId = _selected.OperationId;
@@ -224,25 +426,42 @@ public partial class HistoryView : UserControl
     {
         foreach (var button in HistoryFilters.Children.OfType<Button>())
         {
-            var selected = string.Equals(button.Tag as string, _filter, StringComparison.OrdinalIgnoreCase);
-            if (selected && !button.Classes.Contains("selected"))
-            {
-                button.Classes.Add("selected");
-            }
-            else if (!selected)
-            {
-                button.Classes.Remove("selected");
-            }
+            SetFilterClass(button, _filter);
+        }
+        foreach (var button in HistoryStatusFilters.Children.OfType<Button>())
+        {
+            SetFilterClass(button, _statusFilter);
+        }
+    }
+
+    private static void SetFilterClass(Button button, string active)
+    {
+        var selected = string.Equals(button.Tag as string, active, StringComparison.OrdinalIgnoreCase);
+        if (selected && !button.Classes.Contains("selected"))
+        {
+            button.Classes.Add("selected");
+        }
+        else if (!selected)
+        {
+            button.Classes.Remove("selected");
         }
     }
 
     private void RenderList()
     {
         HistoryListPanel.Children.Clear();
+        var query = _searchText.Trim();
         var filtered = _records
             .Where(record => string.Equals(_filter, "all", StringComparison.OrdinalIgnoreCase)
                 || EffectiveKind(record).ToString().Equals(_filter, StringComparison.OrdinalIgnoreCase))
+            .Where(record => MatchesStatus(record, _statusFilter))
+            .Where(record => query.Length == 0 || MatchesSearch(record, query))
+            .OrderBy(record => record.StartedAt)
             .ToList();
+        if (!string.Equals(_sort, "oldest", StringComparison.OrdinalIgnoreCase))
+        {
+            filtered.Reverse();
+        }
 
         foreach (var record in filtered)
         {
@@ -269,6 +488,10 @@ public partial class HistoryView : UserControl
         button.Classes.Add("historyrow");
         button.Click += (_, _) => ShowDetail(record);
         ToolTip.SetTip(button, Loc.Get("historyReport"));
+        AutomationProperties.SetName(
+            button,
+            OperationLabel(record) + ", " + FormatDate(record) + ", "
+            + VersionTransition(record) + ", " + ResultLabel(record));
 
         var content = new Grid
         {
@@ -389,11 +612,52 @@ public partial class HistoryView : UserControl
         HistoryDetailStatusText.Text = ResultLabel(record);
     }
 
+    private static bool MatchesStatus(InstallerOperationRecord record, string filter)
+    {
+        if (string.Equals(filter, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var result = ResultKey(record);
+        return string.Equals(filter, result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ResultKey(InstallerOperationRecord record) => record.Result switch
+    {
+        "Succeeded" => "succeeded",
+        "Failed" => "failed",
+        "Running" => "running",
+        "Cancelled" or "Canceled" => "cancelled",
+        _ => "unknown",
+    };
+
+    private static bool MatchesSearch(InstallerOperationRecord record, string query)
+    {
+        var haystack = string.Join(' ', new[]
+        {
+            OperationLabel(record),
+            record.RequestedDisplayName,
+            record.RequestedToken,
+            PreviousVersionText(record),
+            NewVersionText(record),
+            ChannelLabel(record),
+            record.BackendCommit,
+            resultLabelForSearch(record),
+            record.LogPath,
+        });
+        return haystack.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string resultLabelForSearch(InstallerOperationRecord record) => record.Result ?? string.Empty;
+
     private static string StatusClass(InstallerOperationRecord record) => record.Result switch
     {
         "Succeeded" => "success",
         "Running" => "running",
-        _ => "failed",
+        "Failed" => "failed",
+        "Cancelled" or "Canceled" => "cancelled",
+        _ => "unknown",
     };
 
     private static string OperationLabel(InstallerOperationRecord record) => EffectiveKind(record) switch
@@ -410,11 +674,16 @@ public partial class HistoryView : UserControl
     {
         "Succeeded" => Loc.Get("operationSucceeded"),
         "Running" => Loc.Get("operationRunning"),
-        _ => Loc.Get("operationFailed"),
+        "Failed" => Loc.Get("operationFailed"),
+        "Cancelled" or "Canceled" => Loc.Get("operationCancelled"),
+        _ => Loc.Get("operationUnknown"),
     };
 
     private static string PreviousVersionText(InstallerOperationRecord record)
-        => VersionLabel(record.OldVersion) ?? Loc.Get("notInstalled");
+        => VersionLabel(record.OldVersion)
+           ?? (EffectiveKind(record) == BackendOperationKind.Install
+                ? Loc.Get("notInstalled")
+                : Loc.Get("notAvailable"));
 
     private static string NewVersionText(InstallerOperationRecord record)
         => EffectiveKind(record) == BackendOperationKind.Uninstall
@@ -507,7 +776,50 @@ public partial class HistoryView : UserControl
         {
             return FormatDuration(finishedAt - record.StartedAt);
         }
-        return Loc.Get("operationRunning");
+        return string.Equals(record.Result, "Running", StringComparison.Ordinal)
+            ? Loc.Get("operationRunning")
+            : Loc.Get("notAvailable");
+    }
+
+    private async void HistoryCopy_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected is null)
+        {
+            return;
+        }
+
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard is null)
+        {
+            return;
+        }
+
+        var builder = new StringBuilder();
+        builder.AppendLine(OperationLabel(_selected));
+        builder.AppendLine(Loc.Get("historyDate") + ": " + FormatDate(_selected));
+        builder.AppendLine(Loc.Get("historyPreviousVersion") + ": " + PreviousVersionText(_selected));
+        builder.AppendLine(Loc.Get("historyNewVersion") + ": " + NewVersionText(_selected));
+        builder.AppendLine(Loc.Get("selectedChannel") + ": " + ChannelLabel(_selected));
+        builder.AppendLine(Loc.Get("backendCommit") + ": " + (_selected.BackendCommit ?? Loc.Get("notAvailable")));
+        builder.AppendLine(Loc.Get("historyResult") + ": " + ResultLabel(_selected));
+        builder.AppendLine(Loc.Get("duration") + ": " + DurationLabel(_selected));
+        builder.AppendLine(Loc.Get("exitCode") + ": " + (_selected.ExitCode?.ToString(CultureInfo.CurrentCulture) ?? Loc.Get("notAvailable")));
+        builder.AppendLine(Loc.Get("log") + ": " + (_selected.LogPath ?? Loc.Get("historyLogMissing")));
+        builder.AppendLine();
+        builder.AppendLine(_vm?.ReadOperationLog(_selected) ?? Loc.Get("historyLogMissing"));
+
+        var data = new DataTransfer();
+        data.Add(DataTransferItem.CreateText(builder.ToString()));
+        await clipboard.SetDataAsync(data);
+
+        var button = this.FindControl<Button>("HistoryCopyButton");
+        if (button is null)
+        {
+            return;
+        }
+        button.Content = Loc.Get("copied");
+        await Task.Delay(1200);
+        button.Content = Loc.Get("historyCopyDiagnostics");
     }
 
     private static string FormatDuration(TimeSpan duration)

@@ -12,8 +12,11 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using CircuitLord.VRModInstaller.Appearance;
 using CircuitLord.VRModInstaller.Core.Appearance;
+using CircuitLord.VRModInstaller.Core.Navigation;
+using CircuitLord.VRModInstaller.Core.Settings;
 using CircuitLord.VRModInstaller.Core.Updates;
 using CircuitLord.VRModInstaller.Localization;
 
@@ -39,10 +42,27 @@ public partial class SettingsView : UserControl
     private CancellationTokenSource? _settingsAnimationCts;
     private long _settingsAnimationVersion;
     private string? _fontOptionsLanguage;
+    private readonly Dictionary<SettingsTab, SettingsPane> _settingsPanes = new();
+
+    private static readonly (SettingsTab Tab, string ScrollName)[] SettingsPaneNames =
+    {
+        (SettingsTab.General, "SettingsGeneralScroll"),
+        (SettingsTab.Appearance, "SettingsAppearanceScroll"),
+        (SettingsTab.Diagnostics, "SettingsDiagnosticsScroll"),
+        (SettingsTab.About, "SettingsAboutScroll"),
+    };
 
     public SettingsView()
     {
         InitializeComponent();
+        foreach (var (tab, scrollName) in SettingsPaneNames)
+        {
+            if (this.FindControl<ScrollViewer>(scrollName) is { } scroll)
+            {
+                _settingsPanes[tab] = new SettingsPane(scroll);
+            }
+        }
+        this.FindControl<SettingsTabBar>("SettingsTabs")!.SelectionChanged += SettingsTabs_SelectionChanged;
         AppearanceManager.Theme.Changed += (_, _) =>
             Avalonia.Threading.Dispatcher.UIThread.Post(UpdateThemeStatus);
         AppearanceManager.MotionChanged += (_, _) =>
@@ -128,7 +148,14 @@ public partial class SettingsView : UserControl
         this.FindControl<ComboBox>("LanguageCombo")!.SelectedIndex = LanguageIndex(vm.Language);
         UpdateUiScaleLabel(vm.UiScalePercent);
         UpdateThemeStatus();
-        this.FindControl<ScrollViewer>("SettingsScroll")!.Offset = new Vector(0, 0);
+        foreach (var pane in _settingsPanes.Values)
+        {
+            pane.Offset = 0;
+            pane.Scroll.SetCurrentValue(ScrollViewer.OffsetProperty, default);
+        }
+        this.FindControl<SettingsTabBar>("SettingsTabs")!.SelectTab(
+            SettingsTab.General, focus: false, raiseEvent: false);
+        ShowSettingsTab(SettingsTab.General);
         _loading = false;
         RefreshFontCombos(force: true);
         RefreshAll();
@@ -317,6 +344,7 @@ public partial class SettingsView : UserControl
         this.FindControl<Button>("SettingsOpenReleaseButton")!.IsEnabled = _vm.LatestReleaseUrl is not null;
 
         this.FindControl<TextBlock>("SettingsBackendCurrent")!.Text = _vm.BackendCurrentCommitText;
+        this.FindControl<TextBlock>("SettingsBackendOrigin")!.Text = _vm.BackendOriginStatusText;
         this.FindControl<TextBlock>("SettingsBackendLatest")!.Text = _vm.BackendLatestCommitText;
         this.FindControl<TextBlock>("SettingsBackendWorkingTree")!.Text = _vm.BackendWorkingTreeText;
         this.FindControl<TextBlock>("SettingsBackendLastUpdate")!.Text = _vm.BackendLastUpdateText;
@@ -327,6 +355,7 @@ public partial class SettingsView : UserControl
         this.FindControl<Button>("SettingsBackendUpdateButton")!.IsEnabled = !_vm.Busy && !_vm.BackendCheckInProgress;
 
         this.FindControl<TextBlock>("SettingsOpenXr")!.Text = _vm.OpenXrStatusText;
+        this.FindControl<TextBlock>("SettingsOpenXrJson")!.Text = _vm.OpenXrRuntimeJsonPath;
         this.FindControl<TextBlock>("SettingsSteamVr")!.Text = _vm.SteamVrStatusText;
         this.FindControl<TextBlock>("SettingsWiVrn")!.Text = _vm.WiVrnStatusText;
         this.FindControl<TextBlock>("SettingsMonado")!.Text = _vm.MonadoStatusText;
@@ -411,6 +440,60 @@ public partial class SettingsView : UserControl
     {
         this.FindControl<TextBlock>("UiScaleValue")!.Text =
             (percent / 100.0).ToString("P0", CultureInfo.CurrentCulture);
+    }
+
+    private void ShowSettingsTab(SettingsTab tab)
+    {
+        foreach (var (candidate, pane) in _settingsPanes)
+        {
+            pane.Scroll.IsVisible = candidate == tab;
+        }
+    }
+
+    private void SettingsTabs_SelectionChanged(object? sender, TabSelectionChangedEventArgs<SettingsTab> e)
+    {
+        if (_loading || !IsVisible)
+        {
+            return;
+        }
+
+        if (_settingsPanes.TryGetValue(e.Previous, out var previous))
+        {
+            previous.Offset = previous.Scroll.Offset.Y;
+        }
+
+        ShowSettingsTab(e.Selected);
+        RestoreSettingsScroll(e.Selected);
+    }
+
+    private void RestoreSettingsScroll(SettingsTab tab)
+    {
+        if (!_settingsPanes.TryGetValue(tab, out var pane))
+        {
+            return;
+        }
+
+        void Restore()
+        {
+            if (!IsVisible || !pane.Scroll.IsVisible)
+            {
+                return;
+            }
+
+            var max = Math.Max(0, pane.Scroll.Extent.Height - pane.Scroll.Viewport.Height);
+            pane.Scroll.SetCurrentValue(
+                ScrollViewer.OffsetProperty,
+                new Vector(pane.Scroll.Offset.X, Math.Clamp(pane.Offset, 0, max)));
+        }
+
+        Dispatcher.UIThread.Post(Restore, DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(Restore, DispatcherPriority.Background);
+    }
+
+    private sealed class SettingsPane(ScrollViewer scroll)
+    {
+        public ScrollViewer Scroll { get; } = scroll;
+        public double Offset { get; set; }
     }
 
     private void UpdateThemeStatus()
@@ -1083,7 +1166,9 @@ public partial class SettingsView : UserControl
 
     private void SetBackgroundInteraction(bool enabled)
     {
-        this.FindControl<ScrollViewer>("SettingsScroll")!.IsEnabled = enabled;
+        this.FindControl<Grid>("SettingsContentHost")!.IsEnabled = enabled;
+        this.FindControl<SettingsTabBar>("SettingsTabs")!.IsEnabled = enabled;
+        this.FindControl<Button>("SettingsRestoreButton")!.IsEnabled = enabled;
         this.FindControl<Button>("SettingsCloseButton")!.IsEnabled = enabled;
     }
 

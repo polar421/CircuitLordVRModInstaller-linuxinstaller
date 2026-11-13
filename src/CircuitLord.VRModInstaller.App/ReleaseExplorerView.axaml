@@ -4,64 +4,124 @@
              xmlns:local="using:CircuitLord.VRModInstaller"
              x:Class="CircuitLord.VRModInstaller.ReleaseExplorerView"
              Focusable="True"
-             KeyDown="Explorer_KeyDown">
+             KeyDown="Explorer_KeyDown"
+             SizeChanged="Explorer_SizeChanged">
+
+  <UserControl.Styles>
+    <Style Selector="Border.release-card">
+      <Setter Property="Background" Value="{DynamicResource Panel}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Stroke}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerCard}" />
+      <Setter Property="Padding" Value="14,12" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.release-card:pointerover">
+      <Setter Property="Background" Value="{DynamicResource CardHover}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorder}" />
+    </Style>
+    <Style Selector="Border.release-card:focus">
+      <Setter Property="BorderBrush" Value="{DynamicResource Focus}" />
+      <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+    <Style Selector="Border.release-card.inspected">
+      <Setter Property="Background" Value="{DynamicResource Selection}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+    </Style>
+    <Style Selector="TextBlock.release-group-title">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+    </Style>
+    <Style Selector="TextBlock.details-key">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource TextDim}" />
+    </Style>
+  </UserControl.Styles>
 
   <Border Background="{DynamicResource Bg}">
-    <Grid RowDefinitions="Auto,Auto,*" Margin="18,8,18,16">
+    <Grid RowDefinitions="Auto,Auto,*" Margin="0,8,0,16">
 
-      <Grid Grid.Row="0">
-        <Grid Name="ReleaseListHeader" ColumnDefinitions="Auto,*">
-          <Button Name="ReleaseBackButton" Classes="ghost" Padding="10,6" VerticalAlignment="Center"
-                  Click="CloseExplorer_Click" ToolTip.Tip="{loc:Tr Key=historyBackToInstaller}">
-            <StackPanel Orientation="Horizontal" Spacing="7">
-              <Path Data="M 6,0 L 0,6 L 6,12" Width="7" Height="12" Stretch="None"
-                    Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.4"
-                    VerticalAlignment="Center" />
-              <TextBlock Text="{loc:Tr Key=historyBackToInstaller}" FontSize="11.5" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <StackPanel Grid.Column="1" Spacing="2" Margin="14,0,0,0" VerticalAlignment="Center">
-            <TextBlock Text="{loc:Tr Key=releaseExplorer}" Classes="h1" />
-            <TextBlock Text="{loc:Tr Key=releaseExplorerSubtitle}" Classes="small" />
+      <Grid Name="ReleaseListHeader" Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+        <Button Name="ReleaseBackButton" Classes="ghost" Padding="10,6" VerticalAlignment="Center"
+                Click="CloseExplorer_Click" ToolTip.Tip="{loc:Tr Key=historyBackToInstaller}">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Path Data="M 6,0 L 0,6 L 6,12" Width="7" Height="12" Stretch="None"
+                  Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.4"
+                  VerticalAlignment="Center" />
+            <TextBlock Text="{loc:Tr Key=historyBackToInstaller}" FontSize="11.5" VerticalAlignment="Center" />
           </StackPanel>
-        </Grid>
+        </Button>
+        <StackPanel Name="ReleaseHeaderTitle" Grid.Column="1" Spacing="2" Margin="14,0,0,0" VerticalAlignment="Center">
+          <TextBlock Text="{loc:Tr Key=releaseExplorer}" Classes="h1" TextWrapping="Wrap" />
+          <TextBlock Text="{loc:Tr Key=releaseExplorerSubtitle}" Classes="small" TextWrapping="Wrap" />
+        </StackPanel>
+        <StackPanel Name="ReleaseHeaderStatus" Grid.Column="2" Spacing="3" HorizontalAlignment="Right" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Border Name="CatalogueSourceBadge" Classes="kind-pill" VerticalAlignment="Center">
+              <TextBlock Name="CatalogueSourceText" Classes="kind-pill-text" />
+            </Border>
+            <TextBlock Name="CatalogueSummaryText" Classes="small" VerticalAlignment="Center" />
+            <Button Name="RefreshCatalogueButton" Classes="ghost" FontSize="11.5" Padding="8,4"
+                    Content="{loc:Tr Key=refresh}" Click="RefreshCatalogue_Click"
+                    AutomationProperties.Name="{loc:Tr Key=refresh}" />
+          </StackPanel>
+          <TextBlock Name="CatalogueTimestampText" Classes="small" HorizontalAlignment="Right" />
+          <TextBlock Name="CatalogueWarningText" Classes="small" Foreground="{DynamicResource Amber}"
+                     HorizontalAlignment="Right" TextWrapping="Wrap" IsVisible="False" />
+        </StackPanel>
+      </Grid>
 
-        <Grid Name="ReleaseCompareHeader" IsVisible="False" ColumnDefinitions="Auto,*">
-          <Button Name="CompareBackButton" Classes="ghost" Padding="10,6" VerticalAlignment="Center"
-                  Click="BackToReleases_Click" ToolTip.Tip="{loc:Tr Key=backToReleases}">
-            <StackPanel Orientation="Horizontal" Spacing="7">
-              <Path Data="M 6,0 L 0,6 L 6,12" Width="7" Height="12" Stretch="None"
-                    Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.4"
-                    VerticalAlignment="Center" />
-              <TextBlock Text="{loc:Tr Key=backToReleases}" FontSize="11.5" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <StackPanel Grid.Column="1" Spacing="2" Margin="14,0,0,0" VerticalAlignment="Center">
-            <TextBlock Text="{loc:Tr Key=compareReleases}" Classes="h1" />
-            <TextBlock Text="{loc:Tr Key=compareSubtitle}" Classes="small" />
+      <Grid Name="ReleaseCompareHeader" Grid.Row="0" IsVisible="False" ColumnDefinitions="Auto,*">
+        <Button Name="CompareBackButton" Classes="ghost" Padding="10,6" VerticalAlignment="Center"
+                Click="BackToReleases_Click" ToolTip.Tip="{loc:Tr Key=backToReleases}">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Path Data="M 6,0 L 0,6 L 6,12" Width="7" Height="12" Stretch="None"
+                  Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.4"
+                  VerticalAlignment="Center" />
+            <TextBlock Text="{loc:Tr Key=backToReleases}" FontSize="11.5" VerticalAlignment="Center" />
           </StackPanel>
-        </Grid>
+        </Button>
+        <StackPanel Grid.Column="1" Spacing="2" Margin="14,0,0,0" VerticalAlignment="Center">
+          <TextBlock Text="{loc:Tr Key=compareReleases}" Classes="h1" />
+          <TextBlock Text="{loc:Tr Key=compareSubtitle}" Classes="small" />
+        </StackPanel>
       </Grid>
 
       <StackPanel Name="ReleaseToolbar" Grid.Row="1" Spacing="8" Margin="0,14,0,10">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-          <TextBox Name="ReleaseSearchBox" PlaceholderText="{loc:Tr Key=searchVersion}" TextChanged="Search_Changed"
-                   FontSize="12" Padding="10,6" />
-          <ComboBox Grid.Column="1" Name="ReleaseSortCombo" MinWidth="180" SelectedIndex="0"
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBox Name="ReleaseSearchBox" PlaceholderText="{loc:Tr Key=searchReleases}"
+                     TextChanged="Search_Changed" FontSize="12" Padding="10,6" />
+            <Button Name="ClearSearchButton" Grid.Column="1" Classes="ghost" Width="28" Height="28"
+                    Padding="0" Content="×" IsVisible="False" Click="ClearSearch_Click"
+                    ToolTip.Tip="{loc:Tr Key=clearSearch}"
+                    AutomationProperties.Name="{loc:Tr Key=clearSearch}" />
+          </Grid>
+          <ComboBox Grid.Column="1" Name="ReleaseSortCombo" MinWidth="188" SelectedIndex="0"
                     VerticalAlignment="Center" SelectionChanged="Sort_Changed"
-                    ToolTip.Tip="{loc:Tr Key=sortBy}">
+                    ToolTip.Tip="{loc:Tr Key=sortBy}" AutomationProperties.Name="{loc:Tr Key=sortBy}">
             <ComboBoxItem Content="{loc:Tr Key=releaseOrder}" Tag="order" />
             <ComboBoxItem Content="{loc:Tr Key=sortByVersion}" Tag="version" />
+            <ComboBoxItem Content="{loc:Tr Key=sortOldest}" Tag="oldest" />
+            <ComboBoxItem Content="{loc:Tr Key=sortStableFirst}" Tag="stable" />
+            <ComboBoxItem Content="{loc:Tr Key=sortBetaFirst}" Tag="beta" />
           </ComboBox>
         </Grid>
 
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <Grid Name="ReleaseToolbarActions" ColumnDefinitions="*,Auto" ColumnSpacing="10">
           <WrapPanel Name="ReleaseFilters" Orientation="Horizontal">
             <Button Content="{loc:Tr Key=historyAll}" Tag="all" Classes="filter" Margin="0,0,6,0" Click="Filter_Click" />
             <Button Content="{loc:Tr Key=stableReleases}" Tag="stable" Classes="filter" Margin="0,0,6,0" Click="Filter_Click" />
             <Button Content="{loc:Tr Key=betaReleases}" Tag="beta" Classes="filter" Margin="0,0,6,0" Click="Filter_Click" />
             <Button Content="{loc:Tr Key=pinnedFilter}" Tag="pinned" Classes="filter" Margin="0,0,6,0" Click="Filter_Click" />
-            <local:HelpTip Name="PinnedReleaseHelp" VerticalAlignment="Center"
+            <Button Content="{loc:Tr Key=installed}" Tag="installed" Classes="filter" Margin="0,0,6,0" Click="Filter_Click" />
+            <Button Content="{loc:Tr Key=selected}" Tag="selected" Classes="filter" Margin="0,0,6,0" Click="Filter_Click" />
+            <Button Content="×" Classes="filter" Padding="8,4" Click="ClearFilters_Click"
+                    ToolTip.Tip="{loc:Tr Key=clearFilters}"
+                    AutomationProperties.Name="{loc:Tr Key=clearFilters}" />
+            <local:HelpTip Name="PinnedReleaseHelp" VerticalAlignment="Center" Margin="6,0,0,0"
                            Title="{loc:Tr Key=helpPinnedTitle}"
                            Body="{loc:Tr Key=helpPinnedBody}" />
           </WrapPanel>
@@ -70,46 +130,131 @@
         </Grid>
       </StackPanel>
 
-      <Grid Grid.Row="2">
-        <ScrollViewer Name="ReleaseListScroll" VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled"
-                      ScrollViewer.IsScrollChainingEnabled="False">
-          <StackPanel Spacing="8">
-            <StackPanel Name="ReleaseListPanel" Spacing="8" />
-            <Border Name="ReleaseEmptyState" Classes="card" IsVisible="False" Padding="18,22" Margin="0">
-              <TextBlock Name="ReleaseEmptyText" Classes="small" TextAlignment="Center"
-                         HorizontalAlignment="Center" TextWrapping="Wrap" />
-            </Border>
-          </StackPanel>
-        </ScrollViewer>
+      <Grid Name="ExplorerBody" Grid.Row="2" ColumnDefinitions="*,360" RowDefinitions="*" ColumnSpacing="14">
+        <Grid Name="ReleaseListPane" RowDefinitions="*">
+          <ScrollViewer Name="ReleaseListScroll" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled"
+                        ScrollViewer.IsScrollChainingEnabled="False">
+            <StackPanel Name="ReleaseGroupPanel" Spacing="10" />
+          </ScrollViewer>
+          <Border Name="ReleaseEmptyState" Classes="card" IsVisible="False" Padding="18,22" Margin="0">
+            <TextBlock Name="ReleaseEmptyText" Classes="small" TextAlignment="Center"
+                       HorizontalAlignment="Center" TextWrapping="Wrap" />
+          </Border>
+        </Grid>
 
-        <ScrollViewer Name="ReleaseCompareScroll" IsVisible="False" VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled"
+        <Border Name="ReleaseDetailsPane" Grid.Column="1" Classes="card" Padding="14,12" Margin="0">
+          <ScrollViewer Name="ReleaseDetailsScroll" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled"
+                        ScrollViewer.IsScrollChainingEnabled="False">
+            <StackPanel Name="ReleaseDetailsPanel" Spacing="8">
+              <TextBlock Text="{loc:Tr Key=releaseDetails}" Classes="h2" />
+              <TextBlock Name="DetailsEmptyState" Text="{loc:Tr Key=noReleaseSelected}"
+                         Classes="small" TextWrapping="Wrap" />
+              <StackPanel Name="DetailsContent" Spacing="8" IsVisible="False">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="2">
+                    <TextBlock Name="DetailsName" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Name="DetailsVersion" Classes="small" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Name="DetailsBadges" Orientation="Horizontal"
+                              Spacing="5" VerticalAlignment="Center" />
+                </Grid>
+                <Border Height="1" Background="{DynamicResource Stroke}" />
+                <TextBlock Text="{loc:Tr Key=releaseDescription}" Classes="details-key" />
+                <TextBlock Name="DetailsDescription" FontSize="12" TextWrapping="Wrap" />
+                <TextBlock Text="{loc:Tr Key=releaseNotes}" Classes="details-key" Margin="0,3,0,0" />
+                <TextBlock Name="DetailsChangelog" FontSize="11" Foreground="{DynamicResource TextDim}"
+                           TextWrapping="Wrap" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,3,0,0">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{loc:Tr Key=channel}" Classes="details-key" />
+                    <TextBlock Name="DetailsChannel" Classes="small" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="1">
+                    <TextBlock Text="{loc:Tr Key=lastUpdated}" Classes="details-key" />
+                    <TextBlock Name="DetailsLastUpdated" Classes="small" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Grid>
+                <StackPanel Spacing="1">
+                  <TextBlock Text="{loc:Tr Key=backendToken}" Classes="details-key" />
+                  <SelectableTextBlock Name="DetailsToken" Classes="small" TextWrapping="Wrap" />
+                </StackPanel>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{loc:Tr Key=availability}" Classes="details-key" />
+                    <TextBlock Name="DetailsAvailability" Classes="small" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="1">
+                    <TextBlock Text="{loc:Tr Key=catalogue}" Classes="details-key" />
+                    <TextBlock Name="DetailsCatalogue" Classes="small" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Grid>
+                <StackPanel Spacing="1">
+                  <TextBlock Text="{loc:Tr Key=manifest}" Classes="details-key" />
+                  <TextBlock Name="DetailsManifest" Classes="small" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Spacing="1">
+                  <TextBlock Text="{loc:Tr Key=installedStatusLabel}" Classes="details-key" />
+                  <TextBlock Name="DetailsInstalled" Classes="small" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Spacing="1">
+                  <TextBlock Text="{loc:Tr Key=selectedStatusLabel}" Classes="details-key" />
+                  <TextBlock Name="DetailsSelected" Classes="small" TextWrapping="Wrap" />
+                </StackPanel>
+                <TextBlock Name="DetailsError" Classes="small" Foreground="{DynamicResource Red}"
+                           TextWrapping="Wrap" IsVisible="False" />
+                <Button Name="UseReleaseButton" Content="{loc:Tr Key=useThisRelease}" Classes="primary"
+                        Margin="0,6,0,0" Click="UseRelease_Click" />
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+
+        <ScrollViewer Name="ReleaseCompareScroll" Grid.ColumnSpan="2" IsVisible="False"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                       ScrollViewer.IsScrollChainingEnabled="False">
           <StackPanel Spacing="10">
-
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
               <StackPanel Spacing="3">
                 <TextBlock Text="{loc:Tr Key=releaseA}" Classes="small" />
                 <ComboBox Name="CompareLeftCombo" HorizontalAlignment="Stretch"
                           AutomationProperties.Name="{loc:Tr Key=releaseA}"
-                          SelectionChanged="CompareSelection_Changed" />
+                          SelectionChanged="CompareSelection_Changed">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate DataType="local:VersionOption">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{Binding DisplayLabel}" />
+                        <TextBlock Text="{Binding VersionText}" Classes="small" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
               </StackPanel>
               <StackPanel Grid.Column="1" Spacing="3">
                 <TextBlock Text="{loc:Tr Key=releaseB}" Classes="small" />
                 <ComboBox Name="CompareRightCombo" HorizontalAlignment="Stretch"
                           AutomationProperties.Name="{loc:Tr Key=releaseB}"
-                          SelectionChanged="CompareSelection_Changed" />
+                          SelectionChanged="CompareSelection_Changed">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate DataType="local:VersionOption">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{Binding DisplayLabel}" />
+                        <TextBlock Text="{Binding VersionText}" Classes="small" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
               </StackPanel>
             </Grid>
 
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
               <Border Classes="card compare-card" Margin="0">
-                <StackPanel Spacing="8">
+                <StackPanel Spacing="7">
                   <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Spacing="2">
                       <TextBlock Name="CompareVersionA" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
-                      <TextBlock Name="CompareChannelA" Classes="small" />
+                      <TextBlock Name="CompareChannelA" Classes="small" TextWrapping="Wrap" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5"
                                 VerticalAlignment="Center">
@@ -122,9 +267,23 @@
                     </StackPanel>
                   </Grid>
                   <Border Height="1" Background="{DynamicResource Stroke}" />
-                  <TextBlock Text="{loc:Tr Key=releaseDescription}" Classes="small" FontWeight="SemiBold" />
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{loc:Tr Key=backendToken}" Classes="details-key" />
+                      <SelectableTextBlock Name="CompareTokenA" Classes="small" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="1">
+                      <TextBlock Text="{loc:Tr Key=lastUpdated}" Classes="details-key" />
+                      <TextBlock Name="CompareLastUpdatedA" Classes="small" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Grid>
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{loc:Tr Key=availability}" Classes="details-key" />
+                    <TextBlock Name="CompareAvailabilityA" Classes="small" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <TextBlock Text="{loc:Tr Key=releaseDescription}" Classes="details-key" />
                   <TextBlock Name="CompareDescriptionA" FontSize="12" TextWrapping="Wrap" />
-                  <TextBlock Text="{loc:Tr Key=releaseNotes}" Classes="small" FontWeight="SemiBold" Margin="0,4,0,0" />
+                  <TextBlock Text="{loc:Tr Key=releaseNotes}" Classes="details-key" Margin="0,3,0,0" />
                   <TextBlock Name="CompareChangelogA" FontSize="11" Foreground="{DynamicResource TextDim}"
                              TextWrapping="Wrap" />
                   <Button Name="CompareSelectA" Classes="ghost" FontSize="11.5" Padding="8,4"
@@ -133,11 +292,11 @@
               </Border>
 
               <Border Grid.Column="1" Classes="card compare-card" Margin="0">
-                <StackPanel Spacing="8">
+                <StackPanel Spacing="7">
                   <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Spacing="2">
                       <TextBlock Name="CompareVersionB" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
-                      <TextBlock Name="CompareChannelB" Classes="small" />
+                      <TextBlock Name="CompareChannelB" Classes="small" TextWrapping="Wrap" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5"
                                 VerticalAlignment="Center">
@@ -150,9 +309,23 @@
                     </StackPanel>
                   </Grid>
                   <Border Height="1" Background="{DynamicResource Stroke}" />
-                  <TextBlock Text="{loc:Tr Key=releaseDescription}" Classes="small" FontWeight="SemiBold" />
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{loc:Tr Key=backendToken}" Classes="details-key" />
+                      <SelectableTextBlock Name="CompareTokenB" Classes="small" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="1">
+                      <TextBlock Text="{loc:Tr Key=lastUpdated}" Classes="details-key" />
+                      <TextBlock Name="CompareLastUpdatedB" Classes="small" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Grid>
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{loc:Tr Key=availability}" Classes="details-key" />
+                    <TextBlock Name="CompareAvailabilityB" Classes="small" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <TextBlock Text="{loc:Tr Key=releaseDescription}" Classes="details-key" />
                   <TextBlock Name="CompareDescriptionB" FontSize="12" TextWrapping="Wrap" />
-                  <TextBlock Text="{loc:Tr Key=releaseNotes}" Classes="small" FontWeight="SemiBold" Margin="0,4,0,0" />
+                  <TextBlock Text="{loc:Tr Key=releaseNotes}" Classes="details-key" Margin="0,3,0,0" />
                   <TextBlock Name="CompareChangelogB" FontSize="11" Foreground="{DynamicResource TextDim}"
                              TextWrapping="Wrap" />
                   <Button Name="CompareSelectB" Classes="ghost" FontSize="11.5" Padding="8,4"
@@ -167,9 +340,11 @@
                 <TextBlock Text="{loc:Tr Key=compareDifferencesHint}" Classes="small" />
                 <TextBlock Name="CompareDiffText" FontSize="11" LineHeight="17"
                            Foreground="{DynamicResource TextDim}" TextWrapping="Wrap" />
+                <TextBlock Text="{loc:Tr Key=compareMetadata}" Classes="details-key" Margin="0,5,0,0" />
+                <TextBlock Name="CompareMetadataDiff" FontSize="11" LineHeight="17"
+                           Foreground="{DynamicResource TextDim}" TextWrapping="Wrap" />
               </StackPanel>
             </Border>
-
           </StackPanel>
         </ScrollViewer>
       </Grid>

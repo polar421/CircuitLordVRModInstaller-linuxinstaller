@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -51,6 +52,10 @@ public partial class MainWindow : Window
     private bool _initializationComplete;
     private bool _setupWizardPending;
     private bool _setupWizardLeavingSettings;
+    private bool _switchingTitanfallTab;
+    private bool _releaseTabInitialized;
+    private bool _historyTabInitialized;
+    private bool _diagnosticsTabInitialized;
 
     public MainWindow()
     {
@@ -66,7 +71,16 @@ public partial class MainWindow : Window
                 ShowSetupWizard(force: true);
                 return;
             }
-            this.FindControl<Button>("SettingsButton")?.Focus();
+            if (_gamePageOpen)
+            {
+                // Return to the destination the user was working in, not the
+                // global title-bar action that opened Settings.
+                InstallerTabs.FocusSelectedButton();
+            }
+            else
+            {
+                this.FindControl<Button>("SettingsButton")?.Focus();
+            }
         };
         SettingsPanel.SetupWizardRequested += (_, _) =>
         {
@@ -79,6 +93,14 @@ public partial class MainWindow : Window
             this.FindControl<Button>("OpenHistoryButton")?.Focus();
         ReleaseExplorerPanel.Closed += (_, _) =>
             this.FindControl<Button>("BrowseReleasesButton")?.Focus();
+        HistoryPanel.OverviewRequested += (_, _) => SelectTitanfallTab(TitanfallTab.Overview, focusTab: true);
+        ReleaseExplorerPanel.OverviewRequested += (_, _) => SelectTitanfallTab(TitanfallTab.Overview, focusTab: true);
+        DiagnosticsPanel.OpenLogDirectoryRequested += (_, _) =>
+        {
+            Directory.CreateDirectory(_vm.LogsDirectory);
+            OpenPath(_vm.LogsDirectory);
+        };
+        DiagnosticsPanel.RepairSteamRequested += RepairSteamFromDiagnosticsAsync;
         // Resolve the placement target explicitly so the flyout is anchored to
         // the release selector instead of falling back to the window centre.
         VersionPopup.PlacementTarget = this.FindControl<Button>("VersionPickerButton");
@@ -117,13 +139,6 @@ public partial class MainWindow : Window
         ApplyLogFilter();
         NotificationCenter.Open(_vm);
         _vm.Changed += (_, _) => RefreshUi();
-        _vm.LogLines.CollectionChanged += LogLines_CollectionChanged;
-        var logsList = this.FindControl<ListBox>("LogsList")!;
-        logsList.Loaded += (_, _) => EnsureLogScrollViewer();
-        logsList.AddHandler(
-            InputElement.PointerWheelChangedEvent,
-            LogsList_PointerWheelChanged,
-            RoutingStrategies.Tunnel);
         // Auto-update starts a detached helper and then asks the window to close.
         // The helper waits for this process before swapping the app directory.
         _vm.RestartRequested += (_, _) => Close();
@@ -153,6 +168,30 @@ public partial class MainWindow : Window
 
         ApplyScale();
         ApplyMotionClasses();
+        if (!AppearanceManager.AnimationsEnabled)
+        {
+            ResetTitanfallTabTransition();
+        }
+    }
+
+    private void ResetTitanfallTabTransition()
+    {
+        foreach (var target in new Control?[]
+        {
+            this.FindControl<ScrollViewer>("InstallerScroll"),
+            ReleaseExplorerPanel,
+            HistoryPanel,
+            DiagnosticsPanel,
+        })
+        {
+            if (target is null)
+            {
+                continue;
+            }
+            target.Transitions = null;
+            target.Opacity = 1;
+            target.RenderTransform = IdentityTransform;
+        }
     }
 
     private void Theme_Changed(object? sender, EventArgs e)
@@ -165,6 +204,8 @@ public partial class MainWindow : Window
             SetupWizardPanel.RefreshAppearance();
             HistoryPanel.RefreshAppearance();
             ReleaseExplorerPanel.RefreshAppearance();
+            DiagnosticsPanel.RefreshAppearance();
+            InstallerTabs.RefreshAppearance();
         });
     }
 
@@ -294,6 +335,12 @@ public partial class MainWindow : Window
         if (ReleaseExplorerPanel.HandleEscape())
         {
             e.Handled = true;
+            return;
+        }
+        if (_gamePageOpen && InstallerTabs.SelectedTab != TitanfallTab.Overview)
+        {
+            SelectTitanfallTab(TitanfallTab.Overview, focusTab: true);
+            e.Handled = true;
         }
     }
 
@@ -330,11 +377,6 @@ public partial class MainWindow : Window
         this.FindControl<TextBlock>("CatalogueText")!.Text = _vm.CatalogueText;
         this.FindControl<TextBlock>("InstallationHistoryText")!.Text = _vm.InstallationHistoryText;
         this.FindControl<TextBlock>("LastOperationDetailText")!.Text = _vm.LastOperationDetailText;
-        this.FindControl<TextBlock>("GameText")!.Text = _vm.GameText;
-        this.FindControl<TextBlock>("PreflightText")!.Text = _vm.PreflightText;
-        this.FindControl<TextBlock>("DesktopText")!.Text = _vm.DesktopText;
-        this.FindControl<TextBlock>("SteamText")!.Text = _vm.SteamText;
-        this.FindControl<TextBlock>("RuntimeText")!.Text = _vm.RuntimeText;
         this.FindControl<TextBlock>("StageText")!.Text = _vm.StageText;
         var busyIndicator = this.FindControl<Border>("TitlebarBusyIndicator")!;
         busyIndicator.IsVisible = _vm.Busy;
@@ -342,6 +384,7 @@ public partial class MainWindow : Window
         var busyLabel = Loc.Format("operationInProgress", _vm.StageText);
         ToolTip.SetTip(busyIndicator, busyLabel);
         AutomationProperties.SetName(busyIndicator, busyLabel);
+        InstallerTabs.SetActivity(_vm.Busy, _vm.Busy ? busyLabel : null);
         this.FindControl<TextBlock>("TitanfallStatus")!.Text = _vm.IsInstalled
             ? _vm.InstalledText
             : Loc.Get("readyStatus");
@@ -366,8 +409,8 @@ public partial class MainWindow : Window
         this.FindControl<ProgressBar>("Progress")!.IsVisible = _vm.Busy;
         this.FindControl<Button>("UninstallButton")!.IsEnabled = _vm.CanUninstall && !_vm.Busy;
         this.FindControl<Button>("BrowseReleasesButton")!.IsEnabled = _vm.Versions.Count > 0 && !_vm.Busy;
-        this.FindControl<Button>("SteamButton")!.IsEnabled = _vm.HasSteamAccount && !_vm.Busy;
-        this.FindControl<Button>("SteamRemoveButton")!.IsEnabled = _vm.HasSteamAccount && !_vm.Busy;
+        this.FindControl<Button>("UpdateBackendButton")!.IsEnabled = !_vm.Busy;
+        this.FindControl<Button>("RefreshLocalStateButton")!.IsEnabled = !_vm.Busy;
 
         this.FindControl<TextBlock>("ChangelogChannelText")!.Text = _vm.ChangelogChannelText;
         this.FindControl<TextBlock>("ChangelogOverlayChannel")!.Text = _vm.ChangelogChannelText;
@@ -701,6 +744,196 @@ public partial class MainWindow : Window
     private void Back_Click(object? sender, RoutedEventArgs e)
         => _ = CloseGamePageAsync();
 
+    private void TitanfallTabs_SelectionChanged(object? sender, TabSelectionChangedEventArgs<TitanfallTab> e)
+    {
+        if (_switchingTitanfallTab)
+        {
+            return;
+        }
+
+        SaveTitanfallTabScroll(e.Previous);
+        ApplyTitanfallTab(e.Selected, animate: true);
+    }
+
+    private void SelectTitanfallTab(TitanfallTab tab, bool focusTab, bool animate = true)
+    {
+        if (InstallerTabs.SelectedTab != tab)
+        {
+            SaveTitanfallTabScroll(InstallerTabs.SelectedTab);
+            _switchingTitanfallTab = true;
+            try
+            {
+                InstallerTabs.SelectTab(tab, focus: false, raiseEvent: false);
+            }
+            finally
+            {
+                _switchingTitanfallTab = false;
+            }
+        }
+
+        ApplyTitanfallTab(tab, animate);
+        if (focusTab)
+        {
+            InstallerTabs.FocusSelectedButton();
+        }
+    }
+
+    private void SaveTitanfallTabScroll(TitanfallTab tab)
+    {
+        switch (tab)
+        {
+            case TitanfallTab.Overview:
+                _installerScrollOffset = this.FindControl<ScrollViewer>("InstallerScroll")?.Offset.Y
+                    ?? _installerScrollOffset;
+                break;
+            case TitanfallTab.Releases:
+                ReleaseExplorerPanel.SaveScrollState();
+                break;
+            case TitanfallTab.History:
+                HistoryPanel.SaveScrollState();
+                break;
+            case TitanfallTab.Diagnostics:
+                DiagnosticsPanel.SaveScrollState();
+                break;
+        }
+    }
+
+    private void RestoreTitanfallTabScroll(TitanfallTab tab)
+    {
+        switch (tab)
+        {
+            case TitanfallTab.Overview:
+                var overview = this.FindControl<ScrollViewer>("InstallerScroll");
+                var offset = _installerScrollOffset;
+                if (overview is null)
+                {
+                    return;
+                }
+                void Restore()
+                {
+                    if (overview.IsVisible)
+                    {
+                        RestoreScrollOffset(overview, offset);
+                    }
+                }
+
+                Dispatcher.UIThread.Post(Restore, DispatcherPriority.Loaded);
+                Dispatcher.UIThread.Post(Restore, DispatcherPriority.Background);
+                break;
+            case TitanfallTab.Releases:
+                ReleaseExplorerPanel.RestoreScrollState();
+                break;
+            case TitanfallTab.History:
+                HistoryPanel.RestoreScrollState();
+                break;
+            case TitanfallTab.Diagnostics:
+                DiagnosticsPanel.RestoreScrollState();
+                break;
+        }
+    }
+
+    private void ApplyTitanfallTab(TitanfallTab tab, bool animate)
+    {
+        var overview = this.FindControl<ScrollViewer>("InstallerScroll");
+        if (overview is null)
+        {
+            return;
+        }
+
+        // Keep each destination alive. Hiding a view does not touch its
+        // ViewModel, filters, expanded rows or scroll offsets.
+        overview.IsVisible = tab == TitanfallTab.Overview;
+        ReleaseExplorerPanel.IsVisible = tab == TitanfallTab.Releases;
+        HistoryPanel.IsVisible = tab == TitanfallTab.History;
+        DiagnosticsPanel.IsVisible = tab == TitanfallTab.Diagnostics;
+
+        switch (tab)
+        {
+            case TitanfallTab.Overview:
+                RefreshUi();
+                break;
+            case TitanfallTab.Releases:
+                if (!_releaseTabInitialized)
+                {
+                    _releaseTabInitialized = true;
+                    ReleaseExplorerPanel.Open(_vm, embedded: true);
+                }
+                else
+                {
+                    ReleaseExplorerPanel.Activate(_vm);
+                }
+                break;
+            case TitanfallTab.History:
+                if (!_historyTabInitialized)
+                {
+                    _historyTabInitialized = true;
+                    HistoryPanel.Open(_vm, embedded: true);
+                }
+                else
+                {
+                    HistoryPanel.Activate(_vm);
+                }
+                break;
+            case TitanfallTab.Diagnostics:
+                if (!_diagnosticsTabInitialized)
+                {
+                    _diagnosticsTabInitialized = true;
+                    DiagnosticsPanel.Open(_vm);
+                }
+                else
+                {
+                    DiagnosticsPanel.Activate(_vm);
+                }
+                break;
+        }
+
+        var target = tab switch
+        {
+            TitanfallTab.Overview => (Control)overview,
+            TitanfallTab.Releases => ReleaseExplorerPanel,
+            TitanfallTab.History => HistoryPanel,
+            _ => DiagnosticsPanel,
+        };
+        AnimateTitanfallTab(target, animate);
+        RestoreTitanfallTabScroll(tab);
+    }
+
+    private static void AnimateTitanfallTab(Control target, bool animate)
+    {
+        target.Transitions = null;
+        if (!animate || !AppearanceManager.AnimationsEnabled)
+        {
+            target.Opacity = 1;
+            target.RenderTransform = IdentityTransform;
+            return;
+        }
+
+        target.Opacity = 0;
+        target.RenderTransform = TransformOperations.Parse("translate(0px, 5px)");
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                target.Transitions = new Transitions
+                {
+                    new DoubleTransition
+                    {
+                        Property = Visual.OpacityProperty,
+                        Duration = TimeSpan.FromMilliseconds(170),
+                        Easing = new CubicEaseOut(),
+                    },
+                    new TransformOperationsTransition
+                    {
+                        Property = Visual.RenderTransformProperty,
+                        Duration = TimeSpan.FromMilliseconds(170),
+                        Easing = new CubicEaseOut(),
+                    },
+                };
+                target.Opacity = 1;
+                target.RenderTransform = IdentityTransform;
+            },
+            DispatcherPriority.Loaded);
+    }
+
     private async Task OpenGamePageAsync()
     {
         HelpTip.CloseOpen();
@@ -716,15 +949,19 @@ public partial class MainWindow : Window
 
         var gameScroll = this.FindControl<ScrollViewer>("GameScroll");
         var installerScroll = this.FindControl<ScrollViewer>("InstallerScroll");
+        var installerPage = this.FindControl<Grid>("InstallerPage");
         var footer = this.FindControl<StackPanel>("GameFooter");
         var thumbnail = this.FindControl<Border>("TitanfallThumbnail");
         var hero = this.FindControl<Border>("HeroArtwork");
-        if (gameScroll is null || installerScroll is null
+        if (gameScroll is null || installerScroll is null || installerPage is null
             || footer is null || thumbnail is null || hero is null)
         {
             return;
         }
 
+        SelectTitanfallTab(TitanfallTab.Overview, focusTab: false, animate: false);
+        installerPage.IsVisible = true;
+        installerScroll.IsVisible = true;
         CloseVersionPicker();
         _gameScrollOffset = gameScroll.Offset.Y;
         _gamePageOpen = true;
@@ -850,15 +1087,19 @@ public partial class MainWindow : Window
 
         var gameScroll = this.FindControl<ScrollViewer>("GameScroll");
         var installerScroll = this.FindControl<ScrollViewer>("InstallerScroll");
+        var installerPage = this.FindControl<Grid>("InstallerPage");
         var footer = this.FindControl<StackPanel>("GameFooter");
         var thumbnail = this.FindControl<Border>("TitanfallThumbnail");
         var hero = this.FindControl<Border>("HeroArtwork");
-        if (gameScroll is null || installerScroll is null
+        if (gameScroll is null || installerScroll is null || installerPage is null
             || footer is null || thumbnail is null || hero is null)
         {
             return;
         }
 
+        SelectTitanfallTab(TitanfallTab.Overview, focusTab: false, animate: false);
+        installerPage.IsVisible = true;
+        installerScroll.IsVisible = true;
         CloseVersionPicker();
         _installerScrollOffset = installerScroll.Offset.Y;
         _gamePageOpen = false;
@@ -971,19 +1212,30 @@ public partial class MainWindow : Window
         HideArtworkLayer();
         var gameScroll = this.FindControl<ScrollViewer>("GameScroll");
         var installerScroll = this.FindControl<ScrollViewer>("InstallerScroll");
+        var installerPage = this.FindControl<Grid>("InstallerPage");
         var footer = this.FindControl<StackPanel>("GameFooter");
+        if (installerPage is not null)
+        {
+            installerPage.IsVisible = true;
+        }
         if (gameScroll is not null)
         {
             ResetPage(gameScroll);
             gameScroll.IsVisible = false;
             gameScroll.IsHitTestVisible = true;
         }
+        var overviewSelected = InstallerTabs.SelectedTab == TitanfallTab.Overview;
         if (installerScroll is not null)
         {
             ResetPage(installerScroll);
-            installerScroll.IsVisible = true;
+            // A tab clicked during the page transition must remain selected;
+            // do not re-show the Overview underneath its content.
+            installerScroll.IsVisible = overviewSelected;
             installerScroll.IsHitTestVisible = true;
-            RestoreScrollOffset(installerScroll, _installerScrollOffset);
+            if (overviewSelected)
+            {
+                RestoreScrollOffset(installerScroll, _installerScrollOffset);
+            }
         }
         if (footer is not null)
         {
@@ -996,10 +1248,17 @@ public partial class MainWindow : Window
         _gameTransitionRunning = false;
         if (focusDestination)
         {
-            FocusAfterLayout(
-                this.FindControl<Button>("BackToGamesButton"),
-                installerScroll,
-                _installerScrollOffset);
+            if (overviewSelected)
+            {
+                FocusAfterLayout(
+                    this.FindControl<Button>("BackToGamesButton"),
+                    installerScroll,
+                    _installerScrollOffset);
+            }
+            else
+            {
+                InstallerTabs.FocusSelectedButton();
+            }
         }
     }
 
@@ -1008,7 +1267,12 @@ public partial class MainWindow : Window
         HideArtworkLayer();
         var gameScroll = this.FindControl<ScrollViewer>("GameScroll");
         var installerScroll = this.FindControl<ScrollViewer>("InstallerScroll");
+        var installerPage = this.FindControl<Grid>("InstallerPage");
         var footer = this.FindControl<StackPanel>("GameFooter");
+        if (installerPage is not null)
+        {
+            installerPage.IsVisible = false;
+        }
         if (installerScroll is not null)
         {
             ResetPage(installerScroll);
@@ -1076,7 +1340,7 @@ public partial class MainWindow : Window
             "ReleaseSection",
             "BackendSection",
             "ReleaseNotesSection",
-            "InstallerDetailsSection",
+            "OverviewDiagnosticsSection",
         };
         var groups = new List<Control>(names.Length);
         foreach (var name in names)
@@ -1437,6 +1701,23 @@ public partial class MainWindow : Window
 
     private void OpenSupport_Click(object? sender, RoutedEventArgs e) => OpenUrl(SupportUrl);
 
+    private static void OpenPath(string path)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "xdg-open",
+                UseShellExecute = false,
+                ArgumentList = { path },
+            });
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Could not open {path}: {ex.Message}");
+        }
+    }
+
     private void OpenUrl(string url)
     {
         // Desktop-standard URL opening; never spawns a terminal and does not claim success.
@@ -1458,26 +1739,38 @@ public partial class MainWindow : Window
     private void OpenHistory_Click(object? sender, RoutedEventArgs e)
     {
         HelpTip.CloseOpen();
-        if (_gameTransitionRunning || SetupWizardPanel.IsVisible || SettingsPanel.IsVisible
-            || ReleaseExplorerPanel.IsVisible)
+        if (_gameTransitionRunning || SetupWizardPanel.IsVisible || SettingsPanel.IsVisible)
         {
             return;
         }
         CloseVersionPicker();
-        HistoryPanel.Open(_vm);
+        SelectTitanfallTab(TitanfallTab.History, focusTab: true);
     }
 
     private void BrowseReleases_Click(object? sender, RoutedEventArgs e)
     {
         HelpTip.CloseOpen();
-        if (_gameTransitionRunning || SetupWizardPanel.IsVisible || SettingsPanel.IsVisible
-            || HistoryPanel.IsVisible)
+        if (_gameTransitionRunning || SetupWizardPanel.IsVisible || SettingsPanel.IsVisible)
         {
             return;
         }
         CloseVersionPicker();
-        ReleaseExplorerPanel.Open(_vm);
+        SelectTitanfallTab(TitanfallTab.Releases, focusTab: true);
     }
+
+    private void OpenDiagnostics_Click(object? sender, RoutedEventArgs e)
+    {
+        HelpTip.CloseOpen();
+        if (_gameTransitionRunning || SetupWizardPanel.IsVisible || SettingsPanel.IsVisible)
+        {
+            return;
+        }
+        CloseVersionPicker();
+        SelectTitanfallTab(TitanfallTab.Diagnostics, focusTab: true);
+    }
+
+    private void VerifyDiagnostics_Click(object? sender, RoutedEventArgs e)
+        => OpenDiagnostics_Click(sender, e);
 
     private void OpenSettings_Click(object? sender, RoutedEventArgs e)
     {
@@ -1525,12 +1818,20 @@ public partial class MainWindow : Window
 
     private async void UpdateBackend_Click(object? sender, RoutedEventArgs e)
     {
+        if (_vm.Busy)
+        {
+            return;
+        }
         await _vm.UpdateBackendAsync();
         RefreshUi();
     }
 
     private async void Refresh_Click(object? sender, RoutedEventArgs e)
     {
+        if (_vm.Busy)
+        {
+            return;
+        }
         await Task.Run(_vm.RefreshLocalState);
         await _vm.RefreshCatalogueAsync();
         RefreshUi();
@@ -1560,6 +1861,30 @@ public partial class MainWindow : Window
     {
         await _vm.RepairDesktopAsync();
         RefreshUi();
+    }
+
+    private async Task RepairSteamFromDiagnosticsAsync()
+    {
+        if (!_vm.CanModifySteamNow(out var reason))
+        {
+            await ShowInfoAsync(Loc.Get("steamBlockedTitle"), reason ?? Loc.Get("steamBlockedText"));
+            return;
+        }
+        if (_vm.IsSteamRunning && _vm.ConfirmSteamRestart)
+        {
+            var confirmed = await ConfirmAsync(
+                Loc.Get("repairSteamTitle"),
+                Loc.Get("repairSteamText"),
+                Loc.Get("restartSteamRepair"));
+            if (!confirmed)
+            {
+                return;
+            }
+        }
+
+        await _vm.AddOrUpdateSteamAsync(allowRestart: true);
+        RefreshUi();
+        DiagnosticsPanel.RefreshAfterOperation();
     }
 
     private async void AddSteam_Click(object? sender, RoutedEventArgs e)

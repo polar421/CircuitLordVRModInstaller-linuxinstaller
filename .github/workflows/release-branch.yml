@@ -20,6 +20,9 @@ jobs:
         with:
           dotnet-version: "10.0.114"
 
+      - name: Run tests
+        run: dotnet test CircuitLord.VRModInstaller.Linux.slnx -c Release --nologo
+
       - name: Build release archive
         id: build
         run: |

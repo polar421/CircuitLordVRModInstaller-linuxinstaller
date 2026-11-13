@@ -9,6 +9,7 @@ Presentation (Avalonia) → Application services → Domain models → Infrastru
 - `src/CircuitLord.VRModInstaller.App` — Avalonia 12.1 desktop UI (`MainWindow`, `InstallerViewModel`).
 - `src/CircuitLord.VRModInstaller.Core` — services and models; no Avalonia dependency.
 - `tests/CircuitLord.VRModInstaller.Core.Tests` — xUnit tests for parsers, models and transactions.
+- `tests/CircuitLord.VRModInstaller.App.Tests` — Avalonia headless xUnit tests for the real Settings view: tab switching, scroll preservation, localization and Restore Defaults.
 
 ## Services
 

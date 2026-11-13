@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:CircuitLord.VRModInstaller.Localization"
+             x:Class="CircuitLord.VRModInstaller.TitanfallTabBar"
+             Focusable="False">
+
+  <UserControl.Styles>
+    <!-- Preserve the original game-page tab sizing; Settings uses the compact defaults. -->
+    <Style Selector="Button.tab">
+      <Setter Property="Padding" Value="13,7" />
+      <Setter Property="MinHeight" Value="34" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border BorderBrush="{DynamicResource Stroke}" BorderThickness="0,0,0,1">
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+      <ScrollViewer Name="TabScroll" HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Disabled"
+                    ScrollViewer.IsScrollChainingEnabled="False">
+        <StackPanel Name="TabButtons" Orientation="Horizontal" Spacing="2">
+          <Button Name="OverviewTabButton" Classes="tab" Tag="Overview"
+                  Click="Tab_Click" KeyDown="TabButton_KeyDown"
+                  ToolTip.Tip="{loc:Tr Key=tabSwitchHint}"
+                  AutomationProperties.HelpText="{loc:Tr Key=tabSwitchHint}"
+                  AutomationProperties.Name="{loc:Tr Key=tabOverview}">
+            <TextBlock Text="{loc:Tr Key=tabOverview}" />
+          </Button>
+          <Button Name="ReleasesTabButton" Classes="tab" Tag="Releases"
+                  Click="Tab_Click" KeyDown="TabButton_KeyDown"
+                  ToolTip.Tip="{loc:Tr Key=tabSwitchHint}"
+                  AutomationProperties.HelpText="{loc:Tr Key=tabSwitchHint}"
+                  AutomationProperties.Name="{loc:Tr Key=tabReleases}">
+            <TextBlock Text="{loc:Tr Key=tabReleases}" />
+          </Button>
+          <Button Name="HistoryTabButton" Classes="tab" Tag="History"
+                  Click="Tab_Click" KeyDown="TabButton_KeyDown"
+                  ToolTip.Tip="{loc:Tr Key=tabSwitchHint}"
+                  AutomationProperties.HelpText="{loc:Tr Key=tabSwitchHint}"
+                  AutomationProperties.Name="{loc:Tr Key=tabHistory}">
+            <TextBlock Text="{loc:Tr Key=tabHistory}" />
+          </Button>
+          <Button Name="DiagnosticsTabButton" Classes="tab" Tag="Diagnostics"
+                  Click="Tab_Click" KeyDown="TabButton_KeyDown"
+                  ToolTip.Tip="{loc:Tr Key=tabSwitchHint}"
+                  AutomationProperties.HelpText="{loc:Tr Key=tabSwitchHint}"
+                  AutomationProperties.Name="{loc:Tr Key=tabDiagnostics}">
+            <TextBlock Text="{loc:Tr Key=tabDiagnostics}" />
+          </Button>
+        </StackPanel>
+      </ScrollViewer>
+
+      <Border Name="ActivityIndicator" Grid.Column="1" Classes="tab-activity" IsVisible="False">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Border Width="6" Height="6" CornerRadius="3"
+                  Background="{DynamicResource Accent}" VerticalAlignment="Center" />
+          <TextBlock Name="ActivityText" FontSize="10.5" MaxWidth="250"
+                     TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Accent}" />
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

@@ -51,6 +51,7 @@ Technical names are not translated. This includes `WiVRn`, `OpenXR`, `Monado`,
 | Channel | Channel | Kanal | Canal | Chaîne | Canal | Canale | Kanał | Канал | チャンネル | 频道 |
 | Latest output | Latest | Neueste | Más reciente | Dernière sortie | Mais recente | Più recente | Najnowsze | Последние | 最新 | 最新 |
 | Settings | Settings | Einstellungen | Configuración | Paramètres | Configurações | Impostazioni | Ustawienia | Настройки | 設定 | 设置 |
+| General | General | Allgemein | General | Général | Geral | Generale | Ogólne | Общие | 一般 | 常规 |
 | Diagnostics | Diagnostics | Diagnose | Diagnóstico | Diagnostic | Diagnóstico | Diagnostica | Diagnostyka | Диагностика | 診断 | 诊断 |
 
 ## Formatting
@@ -88,13 +89,13 @@ Technical names are not translated. This includes `WiVRn`, `OpenXR`, `Monado`,
 4. Run:
 
    ```bash
-   dotnet test tests/CircuitLord.VRModInstaller.Core.Tests -c Release
+   dotnet test CircuitLord.VRModInstaller.Linux.slnx -c Release
    ```
 
    The tests fail on missing/empty keys, placeholder changes, unused keys,
    missing technical identifiers, or locale-formatting regressions.
 
-The current catalogs contain 544 keys per language. Automated tests prove key
+The current catalogs contain 606 keys per language. Automated tests prove key
 completeness and placeholder consistency; they do not replace native-speaker
 review of tone. Raw backend and git output is deliberately preserved in its
 original language.

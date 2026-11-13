@@ -14,7 +14,7 @@
 cd /path/to/repository
 dotnet restore CircuitLord.VRModInstaller.Linux.slnx --locked-mode
 dotnet build CircuitLord.VRModInstaller.Linux.slnx -c Release
-dotnet test tests/CircuitLord.VRModInstaller.Core.Tests -c Release
+dotnet test CircuitLord.VRModInstaller.Linux.slnx -c Release
 
 # 2. Build the self-contained release (restores, publishes, stages, checksums, tars)
 packaging/build-release.sh
@@ -193,6 +193,5 @@ git push origin release/v1.0.9-beta.1
 - `linux-x64` only; no arm64 build.
 - No AppImage, Flatpak or distribution package. A sandboxed package would need verified access to
   the game directory and Steam configuration before it could be offered.
-- CI builds and publishes the archive, but does not run the test suite yet; run the commands above
-  locally before tagging.
+- CI runs the Core and headless UI test suites before building and publishing the archive; a failing test blocks the release.
 - The packaged app is self-contained but not code-signed.

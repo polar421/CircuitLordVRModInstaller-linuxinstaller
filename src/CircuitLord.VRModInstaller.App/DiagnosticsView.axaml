@@ -1,0 +1,176 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:CircuitLord.VRModInstaller.Localization"
+             x:Class="CircuitLord.VRModInstaller.DiagnosticsView"
+             Focusable="True">
+
+  <Border Background="{DynamicResource Bg}">
+    <ScrollViewer Name="DiagnosticsScroll" VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  ScrollViewer.IsScrollChainingEnabled="False">
+      <StackPanel Margin="0,8,0,16" Spacing="10">
+
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{loc:Tr Key=diagnostics}" Classes="h1" />
+            <TextBlock Text="{loc:Tr Key=diagnosticsSubtitle}" Classes="small" TextWrapping="Wrap" />
+            <TextBlock Name="DiagnosticsRefreshText" Classes="small" TextWrapping="Wrap" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Button Name="RunPreflightButton" Content="{loc:Tr Key=runChecks}" Classes="ghost"
+                    FontSize="11.5" Padding="8,4" Click="RunPreflight_Click" />
+            <Button Name="RefreshDiagnosticsButton" Content="{loc:Tr Key=refreshDiagnostics}"
+                    Classes="primary" FontSize="11.5" Padding="10,5" Click="RefreshDiagnostics_Click" />
+          </StackPanel>
+        </Grid>
+
+        <Border Classes="card" Margin="0">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{loc:Tr Key=gameInstallation}" Classes="h2" />
+            <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="5">
+              <TextBlock Text="{loc:Tr Key=steamDetectedStatus}" Classes="small" />
+              <TextBlock Grid.Column="1" Name="DiagnosticsSteamStatus" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Text="{loc:Tr Key=titanfallDetection}" Classes="small" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Name="DiagnosticsTitanfallStatus" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="2" Text="{loc:Tr Key=gamePath}" Classes="small" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Name="DiagnosticsGamePath" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" FontFamily="{DynamicResource UiTechnicalFont}" />
+              <TextBlock Grid.Row="3" Text="{loc:Tr Key=winePrefix}" Classes="small" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Name="DiagnosticsWinePrefix" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" FontFamily="{DynamicResource UiTechnicalFont}" />
+              <TextBlock Grid.Row="4" Text="{loc:Tr Key=installedVersion}" Classes="small" />
+              <TextBlock Grid.Row="4" Grid.Column="1" Name="DiagnosticsInstalledVersion" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Margin="0">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{loc:Tr Key=linuxBackend}" Classes="h2" />
+            <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="5">
+              <TextBlock Text="{loc:Tr Key=backendOrigin}" Classes="small" />
+              <TextBlock Grid.Column="1" Name="DiagnosticsBackendOrigin" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Text="{loc:Tr Key=backendCommit}" Classes="small" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Name="DiagnosticsBackendCommit" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" FontFamily="{DynamicResource UiTechnicalFont}" />
+              <TextBlock Grid.Row="2" Text="{loc:Tr Key=helperWorkingTree}" Classes="small" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Name="DiagnosticsWorkingTree" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="3" Text="{loc:Tr Key=installerScript}" Classes="small" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Name="DiagnosticsInstallerScript" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="4" Text="{loc:Tr Key=lastHelperUpdate}" Classes="small" />
+              <TextBlock Grid.Row="4" Grid.Column="1" Name="DiagnosticsLastHelperUpdate" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Margin="0">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{loc:Tr Key=vrRuntime}" Classes="h2" />
+            <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="5">
+              <TextBlock Text="{loc:Tr Key=activeOpenXrRuntime}" Classes="small" />
+              <TextBlock Grid.Column="1" Name="DiagnosticsOpenXr" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Text="{loc:Tr Key=activeRuntimeFile}" Classes="small" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Name="DiagnosticsRuntimeJson" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" FontFamily="{DynamicResource UiTechnicalFont}" />
+              <TextBlock Grid.Row="2" Text="{loc:Tr Key=steamVrAvailability}" Classes="small" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Name="DiagnosticsSteamVr" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="3" Text="{loc:Tr Key=wivrnAvailability}" Classes="small" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Name="DiagnosticsWiVrn" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="4" Text="{loc:Tr Key=monadoAvailability}" Classes="small" />
+              <TextBlock Grid.Row="4" Grid.Column="1" Name="DiagnosticsMonado" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="5" Text="{loc:Tr Key=openVrBridge}" Classes="small" />
+              <TextBlock Grid.Row="5" Grid.Column="1" Name="DiagnosticsOpenVrBridge" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" FontFamily="{DynamicResource UiTechnicalFont}" />
+              <TextBlock Grid.Row="6" Text="{loc:Tr Key=tf2vrLauncher}" Classes="small" />
+              <TextBlock Grid.Row="6" Grid.Column="1" Name="DiagnosticsLauncher" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" FontFamily="{DynamicResource UiTechnicalFont}" />
+            </Grid>
+            <TextBlock Text="{loc:Tr Key=runtimeInfoNote}" Classes="small" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Margin="0">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{loc:Tr Key=desktopAndSteam}" Classes="h2" />
+            <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="5">
+              <TextBlock Text="{loc:Tr Key=desktopEntry}" Classes="small" />
+              <TextBlock Grid.Column="1" Name="DiagnosticsDesktopEntry" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Text="{loc:Tr Key=desktopEntryValidation}" Classes="small" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Name="DiagnosticsDesktopValidation" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="2" Text="{loc:Tr Key=steamShortcutStatus}" Classes="small" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Name="DiagnosticsSteamShortcut" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="3" Text="{loc:Tr Key=steamInstallationType}" Classes="small" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Name="DiagnosticsSteamType" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="4" Text="{loc:Tr Key=steamSelectedAccount}" Classes="small" />
+              <TextBlock Grid.Row="4" Grid.Column="1" Name="DiagnosticsSteamAccount" Classes="small" Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+            </Grid>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+              <Button Name="RepairWiVrnButton" Content="{loc:Tr Key=repairWivrnEntry}" Classes="ghost"
+                      FontSize="11.5" Padding="8,4" Click="RepairWiVrn_Click" />
+              <Button Grid.Column="1" Name="RepairSteamButton" Content="{loc:Tr Key=repairShortcut}"
+                      Classes="ghost" FontSize="11.5" Padding="8,4" Click="RepairSteam_Click" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Margin="0">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{loc:Tr Key=diagnosticsAdvice}" Classes="h2" />
+            <TextBlock Name="DiagnosticsAdvice" Classes="small" TextWrapping="Wrap" />
+            <TextBlock Text="{loc:Tr Key=diagnosticsPrivacy}" Classes="small" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,2,0,0">
+              <Button Name="CopyDiagnosticsButton" Content="{loc:Tr Key=copyDiagnosticReport}"
+                      Classes="ghost" FontSize="11.5" Padding="8,4" Click="CopyDiagnostics_Click" />
+              <Button Grid.Column="1" Name="ViewLogsButton" Content="{loc:Tr Key=viewLogs}"
+                      Classes="ghost" FontSize="11.5" Padding="8,4" Click="ViewLogs_Click" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <StackPanel Name="DiagnosticsLogsSection" Spacing="7">
+          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <TextBlock Text="{loc:Tr Key=log}" Classes="h2" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Name="OpenLogsButton" Content="{loc:Tr Key=openLogDirectory}"
+                    Classes="ghost" FontSize="11.5" Padding="8,4" Click="OpenLogs_Click" />
+            <Button Grid.Column="2" Name="LatestLogButton" Content="{loc:Tr Key=latestOutput}"
+                    Classes="link" FontSize="11" Padding="6,3" IsVisible="False"
+                    Click="LatestLog_Click" />
+          </Grid>
+          <TextBox Name="DiagnosticsLogSearch" PlaceholderText="{loc:Tr Key=searchLogs}"
+                   AutomationProperties.Name="{loc:Tr Key=searchLogs}"
+                   TextChanged="LogSearch_TextChanged" FontSize="11.5" Height="30" />
+          <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
+                  CornerRadius="{DynamicResource CornerInner}">
+            <Grid>
+              <ListBox Name="DiagnosticsLogList" Classes="log-list" Background="Transparent" BorderThickness="0"
+                       FontSize="10.5" MaxHeight="260" AutomationProperties.Name="{loc:Tr Key=log}"
+                       ScrollViewer.VerticalScrollBarVisibility="Auto"
+                       ScrollViewer.IsScrollChainingEnabled="False"
+                       Loaded="DiagnosticsLogList_Loaded">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <SelectableTextBlock Text="{Binding}" FontFamily="{DynamicResource UiTechnicalFont}"
+                                         TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <TextBlock Name="DiagnosticsLogsEmpty" Classes="small" TextAlignment="Center"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"
+                         TextWrapping="Wrap" Margin="22" IsVisible="False" />
+            </Grid>
+          </Border>
+        </StackPanel>
+
+        <Border Classes="card" Margin="0">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{loc:Tr Key=lastPreflight}" Classes="h2" />
+            <TextBlock Name="DiagnosticsLastPreflight" Classes="small" TextWrapping="Wrap" />
+            <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
+                    CornerRadius="{DynamicResource CornerInner}" Padding="9" MaxHeight="150">
+              <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                            ScrollViewer.IsScrollChainingEnabled="False">
+                <TextBlock Name="DiagnosticsPreflightText" FontFamily="{DynamicResource UiTechnicalFont}"
+                           FontSize="10.5" Foreground="{DynamicResource TextDim}" TextWrapping="Wrap" />
+              </ScrollViewer>
+            </Border>
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
+  </Border>
+</UserControl>

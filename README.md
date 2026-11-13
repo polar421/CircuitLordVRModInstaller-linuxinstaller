@@ -71,7 +71,7 @@ on a mismatch or an unsafe checksum path.
 |---|---|
 | Native Linux UI (Avalonia, no Wine) | Implemented; original layout, serif typography, icon title bar, NEW badge and support footer |
 | Native Wayland with X11 fallback | Implemented on Avalonia 12.1; exercised on KWin Wayland and X11 |
-| Settings screen (appearance, language, updates, VR/Steam integration, diagnostics, About, Restore Defaults) | Implemented; preferences persist in `settings.json` schema 8 |
+| Settings screen (General, Appearance, Diagnostics and About tabs, fixed Restore Defaults footer) | Implemented; preferences persist in `settings.json` schema 8 |
 | Appearance | System/Dark/Light themes, Compact/Comfortable density, 80–150% UI scaling in 5% steps, and Follow system/Reduced/Full motion, applied live and persisted |
 | Interface languages | English, German, Spanish, French, Brazilian Portuguese, Italian, Polish, Russian, Japanese and Simplified Chinese; see [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md) |
 | Automatic installer updates and helper updates | Implemented; stable/beta update channels filter prereleases, release archives are checksum-verified and applied by a detached helper; helper updates remain origin-verified |
@@ -81,9 +81,10 @@ on a mismatch or an unsafe checksum path.
 | Install / reinstall / uninstall through `install.sh` | Implemented; not yet run end-to-end against a real Titanfall 2 installation |
 | Preflight (`install.sh --check`) | Implemented |
 | First-run setup wizard | Implemented; nine guided steps for game, backend, Proton/dependencies, OpenXR, WiVRn, Steam and release choice, with automatic skips and a Settings relaunch |
-| Installation history | Dedicated page with date, previous/new version, channel, operation type, result, backend commit, duration and linked log; filters for install, update, reinstall, repair and uninstall |
-| Release explorer | Dedicated browser with version search, Stable/Beta/Pinned filters, sortable release cards, exact per-release changelog previews, installed/current markers, a side-by-side comparison view and a changed-lines summary |
-| Installer controls | Copy buttons beside installed/latest versions and technical paths, searchable operation logs, remembered details-panel state, a title-bar busy indicator and an install confirmation preview |
+| Titanfall 2 navigation | Dedicated Overview, Releases, History and Diagnostics tabs with preserved per-tab state, independent scrolling, keyboard navigation, localized labels and a background-operation indicator |
+| Installation history | Dedicated page with date, previous/new version, channel, operation type, result, backend commit, duration and linked log; search, date sorting and operation/result filters for install, update, reinstall, repair and uninstall |
+| Release explorer | Dedicated browser in the Releases tab with local search across versions, channels, descriptions and changelogs; Stable/Beta/Pinned/Installed/Selected filters; semantic sorting; release details with manifest metadata; exact changelog differences; and backend-token selection |
+| Installer controls | Copy buttons beside installed/latest versions and technical paths, a title-bar busy indicator, an install confirmation preview, and searchable operation logs in Diagnostics |
 | Notification center | Title-bar activity bell with unread count and a persistent panel for installs, failures, releases, helper updates, Steam integration and WiVRn desktop-entry issues |
 | Contextual help | Small `?` popovers beside release channels, pinned releases, Proton-TF2VR, WiVRn repair, Steam restart and rebuild controls |
 | Launch through the installed native `tf2vr` launcher | Implemented |
@@ -91,7 +92,7 @@ on a mismatch or an unsafe checksum path.
 | Steam shortcut with graceful close → backup → verified write → reopen | Implemented and fixture tested; not verified against a live Steam client |
 | Manifest release notes | Implemented (HTTPS, cache, validation) |
 | Reproducible self-contained release + user-level installer | Implemented; see `docs/RELEASE.md` |
-| Automated tests | 140 passing |
+| Automated tests | 167 passing (including headless Settings UI tests) |
 
 ## Limitations
 
@@ -108,7 +109,6 @@ on a mismatch or an unsafe checksum path.
 - **Raw technical output stays in its original language.** Backend command output, git messages,
   release notes and technical paths are deliberately not rewritten. The ten UI catalogs cover
   every application-owned label, dialog and status string.
-- No separate diagnostics page; diagnostics and per-operation logs remain available in Settings and the installation history report.
 
 ## Build from source
 
@@ -118,7 +118,7 @@ are locked; restore runs with `--locked-mode`.
 ```bash
 dotnet restore CircuitLord.VRModInstaller.Linux.slnx --locked-mode
 dotnet build CircuitLord.VRModInstaller.Linux.slnx -c Release
-dotnet test tests/CircuitLord.VRModInstaller.Core.Tests -c Release
+dotnet test CircuitLord.VRModInstaller.Linux.slnx -c Release
 
 # Run the app from the build tree
 dotnet run --project src/CircuitLord.VRModInstaller.App

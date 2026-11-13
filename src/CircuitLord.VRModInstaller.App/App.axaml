@@ -538,6 +538,17 @@
       <Setter Property="Padding" Value="{DynamicResource UiTooltipPadding}" />
       <Setter Property="FontSize" Value="{DynamicResource UiTooltipFontSize}" />
     </Style>
+    <Style Selector="Border.release-card">
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12" />
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Window.reduced-motion Border.release-card">
+      <Setter Property="Transitions" Value="{x:Null}" />
+    </Style>
     <Style Selector="Window.reduced-motion Button">
       <Setter Property="Transitions" Value="{x:Null}" />
     </Style>
@@ -689,6 +700,20 @@
     <Style Selector="TextBlock.status-pill-text.running">
       <Setter Property="Foreground" Value="{DynamicResource Amber}" />
     </Style>
+    <Style Selector="Border.status-pill.cancelled">
+      <Setter Property="Background" Value="{DynamicResource AmberFill}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Amber}" />
+    </Style>
+    <Style Selector="TextBlock.status-pill-text.cancelled">
+      <Setter Property="Foreground" Value="{DynamicResource Amber}" />
+    </Style>
+    <Style Selector="Border.status-pill.unknown">
+      <Setter Property="Background" Value="{DynamicResource Hover}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Stroke}" />
+    </Style>
+    <Style Selector="TextBlock.status-pill-text.unknown">
+      <Setter Property="Foreground" Value="{DynamicResource TextDim}" />
+    </Style>
 
     <!-- compact status language used by the cards, picker and details header -->
     <Style Selector="Border.status-pill">
@@ -839,5 +864,7 @@
     <Style Selector="Window.density-compact TextBox">
       <Setter Property="Padding" Value="8,5" />
     </Style>
+
+    <StyleInclude Source="avares://CircuitLordVRModInstaller/Styles/TabBarStyles.axaml" />
   </Application.Styles>
 </Application>

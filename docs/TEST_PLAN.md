@@ -3,22 +3,29 @@
 Commands:
 
 ```bash
-dotnet test tests/CircuitLord.VRModInstaller.Core.Tests
+dotnet test CircuitLord.VRModInstaller.Linux.slnx
 dotnet build CircuitLord.VRModInstaller.Linux.slnx
 ```
 
-## Automated (140 tests, all passing on 2026-11-13)
+## Automated (167 tests, all passing on 2026-11-13)
+
+The solution includes the Core service/unit tests and Avalonia headless UI tests.
+Both run in the release workflows.
 
 | Area | Coverage |
 |---|---|
 | Catalogue parser | Real-format output; ordinal 1=`latest`, 2=`beta`; installed/choice markers; reorder keeps token; CRLF + ANSI; empty/garbage output yields no tokens; numeric tokens treated as tokens; option-injection rejection |
 | Manifest | Valid parse with channels/changelog; missing product; invalid JSON; malformed changelog entry tolerated |
 | Release notes / comparison | Selected/installed exact version match; stable-only fallback keeps a stable label; exact release lookup never falls back to another version; empty notes remain unavailable; the localized placeholder is never treated as a diff line; two real changelogs report only their unique lines in each direction |
+| Release browser | Semantic ordering including `1.0.10` over `1.0.9` and prerelease precedence; local search over version, name, channel, token, description and changelog; Stable/Beta/Pinned/Installed/Selected filters; pinned tokens stay out of moving channels; additional backend channels; cached entries and removed entries remain distinguishable |
+| Titanfall 2 tabs | Overview default selection; arrow movement and wrap-around in both directions; Home/End selection; one change event per real selection; state survives visiting another destination |
+| Settings tabs | General is the default destination; all four Settings destinations can be selected; arrow wrap-around and Home/End order; one change event per real selection; independent per-tab state survives a round-trip |
+| Settings UI (headless) | The real `SettingsView` opens on General; pointer and keyboard selection switch all four panes; each pane retains its own scroll offset; all ten language changes update tab labels and preserve the active pane; Restore Defaults requires confirmation, supports cancellation, keeps Settings open, and persists only preference defaults while preserving release selection and first-run state |
 | Desktop entry | Exact `Categories=Game;X-WiVRn-VR;`, XDG destination, Exec target, `Terminal=false`, repair after regeneration, missing launcher, spaces in path |
 | VDF | Round trip, unknown-field preservation, idempotent upsert, same-name conflict refusal, owned-only removal |
 | Steam transaction | Running → shutdown → backup → write → verify → reopen; refusal to restart; shutdown timeout writes nothing; write failure still reopens; reopen failure = recovery required; initially-closed stays closed |
 | Appearance | KDE/GNOME/GTK theme detection, Dark fallback, explicit preference precedence, live system-theme and motion events; KDE/GNOME reduced-motion detection; scale clamping/snapping/factors; settings persistence |
-| Localization | Ten complete catalogs (544 keys each), placeholder preservation, English fallback, unsupported-locale normalization, technical identifiers, unused-key detection, culture-aware formatting |
+| Localization | Ten complete catalogs (606 keys each), placeholder preservation, English fallback, unsupported-locale normalization, technical identifiers, unused-key detection, culture-aware formatting |
 | Operation history | Channel, duration and version round-trip; older entries without those fields still load; persisted numeric operation kinds stay compatible after adding Repair |
 | Notifications | Structured activity round-trip through the notifications file; corrupt files are ignored without losing the rest of the app |
 | Installer updater | Release archive/checksum discovery; installed-copy detection including symlinks; SHA-256 validation; safe extraction; verified package staging; mismatched archive rejection |
@@ -130,14 +137,17 @@ GNOME detector.
 | Scale 150% | 800×740: root child 534×494, Settings border 510×470, scrollable content 452×367; 560×520: Settings 350×323 with a 292×220 scroll viewport |
 | Scale 80% | Root logical size 1000×925, rendered into 800×740; no text truncation or invisible controls in the inspected Settings screen |
 | Dropdowns / modals | Light and Dark dropdown popups, Settings sheet, confirm/runtime/log overlays and the scaled release picker inspected; the 150% release picker stayed inside the 800×740 window |
-| Languages | All ten catalogs have 544/544 keys; English, Japanese and Simplified Chinese installer screens plus Japanese Settings were inspected; Japanese/Simplified Chinese rendered with Noto Sans CJK and Russian resolved to Liberation Serif |
+| Languages | All ten catalogs have 606/606 keys; English, Japanese and Simplified Chinese installer screens plus Japanese Settings were inspected; Japanese/Simplified Chinese rendered with Noto Sans CJK and Russian resolved to Liberation Serif |
 | Live language switch | English → Japanese → Simplified Chinese → Russian → English updated the window title, Settings labels, closed Theme/Motion dropdown text, installer labels and release-picker labels |
 | Formatting | Culture-aware number/date formatting is covered by tests; version strings and backend tokens remain unchanged |
 | Reduced motion | Reduced motion set the `reduced-motion` window class and removed button transitions; Full animations restored them. Follow system, explicit Reduced and explicit Full precedence are covered by Core tests |
 | First-run setup | Headless 800×740 pass through all nine steps: Welcome → game/backend auto-skip → dependency preflight → OpenXR → WiVRn → Steam → Stable/Beta → readiness summary. Finish persisted schema 8 `setupWizardCompleted` and the exact `latest` token; Settings reopened the wizard; later refresh auto-skipped configured steps |
 | Installation history | Headless 800×740 page opened from the installer summary with five fixture operations; each of the five filters returned its matching row; an operation opened its report with previous/new version, channel, result, commit, duration, exit code, log path and log content; Back returned to the list and closed the page. Dark, Light and 150% layouts inspected |
+| Release explorer | Headless 800×740 explorer opened from the installer with the live catalogue; local search, all six filters, all five sort modes, release details, comparison and exact-token use were exercised; browsing left the persisted selection unchanged; a background catalogue removal and restoration refreshed the browser without changing the selection; Back/Escape returned to the list/installer; two-column 1200px and compact 800px layouts, 150% scale, and a German live switch were checked |
 | Contextual help | Small `?` popovers opened beside the release channel heading, pinned filter, wizard release choice and Linux backend heading; titles and bodies came from the catalogs, Escape/Close dismissed them, and the release popover remained inside the window at 150% |
-| Installer controls | Compact density changed the window class and persisted; Comfortable restored it; the details expansion state persisted; log search filtered two fixture lines to one and showed the no-match empty state; the release comparison of a release without notes showed the localized unavailable message instead of a 309-character placeholder diff; the install preview showed the selected release and game folder, and Cancel closed it without starting an install |
+| Titanfall 2 tabs | Headless 800×740 and 560×520 checks: Overview opened by default; pointer and Left/Right/Home/End selection reached all four destinations; release search/sort/inspection and history search/sort/result filters survived tab round-trips; independent release, history and Overview scroll offsets were restored; Diagnostics opened without a new refresh/preflight and showed logs written while another tab was active; reduced motion removed the transition and Full motion installed the 170 ms opacity/5 px move; all ten languages, Dark/Light/System themes, 80/100/125/150% scales and Back/reopen were exercised; Settings stayed visible |
+| Settings tabs | Headless 800×740 and 560×520 checks: General/Appearance/Diagnostics/About opened from the Settings dialog; tab navigation stayed visible while each pane scrolled independently; all four scroll offsets and preference values survived round-trips; all ten languages, Dark/Light/System themes, 80/100/125/150% scales, keyboard Home/Left and the fixed Restore Defaults confirmation were exercised; restore reset only application preferences and kept Settings open |
+| Installer controls | Compact density changed the window class and persisted; Comfortable restored it; the release comparison of a release without notes showed the localized unavailable message instead of a 309-character placeholder diff; the install preview showed the selected release and game folder, and Cancel closed it without starting an install; operation logs moved to the Diagnostics tab with search and follow behavior |
 
 Raw backend/git output and release notes are intentionally shown unchanged; the translated UI
 surrounds them. Actual KDE/GNOME sessions were simulated through their documented configuration
@@ -149,8 +159,8 @@ and command interfaces, not exercised on a live desktop in this environment.
 - Real Steam client shutdown/relaunch and library recognition.
 - Real WiVRn discovery of the desktop entry.
 - OpenXR runtime JSON parsing (service is implemented; no test yet).
-- GUI interaction tests beyond the packaged launch check above (the first screen was observed, no
-  clicks through install/Steam flows).
+- GUI interaction tests beyond the headless Settings scenarios above (install, Steam and other
+  screens still rely on focused service tests and manual checks).
 
 ## Manual acceptance still required
 

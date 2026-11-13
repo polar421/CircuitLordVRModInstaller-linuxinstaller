@@ -34,9 +34,11 @@ public sealed class VersionOption
     public required string? Version { get; init; }
     public string GroupKey { get; init; } = "pinned";
     public string GroupTitle { get; init; } = "Pinned";
+    public string GroupHint { get; init; } = string.Empty;
     public string KindLabel { get; init; } = "Fixed version";
     public string Description { get; init; } = string.Empty;
     public string ReleaseDescription { get; init; } = string.Empty;
+    public VersionCatalogueEntry? CatalogueEntry { get; init; }
     public bool IsInstalled { get; init; }
     public bool IsSelected { get; init; }
     public bool IsUpToDate { get; init; }
@@ -98,6 +100,7 @@ public sealed class InstallerViewModel
     private string _stageKey = "stageStarting";
     private object?[] _stageArgs = Array.Empty<object?>();
     private bool _checkingBackendUpdate;
+    private DateTimeOffset? _lastLocalRefreshAt;
     private bool _backendUpdateInProgress;
     private string? _latestAppTag;
     private ReleaseCheckResult? _latestAppRelease;
@@ -190,7 +193,14 @@ public sealed class InstallerViewModel
 
     public string BackendCurrentCommitText => _backendState?.ValidationStatus == BackendValidationStatus.Validated
         ? Short(_backendState.CommitHash) + " · " + Loc.Get("originVerified")
-        : _backendState?.ValidationStatus.ToString() ?? Loc.Get("notChecked");
+        : _backendState is null ? Loc.Get("notChecked") : Loc.Get("notAvailable");
+    public string BackendOriginStatusText => _backendState is null
+        ? Loc.Get("notChecked")
+        : _backendState.VerifiedOrigin ? Loc.Get("yes") : Loc.Get("no");
+    public bool BackendChecked => _backendState is not null;
+    public bool BackendOriginVerified => _backendState?.VerifiedOrigin == true;
+    public bool BackendInstallerScriptAvailable => BackendOriginVerified
+        && File.Exists(Path.Combine(_paths.BackendCheckout, "install.sh"));
     public string BackendLatestCommitText => _backendUpdateCheck?.RemoteCommit is { Length: >= 7 } remote
         ? Short(remote) + (_backendUpdateCheck.UpdateAvailable ? string.Empty : " · " + Loc.Get("upToDateShort"))
         : Loc.Get("notChecked");
@@ -222,6 +232,10 @@ public sealed class InstallerViewModel
             ? string.Empty
             : " " + _steamShortcutStatus.LaunchOptions)
         : _launcher.LauncherExists ? _launcher.LauncherPath : Loc.Get("launcherMissing");
+    /// <summary>Never exposes the selected account ID in the UI.</summary>
+    public string SteamAccountStatusText => _steamAccount is null
+        ? Loc.Get("notDetected")
+        : Loc.Get("steamAccountDetected");
     public bool SteamShortcutInstalled => _steamShortcutStatus?.State == ShortcutInstallState.Installed;
     public string SteamShortcutStatusText => _steamShortcutStatus is null
         ? Loc.Get("notChecked")
@@ -260,6 +274,11 @@ public sealed class InstallerViewModel
         ? Loc.Get("notChecked")
         : (_runtimeInfo.RuntimeName ?? Loc.Get("noRuntimeRegistered"))
           + (_runtimeInfo.RuntimePath is null ? string.Empty : " · " + _runtimeInfo.RuntimePath);
+    public string OpenXrRuntimeJsonPath => _runtimeInfo is null
+        ? Loc.Get("notChecked")
+        : string.IsNullOrWhiteSpace(_runtimeInfo.ActiveRuntimeJsonPath)
+            ? Loc.Get("notAvailable")
+            : _runtimeInfo.ActiveRuntimeJsonPath;
     public string SteamVrStatusText => _runtimeInfo is null
         ? Loc.Get("notChecked")
         : _runtimeInfo.SteamVrAvailable
@@ -275,9 +294,12 @@ public sealed class InstallerViewModel
         : _runtimeInfo.MonadoAvailable
             ? Loc.Get("detected") + (_runtimeInfo.MonadoRunning ? " · " + Loc.Get("running") : string.Empty)
             : Loc.Get("notDetected");
-    public string OpenVrBridgeStatusText => _runtimeInfo?.OpenVrBridgePath is null
-        ? Loc.Get("bridgeMissing")
-        : (_runtimeInfo.OpenVrBridgeKind ?? Loc.Get("detected")) + " · " + _runtimeInfo.OpenVrBridgePath;
+    public string OpenVrBridgeStatusText => _runtimeInfo is null
+        ? Loc.Get("notChecked")
+        : _runtimeInfo.OpenVrBridgePath is null
+            ? Loc.Get("bridgeMissing")
+            : (_runtimeInfo.OpenVrBridgeKind ?? Loc.Get("detected")) + " · " + _runtimeInfo.OpenVrBridgePath;
+    public bool RuntimeChecked => _runtimeInfo is not null;
     public string LauncherStatusText => _launcher.LauncherExists
         ? _launcher.LauncherPath
         : Loc.Get("launcherMissing");
@@ -292,9 +314,22 @@ public sealed class InstallerViewModel
     public string LogsDirectory => _paths.LogsDirectory;
     public string LauncherLogPath => Path.Combine(_paths.StateHome, "tf2vr", "launch.log");
     public string DiagnosticsReport => BuildDiagnosticsReport();
+    public string DiagnosticsLastRefreshedText => _lastLocalRefreshAt is null
+        ? Loc.Get("notChecked")
+        : Loc.Format("lastRefreshed", _lastLocalRefreshAt.Value.ToLocalTime().ToString("g"));
+    public string WinePrefixText => _backendPaths.TryGetValue("PREFIX_DIR", out var prefix)
+        && !string.IsNullOrWhiteSpace(prefix)
+            ? prefix
+            : Loc.Get("notReported");
 
     public string BackendText { get; private set; } = Loc.Get("backendChecking");
     public string CatalogueText { get; private set; } = Loc.Get("catalogueLoading");
+    public bool CatalogueIsCached => _catalogue?.IsFromCache == true;
+    public DateTimeOffset? CatalogueRetrievedAt => _catalogue?.RetrievedAt;
+    public string? CatalogueDiagnostic => _catalogue?.Diagnostic;
+    public bool ManifestIsCached => _manifestSnapshot?.IsFromCache == true;
+    public DateTimeOffset? ManifestRetrievedAt => _manifestSnapshot?.RetrievedAt;
+    public string? ManifestWarning => _manifestSnapshot?.ValidationWarning;
     public string InstalledText { get; private set; } = Loc.Get("notInstalled");
     public string InstalledVersionText => IsInstalled
         ? ModVersion(_installedVersionRaw) ?? Loc.Get("versionUnknown")
@@ -388,7 +423,9 @@ public sealed class InstallerViewModel
             {
                 "Succeeded" => Loc.Get("operationSucceeded"),
                 "Running" => Loc.Get("operationRunning"),
-                _ => Loc.Get("operationFailed"),
+                "Failed" => Loc.Get("operationFailed"),
+                "Cancelled" or "Canceled" => Loc.Get("operationCancelled"),
+                _ => Loc.Get("operationUnknown"),
             });
     public string ChangelogPreview { get; private set; } = Loc.Get("changelogUnavailable");
     public string ChangelogFullText { get; private set; } = Loc.Get("changelogUnavailable");
@@ -456,7 +493,9 @@ public sealed class InstallerViewModel
     public bool SetupWizardCompleted => _settings.SetupWizardCompleted;
     public bool StableReleaseAvailable => Versions.Any(v => v.Token == "latest");
     public bool BetaReleaseAvailable => Versions.Any(v => v.Token == "beta");
+    public bool DesktopEntryChecked => _desktopStatus is not null;
     public bool DesktopEntryInstalled => _desktopStatus?.State == DesktopIntegrationState.Installed;
+    public bool SteamShortcutChecked => _steamShortcutStatus is not null;
     public bool StableUpdateAvailable => IsInstalled
         && IsNewer(LatestStableVersionText, ModVersion(_installedVersionRaw));
     public VersionOption? SelectedVersion { get; set; }
@@ -1383,6 +1422,7 @@ public sealed class InstallerViewModel
         // exposes the raw catalogue description for every release.
         Description = entry.IsPinnedRelease ? entry.Description ?? string.Empty : string.Empty,
         ReleaseDescription = entry.Description ?? string.Empty,
+        CatalogueEntry = entry,
     };
 
     private static string LocalizedDisplayLabel(VersionCatalogueEntry entry)
@@ -1725,6 +1765,7 @@ public sealed class InstallerViewModel
         EvaluateReleaseNotifications();
         RefreshChangelog();
         UpdatePrimaryAction();
+        _lastLocalRefreshAt = DateTimeOffset.Now;
         RaiseChanged();
     }
 
@@ -1925,34 +1966,38 @@ public sealed class InstallerViewModel
 
     private IReadOnlyList<VersionGroup> BuildVersionGroups()
     {
-        var definitions = new (string Key, string Title, string Hint)[]
-        {
-            ("stable", Loc.Get("stableReleases"), Loc.Get("stableReleasesHint")),
-            ("beta", Loc.Get("betaReleases"), Loc.Get("betaReleasesHint")),
-            ("pinned", Loc.Get("pinnedReleases"), Loc.Get("pinnedReleasesHint")),
-        };
         var selectedToken = SelectedVersion?.Token;
+        var keys = Versions
+            .Select(v => v.GroupKey)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(GroupOrder)
+            .ToList();
         var groups = new List<VersionGroup>();
-        foreach (var definition in definitions)
+        foreach (var key in keys)
         {
+            var title = GroupTitleFor(key);
+            var hint = GroupHintFor(key);
             var options = Versions
-                .Where(v => v.GroupKey == definition.Key)
+                .Where(v => string.Equals(v.GroupKey, key, StringComparison.Ordinal))
                 .Select(v =>
                 {
                     var installed = IsVersionInstalled(v);
+                    var selected = string.Equals(selectedToken, v.Token, StringComparison.Ordinal);
                     return new VersionOption
                     {
                         DisplayLabel = v.DisplayLabel,
                         Token = v.Token,
                         Version = v.Version,
-                        GroupKey = definition.Key,
-                        GroupTitle = definition.Title,
-                        KindLabel = Loc.Get(definition.Key == "pinned" ? "fixedVersion" : "channel"),
+                        GroupKey = key,
+                        GroupTitle = title,
+                        GroupHint = hint,
+                        KindLabel = key == "pinned" ? Loc.Get("fixedVersion") : Loc.Get("channel"),
                         Description = v.Description,
                         ReleaseDescription = v.ReleaseDescription,
+                        CatalogueEntry = v.CatalogueEntry,
                         IsInstalled = installed,
-                        IsSelected = string.Equals(selectedToken, v.Token, StringComparison.Ordinal),
-                        IsUpToDate = installed && definition.Key == "stable" && !StableUpdateAvailable,
+                        IsSelected = selected,
+                        IsUpToDate = installed && selected && !StableUpdateAvailable,
                     };
                 })
                 .ToList();
@@ -1960,9 +2005,9 @@ public sealed class InstallerViewModel
             {
                 groups.Add(new VersionGroup
                 {
-                    Key = definition.Key,
-                    Title = definition.Title,
-                    Hint = definition.Hint,
+                    Key = key,
+                    Title = title,
+                    Hint = hint,
                     Options = options,
                 });
             }
@@ -1970,11 +2015,28 @@ public sealed class InstallerViewModel
         return groups;
     }
 
+    private static int GroupOrder(string key) => key switch
+    {
+        "stable" => 0,
+        "beta" => 1,
+        "pinned" => 2,
+        _ => 3,
+    };
+
     private static string GroupTitleFor(string key) => key switch
     {
         "stable" => Loc.Get("stableReleases"),
         "beta" => Loc.Get("betaReleases"),
-        _ => Loc.Get("pinnedReleases"),
+        "pinned" => Loc.Get("pinnedReleases"),
+        _ => Loc.Format("channelGroup", key),
+    };
+
+    private static string GroupHintFor(string key) => key switch
+    {
+        "stable" => Loc.Get("stableReleasesHint"),
+        "beta" => Loc.Get("betaReleasesHint"),
+        "pinned" => Loc.Get("pinnedReleasesHint"),
+        _ => Loc.Format("channelGroupHint", key),
     };
 
     private static string GroupKeyFor(VersionCatalogueEntry entry)
@@ -1983,11 +2045,17 @@ public sealed class InstallerViewModel
         {
             return "pinned";
         }
+        if (entry.BackendToken == "latest" || entry.ChannelId == "latest")
+        {
+            return "stable";
+        }
         if (entry.BackendToken == "beta" || entry.ChannelId == "beta")
         {
             return "beta";
         }
-        return "stable";
+        return entry.IsMovingChannel
+            ? entry.ChannelId ?? entry.BackendToken
+            : "pinned";
     }
 
     private bool IsVersionInstalled(VersionOption option)
@@ -2058,6 +2126,49 @@ public sealed class InstallerViewModel
 
     private static string OperationDateText(InstallerOperationRecord? record) =>
         (record?.FinishedAt ?? record?.StartedAt ?? DateTimeOffset.Now).ToLocalTime().ToString("g");
+
+    /// <summary>Manifest description for the release's own channel, when present.</summary>
+    public string? GetReleaseManifestDescription(VersionOption option)
+    {
+        var product = _manifestSnapshot?.Titanfall2Vr;
+        if (product is null)
+        {
+            return null;
+        }
+        if (option.GroupKey == "stable")
+        {
+            return product.Description;
+        }
+        return product.Channels
+            .FirstOrDefault(channel => string.Equals(channel.Id, option.GroupKey, StringComparison.OrdinalIgnoreCase))
+            ?.Description;
+    }
+
+    /// <summary>Catalogue or manifest description, without inventing one.</summary>
+    public string? GetReleaseDescription(VersionOption option)
+    {
+        var manifest = GetReleaseManifestDescription(option);
+        if (!string.IsNullOrWhiteSpace(manifest))
+        {
+            return manifest;
+        }
+        return string.IsNullOrWhiteSpace(option.ReleaseDescription) ? null : option.ReleaseDescription;
+    }
+
+    public string? GetReleaseLastUpdated(VersionOption option)
+        => FindManifestChange(option.Version)?.Date;
+
+    public string? GetReleaseChangelogText(VersionOption option)
+    {
+        var notes = FindManifestChange(option.Version)?.Notes.Trim();
+        return string.IsNullOrWhiteSpace(notes) ? null : notes;
+    }
+
+    private ManifestChange? FindManifestChange(string? version)
+    {
+        var product = _manifestSnapshot?.Titanfall2Vr;
+        return product is null ? null : ReleaseNotesSelector.FindForVersion(product, version);
+    }
 
     /// <summary>
     /// Exact changelog notes for one catalogue version. Unlike the main

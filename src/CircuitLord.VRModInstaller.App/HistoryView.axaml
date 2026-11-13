@@ -6,7 +6,7 @@
              KeyDown="History_KeyDown">
 
   <Border Background="{DynamicResource Bg}">
-    <Grid RowDefinitions="Auto,Auto,*" Margin="18,8,18,16">
+    <Grid RowDefinitions="Auto,Auto,*" Margin="0,8,0,16">
 
       <Grid Grid.Row="0">
         <Grid Name="HistoryListHeader" ColumnDefinitions="Auto,*">
@@ -19,7 +19,7 @@
               <TextBlock Text="{loc:Tr Key=historyBackToInstaller}" FontSize="11.5" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
-          <StackPanel Grid.Column="1" Spacing="2" Margin="14,0,0,0" VerticalAlignment="Center">
+          <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
             <TextBlock Text="{loc:Tr Key=installationHistory}" Classes="h1" />
             <TextBlock Text="{loc:Tr Key=historySubtitle}" Classes="small" />
           </StackPanel>
@@ -35,21 +35,41 @@
               <TextBlock Text="{loc:Tr Key=historyBackToHistory}" FontSize="11.5" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
-          <StackPanel Grid.Column="1" Spacing="2" Margin="14,0,0,0" VerticalAlignment="Center">
+          <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
             <TextBlock Text="{loc:Tr Key=historyReport}" Classes="h1" />
             <TextBlock Name="HistoryDetailMeta" Classes="small" />
           </StackPanel>
         </Grid>
       </Grid>
 
-      <WrapPanel Name="HistoryFilters" Grid.Row="1" Orientation="Horizontal" Margin="0,14,0,10">
-        <Button Content="{loc:Tr Key=historyAll}" Tag="all" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
-        <Button Content="{loc:Tr Key=install}" Tag="install" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
-        <Button Content="{loc:Tr Key=update}" Tag="update" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
-        <Button Content="{loc:Tr Key=reinstall}" Tag="reinstall" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
-        <Button Content="{loc:Tr Key=repair}" Tag="repair" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
-        <Button Content="{loc:Tr Key=uninstall}" Tag="uninstall" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
-      </WrapPanel>
+      <StackPanel Grid.Row="1" Spacing="6" Margin="0,14,0,10">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+          <TextBox Name="HistorySearchBox" PlaceholderText="{loc:Tr Key=historySearch}"
+                   AutomationProperties.Name="{loc:Tr Key=historySearch}"
+                   TextChanged="HistorySearch_TextChanged" FontSize="12" Padding="10,6" />
+          <ComboBox Grid.Column="1" Name="HistorySortCombo" MinWidth="160" SelectedIndex="0"
+                    SelectionChanged="HistorySort_Changed"
+                    AutomationProperties.Name="{loc:Tr Key=historySort}">
+            <ComboBoxItem Content="{loc:Tr Key=historyNewest}" Tag="newest" />
+            <ComboBoxItem Content="{loc:Tr Key=historyOldest}" Tag="oldest" />
+          </ComboBox>
+        </Grid>
+        <WrapPanel Name="HistoryFilters" Orientation="Horizontal">
+          <Button Content="{loc:Tr Key=historyAll}" Tag="all" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+          <Button Content="{loc:Tr Key=install}" Tag="install" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+          <Button Content="{loc:Tr Key=update}" Tag="update" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+          <Button Content="{loc:Tr Key=reinstall}" Tag="reinstall" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+          <Button Content="{loc:Tr Key=repair}" Tag="repair" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+          <Button Content="{loc:Tr Key=uninstall}" Tag="uninstall" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+        </WrapPanel>
+        <WrapPanel Name="HistoryStatusFilters" Orientation="Horizontal">
+          <Button Content="{loc:Tr Key=historyResultAll}" Tag="all" Classes="filter" Margin="0,0,6,6" Click="StatusFilter_Click" />
+          <Button Content="{loc:Tr Key=historySucceeded}" Tag="succeeded" Classes="filter" Margin="0,0,6,6" Click="StatusFilter_Click" />
+          <Button Content="{loc:Tr Key=historyFailed}" Tag="failed" Classes="filter" Margin="0,0,6,6" Click="StatusFilter_Click" />
+          <Button Content="{loc:Tr Key=historyCancelled}" Tag="cancelled" Classes="filter" Margin="0,0,6,6" Click="StatusFilter_Click" />
+          <Button Content="{loc:Tr Key=historyUnknown}" Tag="unknown" Classes="filter" Margin="0,0,6,6" Click="StatusFilter_Click" />
+        </WrapPanel>
+      </StackPanel>
 
       <Grid Grid.Row="2">
         <ScrollViewer Name="HistoryListScroll" VerticalScrollBarVisibility="Auto"
@@ -145,6 +165,9 @@
                                          TextWrapping="Wrap" LineHeight="16" Margin="10" />
                   </ScrollViewer>
                 </Border>
+                <Button Name="HistoryCopyButton" Content="{loc:Tr Key=historyCopyDiagnostics}"
+                        Classes="ghost" FontSize="11.5" Padding="8,4" HorizontalAlignment="Right"
+                        Click="HistoryCopy_Click" />
               </StackPanel>
             </Border>
 

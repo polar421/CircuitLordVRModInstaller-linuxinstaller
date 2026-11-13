@@ -4,6 +4,7 @@
     <Project Path="src/CircuitLord.VRModInstaller.Core/CircuitLord.VRModInstaller.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/CircuitLord.VRModInstaller.App.Tests/CircuitLord.VRModInstaller.App.Tests.csproj" />
     <Project Path="tests/CircuitLord.VRModInstaller.Core.Tests/CircuitLord.VRModInstaller.Core.Tests.csproj" />
   </Folder>
 </Solution>

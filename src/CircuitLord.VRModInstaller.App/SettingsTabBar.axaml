@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:CircuitLord.VRModInstaller.Localization"
+             x:Class="CircuitLord.VRModInstaller.SettingsTabBar"
+             Focusable="False">
+
+  <Border BorderBrush="{DynamicResource Stroke}" BorderThickness="0,0,0,1">
+    <ScrollViewer Name="SettingsTabScroll" HorizontalScrollBarVisibility="Auto"
+                  VerticalScrollBarVisibility="Disabled"
+                  ScrollViewer.IsScrollChainingEnabled="False">
+      <StackPanel Name="SettingsTabButtons" Orientation="Horizontal" Spacing="1">
+        <Button Name="SettingsGeneralTabButton" Classes="tab" Tag="General"
+                Click="Tab_Click" KeyDown="TabButton_KeyDown"
+                ToolTip.Tip="{loc:Tr Key=tabSwitchHint}"
+                AutomationProperties.HelpText="{loc:Tr Key=tabSwitchHint}"
+                AutomationProperties.Name="{loc:Tr Key=general}">
+          <TextBlock Text="{loc:Tr Key=general}" />
+        </Button>
+        <Button Name="SettingsAppearanceTabButton" Classes="tab" Tag="Appearance"
+                Click="Tab_Click" KeyDown="TabButton_KeyDown"
+                ToolTip.Tip="{loc:Tr Key=tabSwitchHint}"
+                AutomationProperties.HelpText="{loc:Tr Key=tabSwitchHint}"
+                AutomationProperties.Name="{loc:Tr Key=appearance}">
+          <TextBlock Text="{loc:Tr Key=appearance}" />
+        </Button>
+        <Button Name="SettingsDiagnosticsTabButton" Classes="tab" Tag="Diagnostics"
+                Click="Tab_Click" KeyDown="TabButton_KeyDown"
+                ToolTip.Tip="{loc:Tr Key=tabSwitchHint}"
+                AutomationProperties.HelpText="{loc:Tr Key=tabSwitchHint}"
+                AutomationProperties.Name="{loc:Tr Key=diagnostics}">
+          <TextBlock Text="{loc:Tr Key=diagnostics}" />
+        </Button>
+        <Button Name="SettingsAboutTabButton" Classes="tab" Tag="About"
+                Click="Tab_Click" KeyDown="TabButton_KeyDown"
+                ToolTip.Tip="{loc:Tr Key=tabSwitchHint}"
+                AutomationProperties.HelpText="{loc:Tr Key=tabSwitchHint}"
+                AutomationProperties.Name="{loc:Tr Key=about}">
+          <TextBlock Text="{loc:Tr Key=about}" />
+        </Button>
+      </StackPanel>
+    </ScrollViewer>
+  </Border>
+</UserControl>
