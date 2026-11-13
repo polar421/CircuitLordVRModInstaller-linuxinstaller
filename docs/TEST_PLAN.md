@@ -7,7 +7,7 @@ dotnet test CircuitLord.VRModInstaller.Linux.slnx
 dotnet build CircuitLord.VRModInstaller.Linux.slnx
 ```
 
-## Automated (167 tests, all passing on 2026-11-13)
+## Automated (168 tests, all passing on 2026-11-13)
 
 The solution includes the Core service/unit tests and Avalonia headless UI tests.
 Both run in the release workflows.
@@ -20,7 +20,7 @@ Both run in the release workflows.
 | Release browser | Semantic ordering including `1.0.10` over `1.0.9` and prerelease precedence; local search over version, name, channel, token, description and changelog; Stable/Beta/Pinned/Installed/Selected filters; pinned tokens stay out of moving channels; additional backend channels; cached entries and removed entries remain distinguishable |
 | Titanfall 2 tabs | Overview default selection; arrow movement and wrap-around in both directions; Home/End selection; one change event per real selection; state survives visiting another destination |
 | Settings tabs | General is the default destination; all four Settings destinations can be selected; arrow wrap-around and Home/End order; one change event per real selection; independent per-tab state survives a round-trip |
-| Settings UI (headless) | The real `SettingsView` opens on General; pointer and keyboard selection switch all four panes; each pane retains its own scroll offset; all ten language changes update tab labels and preserve the active pane; Restore Defaults requires confirmation, supports cancellation, keeps Settings open, and persists only preference defaults while preserving release selection and first-run state |
+| Settings UI (headless) | The real `SettingsView` opens on General; pointer and keyboard selection switch all four panes; each pane retains its own scroll offset; all ten language changes update tab labels and preserve the active pane; Restore Defaults requires confirmation, supports cancellation, keeps Settings open, and persists only preference defaults while preserving release selection and first-run state; the compact 560 px / 150% footer geometry is checked directly |
 | Desktop entry | Exact `Categories=Game;X-WiVRn-VR;`, XDG destination, Exec target, `Terminal=false`, repair after regeneration, missing launcher, spaces in path |
 | VDF | Round trip, unknown-field preservation, idempotent upsert, same-name conflict refusal, owned-only removal |
 | Steam transaction | Running → shutdown → backup → write → verify → reopen; refusal to restart; shutdown timeout writes nothing; write failure still reopens; reopen failure = recovery required; initially-closed stays closed |

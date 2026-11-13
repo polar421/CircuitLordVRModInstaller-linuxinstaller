@@ -13,7 +13,7 @@ this app manages a checkout of that repository, runs its real `install.sh`, and 
 Proton setup, downloads, checksums or the mod layout. Big Walk VR is shown for parity with the
 original but is unavailable on Linux because no backend exists for it.
 
-[**Download the beta**](https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.9-beta.2)
+[**Download the beta**](https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.9-beta.3)
 · [Build from source](#build-from-source) · [Documentation](#documentation)
 
 ![Game selection screen](docs/screenshots/game-selection.png)
@@ -25,7 +25,7 @@ original but is unavailable on Linux because no backend exists for it.
 > fixture-tested. See [Status](#status) and [Limitations](#limitations) before relying on it.
 >
 > Native Wayland, the settings screen and automatic installer updates are included in the
-> latest `v1.0.9-beta.2` release.
+> latest `v1.0.9-beta.3` release.
 
 ## Install the prebuilt release
 
@@ -39,14 +39,14 @@ are needed only for the integrations you use.
 
 ```bash
 # 1. Download the archive and its checksum from:
-#    https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.9-beta.2
+#    https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.9-beta.3
 
 # 2. Verify the download.
-sha256sum -c circuitlord-vrmodinstaller-1.0.9-beta.2-linux-x64.tar.gz.sha256
+sha256sum -c circuitlord-vrmodinstaller-1.0.9-beta.3-linux-x64.tar.gz.sha256
 
 # 3. Extract and install for the current user.
-tar -xzf circuitlord-vrmodinstaller-1.0.9-beta.2-linux-x64.tar.gz
-./circuitlord-vrmodinstaller-1.0.9-beta.2-linux-x64/install.sh
+tar -xzf circuitlord-vrmodinstaller-1.0.9-beta.3-linux-x64.tar.gz
+./circuitlord-vrmodinstaller-1.0.9-beta.3-linux-x64/install.sh
 ```
 
 This creates:
@@ -92,7 +92,7 @@ on a mismatch or an unsafe checksum path.
 | Steam shortcut with graceful close → backup → verified write → reopen | Implemented and fixture tested; not verified against a live Steam client |
 | Manifest release notes | Implemented (HTTPS, cache, validation) |
 | Reproducible self-contained release + user-level installer | Implemented; see `docs/RELEASE.md` |
-| Automated tests | 167 passing (including headless Settings UI tests) |
+| Automated tests | 168 passing (including headless Settings UI tests) |
 
 ## Limitations
 
