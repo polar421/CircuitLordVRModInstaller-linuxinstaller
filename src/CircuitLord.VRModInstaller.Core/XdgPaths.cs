@@ -47,6 +47,7 @@ public sealed class XdgPaths
     public string BackendCheckout => Combine(AppData, "backend");
     public string LogsDirectory => Combine(AppState, "logs");
     public string HistoryFile => Combine(AppState, "history.json");
+    public string NotificationsFile => Combine(AppState, "notifications.json");
     public string SteamJournalDirectory => Combine(AppState, "steam-transactions");
     public string CatalogueCacheFile => Combine(AppCache, "catalogue.json");
     public string ManifestCacheFile => Combine(AppCache, "manifest-v3.json");

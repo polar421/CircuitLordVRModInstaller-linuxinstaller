@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:CircuitLord.VRModInstaller.Localization"
+             x:Class="CircuitLord.VRModInstaller.NotificationCenterView">
+
+  <Grid Width="44" Height="46">
+    <Button Name="NotificationButton" Classes="titlebar" Click="Toggle_Click"
+            ToolTip.Tip="{loc:Tr Key=notificationCenter}"
+            AutomationProperties.Name="{loc:Tr Key=notificationCenter}">
+      <Grid Width="16" Height="16">
+        <Path Data="M 3,10 L 3,6 C 3,4.1 4.2,2.5 6,2.5 C 7.8,2.5 9,4.1 9,6 L 9,10 L 11,11.5 L 1,11.5 Z M 5,13 C 5.3,13.8 6.7,13.8 7,13"
+              Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.15"
+              Fill="Transparent" Stretch="None" />
+      </Grid>
+    </Button>
+    <Border Name="UnreadBadge" Classes="notification-badge" IsVisible="False"
+            IsHitTestVisible="False" HorizontalAlignment="Right" VerticalAlignment="Top"
+            Margin="0,5,4,0">
+      <TextBlock Name="UnreadCountText" FontSize="9" FontWeight="Bold"
+                 Foreground="{DynamicResource Bg}" HorizontalAlignment="Center"
+                 VerticalAlignment="Center" />
+    </Border>
+
+    <Popup Name="NotificationPopup" PlacementTarget="{Binding #NotificationButton}"
+           Placement="BottomEdgeAlignedRight" IsLightDismissEnabled="True" VerticalOffset="6">
+      <LayoutTransformControl Name="NotificationPopupScale">
+        <Border Name="NotificationPopupPanel" Classes="popup" Width="360" MaxHeight="430">
+          <Grid RowDefinitions="Auto,*,Auto">
+            <Grid ColumnDefinitions="*,Auto" Margin="12,10,12,8">
+              <StackPanel Spacing="1">
+                <TextBlock Text="{loc:Tr Key=notificationCenter}" FontSize="13" FontWeight="SemiBold" />
+                <TextBlock Name="NotificationSubtitleText" Classes="small" />
+              </StackPanel>
+              <Button Grid.Column="1" Content="×" Classes="ghost" Width="26" Height="26" Padding="0"
+                      Click="Close_Click" ToolTip.Tip="{loc:Tr Key=close}" />
+            </Grid>
+
+            <ScrollViewer Name="NotificationScroll" Grid.Row="1" MaxHeight="320"
+                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.IsScrollChainingEnabled="False">
+              <StackPanel>
+                <ItemsControl Name="NotificationList" Margin="6,0,6,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Button Classes="notificationrow" Classes.unread="{Binding IsUnread}"
+                              HorizontalAlignment="Stretch" Click="Notification_Click"
+                              Margin="0,0,0,6">
+                        <Grid ColumnDefinitions="8,*,Auto" ColumnSpacing="8">
+                          <Ellipse Width="6" Height="6" Fill="{DynamicResource Accent}"
+                                   IsVisible="{Binding IsUnread}" VerticalAlignment="Top" Margin="0,5,0,0" />
+                          <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Message}" Classes="small" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding TimeText}" FontSize="10"
+                                       Foreground="{DynamicResource TextDim}" />
+                          </StackPanel>
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Name="NotificationEmpty" Classes="small" IsVisible="False"
+                           Text="{loc:Tr Key=notificationEmpty}" TextAlignment="Center"
+                           HorizontalAlignment="Center" Margin="20,22" />
+              </StackPanel>
+            </ScrollViewer>
+
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="12,8,12,10">
+              <Button Grid.Column="1" Name="MarkAllReadButton" Classes="link"
+                      Content="{loc:Tr Key=notificationMarkAllRead}" Click="MarkAllRead_Click" />
+            </Grid>
+          </Grid>
+        </Border>
+      </LayoutTransformControl>
+    </Popup>
+  </Grid>
+</UserControl>

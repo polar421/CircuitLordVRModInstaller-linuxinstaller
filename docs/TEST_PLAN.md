@@ -7,18 +7,20 @@ dotnet test tests/CircuitLord.VRModInstaller.Core.Tests
 dotnet build CircuitLord.VRModInstaller.Linux.slnx
 ```
 
-## Automated (100 tests, all passing on 2026-11-12)
+## Automated (140 tests, all passing on 2026-11-13)
 
 | Area | Coverage |
 |---|---|
 | Catalogue parser | Real-format output; ordinal 1=`latest`, 2=`beta`; installed/choice markers; reorder keeps token; CRLF + ANSI; empty/garbage output yields no tokens; numeric tokens treated as tokens; option-injection rejection |
 | Manifest | Valid parse with channels/changelog; missing product; invalid JSON; malformed changelog entry tolerated |
-| Release notes | Selected/installed exact version match; stable-only fallback keeps a stable label; empty notes remain unavailable |
+| Release notes / comparison | Selected/installed exact version match; stable-only fallback keeps a stable label; exact release lookup never falls back to another version; empty notes remain unavailable; the localized placeholder is never treated as a diff line; two real changelogs report only their unique lines in each direction |
 | Desktop entry | Exact `Categories=Game;X-WiVRn-VR;`, XDG destination, Exec target, `Terminal=false`, repair after regeneration, missing launcher, spaces in path |
 | VDF | Round trip, unknown-field preservation, idempotent upsert, same-name conflict refusal, owned-only removal |
 | Steam transaction | Running → shutdown → backup → write → verify → reopen; refusal to restart; shutdown timeout writes nothing; write failure still reopens; reopen failure = recovery required; initially-closed stays closed |
 | Appearance | KDE/GNOME/GTK theme detection, Dark fallback, explicit preference precedence, live system-theme and motion events; KDE/GNOME reduced-motion detection; scale clamping/snapping/factors; settings persistence |
-| Localization | Ten complete catalogs (391 keys each), placeholder preservation, English fallback, unsupported-locale normalization, technical identifiers, unused-key detection, culture-aware formatting |
+| Localization | Ten complete catalogs (544 keys each), placeholder preservation, English fallback, unsupported-locale normalization, technical identifiers, unused-key detection, culture-aware formatting |
+| Operation history | Channel, duration and version round-trip; older entries without those fields still load; persisted numeric operation kinds stay compatible after adding Repair |
+| Notifications | Structured activity round-trip through the notifications file; corrupt files are ignored without losing the rest of the app |
 | Installer updater | Release archive/checksum discovery; installed-copy detection including symlinks; SHA-256 validation; safe extraction; verified package staging; mismatched archive rejection |
 
 ## Packaging (verified 2026-11-12)
@@ -39,8 +41,8 @@ dotnet build CircuitLord.VRModInstaller.Linux.slnx
 | Packaged UI assets | installed archive launched after the UI change | serif font, icon, badge and footer render from the package |
 | Native Wayland | KWin session, packaged binary | rendered without an X11 window; `libwayland-client` loaded |
 | X11 fallback | `WAYLAND_DISPLAY` unset | window rendered through X11 |
-| Settings persistence | change theme, scale, motion, corners and language, restart | `settings.json` schema 5 records the choices and the UI reflects them after restart |
-| Settings migration | schema 2 and 3 → 5 with existing Steam/VR/update preferences | defaults are added without discarding existing values; a backup is retained |
+| Settings persistence | change theme, density, scale, motion, corners and language, restart | `settings.json` schema 8 records the choices and the UI reflects them after restart |
+| Settings migration | schema 2 and 3 → 8 with existing Steam/VR/update preferences | defaults are added without discarding existing values; a backup is retained |
 | Settings migration / backend rollback | schema 2 → 3; invalid remote commit | defaults migrate with Steam confirmation enabled; the failed helper update is rolled back to the preserved valid commit |
 | Dependency audit | `dotnet list package --vulnerable --include-transitive` | no vulnerable packages |
 
@@ -128,10 +130,14 @@ GNOME detector.
 | Scale 150% | 800×740: root child 534×494, Settings border 510×470, scrollable content 452×367; 560×520: Settings 350×323 with a 292×220 scroll viewport |
 | Scale 80% | Root logical size 1000×925, rendered into 800×740; no text truncation or invisible controls in the inspected Settings screen |
 | Dropdowns / modals | Light and Dark dropdown popups, Settings sheet, confirm/runtime/log overlays and the scaled release picker inspected; the 150% release picker stayed inside the 800×740 window |
-| Languages | All ten catalogs have 391/391 keys; English, Japanese and Simplified Chinese installer screens plus Japanese Settings were inspected; Japanese/Simplified Chinese rendered with Noto Sans CJK and Russian resolved to Liberation Serif |
+| Languages | All ten catalogs have 544/544 keys; English, Japanese and Simplified Chinese installer screens plus Japanese Settings were inspected; Japanese/Simplified Chinese rendered with Noto Sans CJK and Russian resolved to Liberation Serif |
 | Live language switch | English → Japanese → Simplified Chinese → Russian → English updated the window title, Settings labels, closed Theme/Motion dropdown text, installer labels and release-picker labels |
 | Formatting | Culture-aware number/date formatting is covered by tests; version strings and backend tokens remain unchanged |
 | Reduced motion | Reduced motion set the `reduced-motion` window class and removed button transitions; Full animations restored them. Follow system, explicit Reduced and explicit Full precedence are covered by Core tests |
+| First-run setup | Headless 800×740 pass through all nine steps: Welcome → game/backend auto-skip → dependency preflight → OpenXR → WiVRn → Steam → Stable/Beta → readiness summary. Finish persisted schema 8 `setupWizardCompleted` and the exact `latest` token; Settings reopened the wizard; later refresh auto-skipped configured steps |
+| Installation history | Headless 800×740 page opened from the installer summary with five fixture operations; each of the five filters returned its matching row; an operation opened its report with previous/new version, channel, result, commit, duration, exit code, log path and log content; Back returned to the list and closed the page. Dark, Light and 150% layouts inspected |
+| Contextual help | Small `?` popovers opened beside the release channel heading, pinned filter, wizard release choice and Linux backend heading; titles and bodies came from the catalogs, Escape/Close dismissed them, and the release popover remained inside the window at 150% |
+| Installer controls | Compact density changed the window class and persisted; Comfortable restored it; the details expansion state persisted; log search filtered two fixture lines to one and showed the no-match empty state; the release comparison of a release without notes showed the localized unavailable message instead of a 309-character placeholder diff; the install preview showed the selected release and game folder, and Cancel closed it without starting an install |
 
 Raw backend/git output and release notes are intentionally shown unchanged; the translated UI
 surrounds them. Actual KDE/GNOME sessions were simulated through their documented configuration

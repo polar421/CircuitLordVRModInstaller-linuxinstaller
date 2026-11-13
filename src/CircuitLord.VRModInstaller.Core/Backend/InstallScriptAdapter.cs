@@ -59,11 +59,23 @@ public sealed class InstallScriptAdapter
         bool force,
         bool refreshProton,
         string? gameDirectory = null,
-        string? prefixDirectory = null)
+        string? prefixDirectory = null,
+        BackendOperationKind? operationKind = null)
     {
         if (!CatalogueParser.IsValidToken(token))
         {
             throw new ArgumentException("The release token is not valid.", nameof(token));
+        }
+
+        var kind = operationKind ?? (force ? BackendOperationKind.Reinstall : BackendOperationKind.Install);
+        if (kind is not (BackendOperationKind.Install or BackendOperationKind.Update
+            or BackendOperationKind.Reinstall or BackendOperationKind.Repair))
+        {
+            throw new ArgumentException("That operation cannot be performed with the install command.", nameof(operationKind));
+        }
+        if (kind != BackendOperationKind.Install && !force)
+        {
+            throw new ArgumentException("An update, reinstall or repair requires the force flag.", nameof(force));
         }
 
         var args = new List<string> { "--version", token };
@@ -88,7 +100,7 @@ public sealed class InstallScriptAdapter
 
         return Create(
             backend,
-            force ? BackendOperationKind.Reinstall : BackendOperationKind.Install,
+            kind,
             $"Installing release {token} with the Linux backend",
             args.ToArray());
     }

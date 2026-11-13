@@ -13,7 +13,7 @@ this app manages a checkout of that repository, runs its real `install.sh`, and 
 Proton setup, downloads, checksums or the mod layout. Big Walk VR is shown for parity with the
 original but is unavailable on Linux because no backend exists for it.
 
-[**Download the beta**](https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.8-beta.1)
+[**Download the beta**](https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.9-beta.1)
 · [Build from source](#build-from-source) · [Documentation](#documentation)
 
 ![Game selection screen](docs/screenshots/game-selection.png)
@@ -25,7 +25,7 @@ original but is unavailable on Linux because no backend exists for it.
 > fixture-tested. See [Status](#status) and [Limitations](#limitations) before relying on it.
 >
 > Native Wayland, the settings screen and automatic installer updates are included in the
-> latest `v1.0.8-beta.1` release.
+> latest `v1.0.9-beta.1` release.
 
 ## Install the prebuilt release
 
@@ -39,14 +39,14 @@ are needed only for the integrations you use.
 
 ```bash
 # 1. Download the archive and its checksum from:
-#    https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.8-beta.1
+#    https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.9-beta.1
 
 # 2. Verify the download.
-sha256sum -c circuitlord-vrmodinstaller-1.0.8-beta.1-linux-x64.tar.gz.sha256
+sha256sum -c circuitlord-vrmodinstaller-1.0.9-beta.1-linux-x64.tar.gz.sha256
 
 # 3. Extract and install for the current user.
-tar -xzf circuitlord-vrmodinstaller-1.0.8-beta.1-linux-x64.tar.gz
-./circuitlord-vrmodinstaller-1.0.8-beta.1-linux-x64/install.sh
+tar -xzf circuitlord-vrmodinstaller-1.0.9-beta.1-linux-x64.tar.gz
+./circuitlord-vrmodinstaller-1.0.9-beta.1-linux-x64/install.sh
 ```
 
 This creates:
@@ -71,8 +71,8 @@ on a mismatch or an unsafe checksum path.
 |---|---|
 | Native Linux UI (Avalonia, no Wine) | Implemented; original layout, serif typography, icon title bar, NEW badge and support footer |
 | Native Wayland with X11 fallback | Implemented on Avalonia 12.1; exercised on KWin Wayland and X11 |
-| Settings screen (appearance, language, updates, VR/Steam integration, diagnostics, About, Restore Defaults) | Implemented; preferences persist in `settings.json` schema 5 |
-| Appearance | System/Dark/Light themes, 80–150% UI scaling in 5% steps, and Follow system/Reduced/Full motion, applied live and persisted |
+| Settings screen (appearance, language, updates, VR/Steam integration, diagnostics, About, Restore Defaults) | Implemented; preferences persist in `settings.json` schema 8 |
+| Appearance | System/Dark/Light themes, Compact/Comfortable density, 80–150% UI scaling in 5% steps, and Follow system/Reduced/Full motion, applied live and persisted |
 | Interface languages | English, German, Spanish, French, Brazilian Portuguese, Italian, Polish, Russian, Japanese and Simplified Chinese; see [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md) |
 | Automatic installer updates and helper updates | Implemented; stable/beta update channels filter prereleases, release archives are checksum-verified and applied by a detached helper; helper updates remain origin-verified |
 | Managed `tf2vr-linux` checkout with origin verification and safe update | Implemented |
@@ -80,12 +80,18 @@ on a mismatch or an unsafe checksum path.
 | Stable/beta mapping (choice 1 → `latest`, 2 → `beta`, other ordinals → exact token) | Implemented and unit tested |
 | Install / reinstall / uninstall through `install.sh` | Implemented; not yet run end-to-end against a real Titanfall 2 installation |
 | Preflight (`install.sh --check`) | Implemented |
+| First-run setup wizard | Implemented; nine guided steps for game, backend, Proton/dependencies, OpenXR, WiVRn, Steam and release choice, with automatic skips and a Settings relaunch |
+| Installation history | Dedicated page with date, previous/new version, channel, operation type, result, backend commit, duration and linked log; filters for install, update, reinstall, repair and uninstall |
+| Release explorer | Dedicated browser with version search, Stable/Beta/Pinned filters, sortable release cards, exact per-release changelog previews, installed/current markers, a side-by-side comparison view and a changed-lines summary |
+| Installer controls | Copy buttons beside installed/latest versions and technical paths, searchable operation logs, remembered details-panel state, a title-bar busy indicator and an install confirmation preview |
+| Notification center | Title-bar activity bell with unread count and a persistent panel for installs, failures, releases, helper updates, Steam integration and WiVRn desktop-entry issues |
+| Contextual help | Small `?` popovers beside release channels, pinned releases, Proton-TF2VR, WiVRn repair, Steam restart and rebuild controls |
 | Launch through the installed native `tf2vr` launcher | Implemented |
 | WiVRn desktop entry with `Categories=Game;X-WiVRn-VR;` | Implemented, reconciled after install |
 | Steam shortcut with graceful close → backup → verified write → reopen | Implemented and fixture tested; not verified against a live Steam client |
 | Manifest release notes | Implemented (HTTPS, cache, validation) |
 | Reproducible self-contained release + user-level installer | Implemented; see `docs/RELEASE.md` |
-| Automated tests | 110 passing |
+| Automated tests | 140 passing |
 
 ## Limitations
 
@@ -102,7 +108,7 @@ on a mismatch or an unsafe checksum path.
 - **Raw technical output stays in its original language.** Backend command output, git messages,
   release notes and technical paths are deliberately not rewritten. The ten UI catalogs cover
   every application-owned label, dialog and status string.
-- No first-run wizard, dedicated diagnostics page or installation history UI.
+- No separate diagnostics page; diagnostics and per-operation logs remain available in Settings and the installation history report.
 
 ## Build from source
 

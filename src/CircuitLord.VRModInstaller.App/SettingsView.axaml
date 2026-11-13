@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:CircuitLord.VRModInstaller.Localization"
+             xmlns:local="using:CircuitLord.VRModInstaller"
              x:Class="CircuitLord.VRModInstaller.SettingsView"
              Focusable="True"
              KeyDown="Settings_KeyDown">
@@ -25,7 +26,7 @@
 
           <ScrollViewer Name="SettingsScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                         Margin="22,14,34,18">
-            <StackPanel MaxWidth="494" Margin="0,0,10,0" HorizontalAlignment="Stretch" Spacing="12">
+            <StackPanel MaxWidth="494" Margin="0,0,10,0" HorizontalAlignment="Stretch" Classes="settings-content">
 
               <!-- Appearance -->
               <TextBlock Text="{loc:Tr Key=appearance}" Classes="section" />
@@ -81,12 +82,82 @@
 
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="2" Margin="0,0,16,0">
+                  <TextBlock Text="{loc:Tr Key=layoutDensity}" FontSize="12" />
+                  <TextBlock Text="{loc:Tr Key=layoutDensityDescription}" Classes="small" TextWrapping="Wrap" />
+                </StackPanel>
+                <ComboBox Grid.Column="1" Name="DensityCombo" MinWidth="150" VerticalAlignment="Center"
+                          AutomationProperties.Name="{loc:Tr Key=layoutDensity}"
+                          SelectionChanged="Density_SelectionChanged">
+                  <ComboBoxItem Content="{loc:Tr Key=densityComfortable}" Tag="comfortable" />
+                  <ComboBoxItem Content="{loc:Tr Key=densityCompact}" Tag="compact" />
+                </ComboBox>
+              </Grid>
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="2" Margin="0,0,16,0">
                   <TextBlock Text="{loc:Tr Key=roundedCorners}" FontSize="12" />
                   <TextBlock Text="{loc:Tr Key=roundedCornersDescription}" Classes="small" TextWrapping="Wrap" />
                 </StackPanel>
                 <ToggleSwitch Grid.Column="1" Name="RoundedCornersToggle" VerticalAlignment="Center"
                               OnContent="" OffContent="" IsCheckedChanged="RoundedCorners_Changed" />
               </Grid>
+
+              <Border Height="1" Background="{DynamicResource Stroke}" />
+
+              <!-- Typography -->
+              <TextBlock Text="{loc:Tr Key=typography}" Classes="section" />
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="2" Margin="0,0,16,0">
+                  <TextBlock Text="{loc:Tr Key=fontFamily}" FontSize="12" />
+                  <TextBlock Text="{loc:Tr Key=fontFamilyDescription}" Classes="small" TextWrapping="Wrap" />
+                </StackPanel>
+                <ComboBox Grid.Column="1" Name="FontCombo" MinWidth="190" MaxWidth="280"
+                          VerticalAlignment="Center" SelectionChanged="Font_SelectionChanged"
+                          ToolTip.Tip="{Binding SelectedItem, RelativeSource={RelativeSource Self}}" />
+              </Grid>
+
+              <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
+                      CornerRadius="{DynamicResource CornerInner}" Padding="12,10">
+                <StackPanel Spacing="4">
+                  <TextBlock Name="FontPreviewTitle" Text="CircuitLord's VR Mod Installer"
+                             FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <TextBlock Name="FontPreviewBody" Text="{loc:Tr Key=overviewTagline}"
+                             FontSize="12" TextWrapping="Wrap" />
+                  <TextBlock Name="FontPreviewSmall" Text="0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                             FontSize="10.5" Foreground="{DynamicResource TextDim}" TextWrapping="Wrap" />
+                  <TextBlock Name="FontPreviewBold" Text="Bold · Fett · Жирный"
+                             FontSize="12" FontWeight="Bold" TextWrapping="Wrap" />
+                  <TextBlock Name="FontPreviewItalic" Text="Italic · Kursiv · Курсив"
+                             FontSize="12" FontStyle="Italic" TextWrapping="Wrap" />
+                  <TextBlock Name="FontPreviewScripts"
+                             Text="English · Deutsch · Français · Español · Polski · Русский · 日本語 · 简体中文"
+                             FontSize="10.5" Foreground="{DynamicResource TextDim}" TextWrapping="Wrap" />
+                  <TextBlock Text="{loc:Tr Key=technicalFontPreviewLabel}" Classes="small" Margin="0,5,0,0" />
+                  <TextBlock Name="FontPreviewTechnical"
+                             Text="[12:00:00] backend ready · OpenXR: WiVRn · ~/.local/bin/tf2vr"
+                             FontFamily="{DynamicResource UiTechnicalFont}" FontSize="10.5"
+                             Foreground="{DynamicResource TextDim}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+
+              <Button Name="ResetFontButton" Content="{loc:Tr Key=resetFont}" Classes="link" FontSize="10.5"
+                      HorizontalAlignment="Left" Click="ResetFont_Click" />
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="2" Margin="0,0,16,0">
+                  <TextBlock Text="{loc:Tr Key=technicalFont}" FontSize="12" />
+                  <TextBlock Text="{loc:Tr Key=technicalFontDescription}" Classes="small" TextWrapping="Wrap" />
+                </StackPanel>
+                <ComboBox Grid.Column="1" Name="TechnicalFontCombo" MinWidth="210" MaxWidth="280"
+                          VerticalAlignment="Center" SelectionChanged="TechnicalFont_SelectionChanged"
+                          ToolTip.Tip="{Binding SelectedItem, RelativeSource={RelativeSource Self}}" />
+              </Grid>
+
+              <TextBlock Name="SettingsFontStatus" Classes="small" TextWrapping="Wrap" IsVisible="False"
+                         Foreground="{DynamicResource Accent}" />
+              <Button Name="ResetTechnicalFontButton" Content="{loc:Tr Key=technicalFontFollowUi}" Classes="link"
+                      FontSize="10.5" HorizontalAlignment="Left" IsVisible="False"
+                      Click="ResetTechnicalFont_Click" />
 
               <Border Height="1" Background="{DynamicResource Stroke}" />
 
@@ -117,15 +188,21 @@
               <!-- Updates -->
               <TextBlock Text="{loc:Tr Key=updates}" Classes="section" />
               <TextBlock Text="{loc:Tr Key=installerApplicationUpdates}" FontSize="13" FontWeight="SemiBold" />
-              <Grid ColumnDefinitions="180,*">
+              <Grid ColumnDefinitions="180,*,Auto">
                 <TextBlock Text="{loc:Tr Key=currentInstalledVersion}" Classes="small" />
                 <TextBlock Grid.Column="1" Name="SettingsCurrentAppVersion" Classes="small"
                            Foreground="{DynamicResource Text}" />
+                <Button Grid.Column="2" Classes="copy" Content="⧉" Tag="SettingsCurrentAppVersion"
+                        Click="CopySettingsField_Click" ToolTip.Tip="{loc:Tr Key=copyVersion}"
+                        AutomationProperties.Name="{loc:Tr Key=copyVersion}" />
               </Grid>
-              <Grid ColumnDefinitions="180,*">
+              <Grid ColumnDefinitions="180,*,Auto">
                 <TextBlock Text="{loc:Tr Key=latestAvailableVersion}" Classes="small" />
                 <TextBlock Grid.Column="1" Name="SettingsLatestAppVersion" Classes="small"
                            Foreground="{DynamicResource Text}" />
+                <Button Grid.Column="2" Classes="copy" Content="⧉" Tag="SettingsLatestAppVersion"
+                        Click="CopySettingsField_Click" ToolTip.Tip="{loc:Tr Key=copyVersion}"
+                        AutomationProperties.Name="{loc:Tr Key=copyVersion}" />
               </Grid>
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="2" Margin="0,0,16,0">
@@ -166,11 +243,13 @@
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=currentHelperCommit}" Classes="small" />
                 <TextBlock Grid.Column="1" Name="SettingsBackendCurrent" Classes="small"
+                           FontFamily="{DynamicResource UiTechnicalFont}"
                            Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
               </Grid>
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=latestHelperCommit}" Classes="small" />
                 <TextBlock Grid.Column="1" Name="SettingsBackendLatest" Classes="small"
+                           FontFamily="{DynamicResource UiTechnicalFont}"
                            Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
               </Grid>
               <Grid ColumnDefinitions="180,*">
@@ -206,12 +285,20 @@
               <Border Height="1" Background="{DynamicResource Stroke}" />
 
               <!-- VR integration -->
-              <TextBlock Text="{loc:Tr Key=vrIntegration}" Classes="section" />
+              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock Text="{loc:Tr Key=vrIntegration}" Classes="section" />
+                <local:HelpTip Name="SettingsWiVrnHelp"
+                               Title="{loc:Tr Key=helpWiVrnTitle}"
+                               Body="{loc:Tr Key=helpWiVrnBody}" />
+              </StackPanel>
               <TextBlock Text="{loc:Tr Key=vrIntegrationDescription}" Classes="small" TextWrapping="Wrap" />
-              <Grid ColumnDefinitions="180,*">
+              <Grid ColumnDefinitions="180,*,Auto">
                 <TextBlock Text="{loc:Tr Key=activeOpenXrRuntime}" Classes="small" />
                 <TextBlock Grid.Column="1" Name="SettingsOpenXr" Classes="small"
                            Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+                <Button Grid.Column="2" Classes="copy" Content="⧉" Tag="SettingsOpenXr"
+                        Click="CopySettingsField_Click" ToolTip.Tip="{loc:Tr Key=copyPath}"
+                        AutomationProperties.Name="{loc:Tr Key=copyPath}" />
               </Grid>
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=steamVrAvailability}" Classes="small" />
@@ -233,19 +320,30 @@
                 <TextBlock Grid.Column="1" Name="SettingsOpenVrBridge" Classes="small"
                            Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
               </Grid>
-              <Grid ColumnDefinitions="180,*">
+              <Grid ColumnDefinitions="180,*,Auto">
                 <TextBlock Text="{loc:Tr Key=tf2vrLauncher}" Classes="small" />
                 <TextBlock Grid.Column="1" Name="SettingsLauncher" Classes="small"
-                           Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+                           Foreground="{DynamicResource Text}" TextWrapping="Wrap"
+                           FontFamily="{DynamicResource UiTechnicalFont}" />
+                <Button Grid.Column="2" Classes="copy" Content="⧉" Tag="SettingsLauncher"
+                        Click="CopySettingsField_Click" ToolTip.Tip="{loc:Tr Key=copyPath}"
+                        AutomationProperties.Name="{loc:Tr Key=copyPath}" />
               </Grid>
-              <Grid ColumnDefinitions="180,*">
+              <Grid ColumnDefinitions="180,*,Auto">
                 <TextBlock Text="{loc:Tr Key=desktopEntry}" Classes="small" />
                 <TextBlock Grid.Column="1" Name="SettingsDesktopEntry" Classes="small"
-                           Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+                           Foreground="{DynamicResource Text}" TextWrapping="Wrap"
+                           FontFamily="{DynamicResource UiTechnicalFont}" />
+                <Button Grid.Column="2" Classes="copy" Content="⧉" Tag="SettingsDesktopEntry"
+                        Click="CopySettingsField_Click" ToolTip.Tip="{loc:Tr Key=copyPath}"
+                        AutomationProperties.Name="{loc:Tr Key=copyPath}" />
               </Grid>
-              <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+              <Grid ColumnDefinitions="*,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
                 <Button Name="SettingsRepairWivrnButton" Content="{loc:Tr Key=repairWivrnEntry}" Classes="ghost" FontSize="11.5" Padding="8,4"
                         Click="RepairWivrn_Click" />
+                <local:HelpTip Grid.Column="2" Name="SettingsRepairWiVrnHelp" VerticalAlignment="Center"
+                               Title="{loc:Tr Key=helpWiVrnTitle}"
+                               Body="{loc:Tr Key=helpWiVrnBody}" />
                 <Button Grid.Column="1" Name="SettingsReinstallGameButton" Content="{loc:Tr Key=reinstallGameEntry}" Classes="ghost" FontSize="11.5"
                         Padding="8,4" Click="ReinstallGameEntry_Click" />
                 <Button Grid.Row="1" Name="SettingsViewRuntimeButton" Content="{loc:Tr Key=viewRuntimeInfo}" Classes="ghost" FontSize="11.5"
@@ -258,7 +356,12 @@
               <Border Height="1" Background="{DynamicResource Stroke}" />
 
               <!-- Steam integration -->
-              <TextBlock Text="{loc:Tr Key=steamIntegration}" Classes="section" />
+              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock Text="{loc:Tr Key=steamIntegration}" Classes="section" />
+                <local:HelpTip Name="SettingsSteamHelp"
+                               Title="{loc:Tr Key=helpSteamRestartTitle}"
+                               Body="{loc:Tr Key=helpSteamRestartBody}" />
+              </StackPanel>
               <TextBlock Text="{loc:Tr Key=steamIntegrationDescription}" Classes="small" TextWrapping="Wrap" />
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=steamDetectedStatus}" Classes="small" />
@@ -270,10 +373,14 @@
                 <TextBlock Grid.Column="1" Name="SettingsSteamType" Classes="small"
                            Foreground="{DynamicResource Text}" />
               </Grid>
-              <Grid ColumnDefinitions="180,*">
+              <Grid ColumnDefinitions="180,*,Auto">
                 <TextBlock Text="{loc:Tr Key=steamInstallationPath}" Classes="small" />
                 <TextBlock Grid.Column="1" Name="SettingsSteamInstallation" Classes="small"
-                           Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+                           Foreground="{DynamicResource Text}" TextWrapping="Wrap"
+                           FontFamily="{DynamicResource UiTechnicalFont}" />
+                <Button Grid.Column="2" Classes="copy" Content="⧉" Tag="SettingsSteamInstallation"
+                        Click="CopySettingsField_Click" ToolTip.Tip="{loc:Tr Key=copyPath}"
+                        AutomationProperties.Name="{loc:Tr Key=copyPath}" />
               </Grid>
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=steamSelectedAccount}" Classes="small" />
@@ -285,10 +392,14 @@
                 <TextBlock Grid.Column="1" Name="SettingsSteamShortcut" Classes="small"
                            Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
               </Grid>
-              <Grid ColumnDefinitions="180,*">
+              <Grid ColumnDefinitions="180,*,Auto">
                 <TextBlock Text="{loc:Tr Key=steamShortcutExecutable}" Classes="small" />
                 <TextBlock Grid.Column="1" Name="SettingsSteamExecutable" Classes="small"
-                           Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+                           Foreground="{DynamicResource Text}" TextWrapping="Wrap"
+                           FontFamily="{DynamicResource UiTechnicalFont}" />
+                <Button Grid.Column="2" Classes="copy" Content="⧉" Tag="SettingsSteamExecutable"
+                        Click="CopySettingsField_Click" ToolTip.Tip="{loc:Tr Key=copyPath}"
+                        AutomationProperties.Name="{loc:Tr Key=copyPath}" />
               </Grid>
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=lastSteamOperation}" Classes="small" />
@@ -324,7 +435,7 @@
                            Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
               </Grid>
               <TextBox Name="DiagnosticsTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                       FontFamily="{DynamicResource UiFont}" FontSize="10.5" MinHeight="120" MaxHeight="170"
+                       FontFamily="{DynamicResource UiTechnicalFont}" FontSize="10.5" MinHeight="120" MaxHeight="170"
                        Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}"
                        BorderThickness="1" CornerRadius="{DynamicResource CornerInner}"
                        ScrollViewer.VerticalScrollBarVisibility="Auto" />
@@ -339,6 +450,14 @@
                         Classes="ghost" FontSize="11.5" Padding="8,4" Click="CopyDiagnostics_Click" />
               </Grid>
               <TextBlock Text="{loc:Tr Key=diagnosticsPrivacy}" Classes="small" TextWrapping="Wrap" />
+
+              <Border Height="1" Background="{DynamicResource Stroke}" />
+
+              <!-- First-run setup -->
+              <TextBlock Text="{loc:Tr Key=setup}" Classes="section" />
+              <TextBlock Text="{loc:Tr Key=setupWizardDescription}" Classes="small" TextWrapping="Wrap" />
+              <Button Name="SettingsSetupWizardButton" Content="{loc:Tr Key=runSetupWizard}" Classes="ghost"
+                      FontSize="11.5" Padding="8,4" HorizontalAlignment="Left" Click="RunSetupWizard_Click" />
 
               <Border Height="1" Background="{DynamicResource Stroke}" />
 
@@ -374,14 +493,18 @@
                 <TextBlock Grid.Column="1" Text="{loc:Tr Key=aboutPortStatusValue}" Classes="small"
                            Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
               </Grid>
-              <Grid ColumnDefinitions="180,*">
+              <Grid ColumnDefinitions="180,*,Auto">
                 <TextBlock Text="{loc:Tr Key=aboutVersion}" Classes="small" />
                 <TextBlock Grid.Column="1" Name="SettingsAboutVersion" Classes="small"
                            Foreground="{DynamicResource Text}" />
+                <Button Grid.Column="2" Classes="copy" Content="⧉" Tag="SettingsAboutVersion"
+                        Click="CopySettingsField_Click" ToolTip.Tip="{loc:Tr Key=copyVersion}"
+                        AutomationProperties.Name="{loc:Tr Key=copyVersion}" />
               </Grid>
               <Grid ColumnDefinitions="180,*">
                 <TextBlock Text="{loc:Tr Key=aboutPlatform}" Classes="small" />
                 <TextBlock Grid.Column="1" Name="SettingsAboutPlatform" Classes="small"
+                           FontFamily="{DynamicResource UiTechnicalFont}"
                            Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
               </Grid>
               <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
@@ -428,7 +551,7 @@
           <StackPanel Spacing="10">
             <TextBlock Text="{loc:Tr Key=runtimeInfoTitle}" FontSize="16" FontWeight="SemiBold" />
             <TextBox Name="RuntimeInfoTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                     FontFamily="{DynamicResource UiFont}" FontSize="11" MinHeight="120" MaxHeight="220"
+                     FontFamily="{DynamicResource UiTechnicalFont}" FontSize="11" MinHeight="120" MaxHeight="220"
                      Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}"
                      BorderThickness="1" CornerRadius="{DynamicResource CornerInner}"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -446,7 +569,7 @@
           <StackPanel Spacing="10">
             <TextBlock Text="{loc:Tr Key=logsTitle}" FontSize="16" FontWeight="SemiBold" />
             <TextBox Name="LogsTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                     FontFamily="{DynamicResource UiFont}" FontSize="11" MinHeight="150" MaxHeight="240"
+                     FontFamily="{DynamicResource UiTechnicalFont}" FontSize="11" MinHeight="150" MaxHeight="240"
                      Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}"
                      BorderThickness="1" CornerRadius="{DynamicResource CornerInner}"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"

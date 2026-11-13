@@ -56,6 +56,10 @@ public static class ReleaseNotesSelector
             : From(ReleaseNotesSource.StableManifest, stable);
     }
 
+    /// <summary>Finds the exact changelog entry for one display version.</summary>
+    public static ManifestChange? FindForVersion(TitanfallManifestProduct product, string? version)
+        => Find(product.Changes, version);
+
     private static ReleaseNotesSelection From(ReleaseNotesSource source, ManifestChange change) => new()
     {
         Source = source,

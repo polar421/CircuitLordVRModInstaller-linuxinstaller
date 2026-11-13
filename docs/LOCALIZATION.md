@@ -7,16 +7,21 @@ raw key or an empty control.
 
 ## Supported languages
 
-| Code | Native name | UI font |
+The interface font is selectable in Settings → Appearance. The default is
+Liberation Serif; the table lists the bundled fallback used for any glyph the
+selected family does not contain. The CJK fallback order follows the interface
+language.
+
+| Code | Native name | Script fallback |
 |---|---|---|
-| `en` | English | Liberation Serif |
-| `de` | Deutsch | Liberation Serif |
-| `es` | Español | Liberation Serif |
-| `fr` | Français | Liberation Serif |
-| `pt-BR` | Português (Brasil) | Liberation Serif |
-| `it` | Italiano | Liberation Serif |
-| `pl` | Polski | Liberation Serif |
-| `ru` | Русский | Liberation Serif |
+| `en` | English | Liberation Serif (Latin) |
+| `de` | Deutsch | Liberation Serif (Latin) |
+| `es` | Español | Liberation Serif (Latin) |
+| `fr` | Français | Liberation Serif (Latin) |
+| `pt-BR` | Português (Brasil) | Liberation Serif (Latin) |
+| `it` | Italiano | Liberation Serif (Latin) |
+| `pl` | Polski | Liberation Serif (Latin) |
+| `ru` | Русский | Liberation Serif (Cyrillic) |
 | `ja` | 日本語 | Noto Sans CJK JP |
 | `zh-Hans` | 简体中文 | Noto Sans CJK SC |
 
@@ -59,12 +64,17 @@ Technical names are not translated. This includes `WiVRn`, `OpenXR`, `Monado`,
 
 ## Fonts and licenses
 
-- Liberation Serif is used for Latin and Cyrillic scripts (including Polish and
-  Russian) and is distributed under its bundled license in
+- The interface font is selectable in Settings → Appearance. Liberation Serif is
+  the default and the first fallback for Latin and Cyrillic scripts (including
+  Polish and Russian); it is distributed under its bundled license in
   `Assets/Fonts/LICENSE.txt`.
-- Noto Sans CJK JP and Noto Sans CJK SC provide Japanese and Simplified Chinese
-  coverage under the SIL Open Font License 1.1, reproduced in
-  `Assets/Fonts/NOTO-OFL.txt`.
+- When the selected family lacks a character, Liberation Serif is tried next,
+  followed by Noto Sans CJK JP and Noto Sans CJK SC. The CJK order follows the
+  interface language (JP then SC for Japanese, SC then JP for Simplified
+  Chinese). Both Noto faces are provided under the SIL Open Font License 1.1,
+  reproduced in `Assets/Fonts/NOTO-OFL.txt`.
+- Technical text (logs, diagnostics, paths and backend output) can use an
+  installed monospace family independently, or follow the interface font.
 - The Settings → About third-party notice is translated and names both font
   families.
 
@@ -84,7 +94,7 @@ Technical names are not translated. This includes `WiVRn`, `OpenXR`, `Monado`,
    The tests fail on missing/empty keys, placeholder changes, unused keys,
    missing technical identifiers, or locale-formatting regressions.
 
-The current catalogs contain 393 keys per language. Automated tests prove key
+The current catalogs contain 544 keys per language. Automated tests prove key
 completeness and placeholder consistency; they do not replace native-speaker
 review of tone. Raw backend and git output is deliberately preserved in its
 original language.

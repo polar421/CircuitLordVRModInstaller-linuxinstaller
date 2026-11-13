@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -35,6 +38,7 @@ public partial class SettingsView : UserControl
     private SettingsAnimationState _settingsState;
     private CancellationTokenSource? _settingsAnimationCts;
     private long _settingsAnimationVersion;
+    private string? _fontOptionsLanguage;
 
     public SettingsView()
     {
@@ -46,6 +50,12 @@ public partial class SettingsView : UserControl
     }
 
     public event EventHandler? Closed;
+
+    /// <summary>Raised when the user asks to reopen the first-run setup from Settings.</summary>
+    public event EventHandler? SetupWizardRequested;
+
+    /// <summary>Starts the normal close animation; the window opens the wizard after <see cref="Closed"/>.</summary>
+    public void Close() => CloseSettings();
 
     public void Open(InstallerViewModel vm)
     {
@@ -75,6 +85,11 @@ public partial class SettingsView : UserControl
         }
 
         _loading = true;
+        // Re-read the catalog on each open. Avalonia caches its platform font
+        // list after first access, so a font installed mid-session may need a
+        // restart; an earlier discovery failure can still recover here.
+        AppearanceManager.RefreshFontCatalog();
+        _fontOptionsLanguage = null;
         var overlay = this.FindControl<Border>("SettingsOverlay")!;
         var backdrop = this.FindControl<Border>("SettingsBackdrop")!;
         var dialog = this.FindControl<Border>("SettingsDialog")!;
@@ -108,12 +123,14 @@ public partial class SettingsView : UserControl
             "full" => 2,
             _ => 0,
         };
+        this.FindControl<ComboBox>("DensityCombo")!.SelectedIndex = vm.IsCompactDensity ? 1 : 0;
         this.FindControl<Slider>("UiScaleSlider")!.Value = vm.UiScalePercent;
         this.FindControl<ComboBox>("LanguageCombo")!.SelectedIndex = LanguageIndex(vm.Language);
         UpdateUiScaleLabel(vm.UiScalePercent);
         UpdateThemeStatus();
         this.FindControl<ScrollViewer>("SettingsScroll")!.Offset = new Vector(0, 0);
         _loading = false;
+        RefreshFontCombos(force: true);
         RefreshAll();
 
         var animated = AppearanceManager.AnimationsEnabled;
@@ -175,6 +192,7 @@ public partial class SettingsView : UserControl
 
     private void CloseSettings()
     {
+        HelpTip.CloseOpen();
         if (_settingsState is SettingsAnimationState.Closed or SettingsAnimationState.Closing)
         {
             return;
@@ -332,9 +350,11 @@ public partial class SettingsView : UserControl
         this.FindControl<TextBox>("DiagnosticsTextBox")!.Text = _vm.DiagnosticsReport;
         this.FindControl<TextBlock>("SettingsAboutVersion")!.Text = _vm.AppVersion;
         this.FindControl<TextBlock>("SettingsAboutPlatform")!.Text = _vm.PlatformText;
+        RefreshFontCombos();
         RefreshSelectedComboText();
         UpdateUiScaleLabel(_vm.UiScalePercent);
         UpdateThemeStatus();
+        UpdateFontStatus();
     }
 
     private void RefreshSelectedComboText()
@@ -346,7 +366,11 @@ public partial class SettingsView : UserControl
         _loading = true;
         try
         {
-            foreach (var name in new[] { "ThemeCombo", "MotionCombo", "UpdateChannelCombo" })
+            foreach (var name in new[]
+                     {
+                         "ThemeCombo", "MotionCombo", "DensityCombo", "UpdateChannelCombo",
+                         "FontCombo", "TechnicalFontCombo",
+                     })
             {
                 var combo = this.FindControl<ComboBox>(name);
                 var index = combo?.SelectedIndex ?? -1;
@@ -441,6 +465,17 @@ public partial class SettingsView : UserControl
         _vm.SetMotion(tag ?? "system");
     }
 
+    private void Density_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _vm is null)
+        {
+            return;
+        }
+
+        var tag = (this.FindControl<ComboBox>("DensityCombo")!.SelectedItem as ComboBoxItem)?.Tag as string;
+        _vm.SetLayoutDensity(tag ?? Core.Settings.AppSettings.ComfortableDensity);
+    }
+
     private void UiScale_Changed(object? sender, RangeBaseValueChangedEventArgs e)
     {
         var percent = Core.Appearance.UiScale.ClampPercent(e.NewValue);
@@ -468,6 +503,173 @@ public partial class SettingsView : UserControl
         this.FindControl<Slider>("UiScaleSlider")!.Value = UiScale.DefaultPercent;
         UpdateUiScaleLabel(UiScale.DefaultPercent);
         _vm?.SetUiScale(UiScale.DefaultPercent);
+    }
+
+    private void RefreshFontCombos(bool force = false)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        var languageChanged = !string.Equals(_fontOptionsLanguage, Loc.Language, StringComparison.Ordinal);
+        if (!force
+            && !languageChanged
+            && this.FindControl<ComboBox>("FontCombo")?.ItemsSource is not null
+            && this.FindControl<ComboBox>("TechnicalFontCombo")?.ItemsSource is not null)
+        {
+            return;
+        }
+
+        var wasLoading = _loading;
+        _loading = true;
+        try
+        {
+            var uiOptions = BuildUiFontOptions();
+            var fontCombo = this.FindControl<ComboBox>("FontCombo")!;
+            fontCombo.ItemsSource = uiOptions;
+            fontCombo.SelectedItem = uiOptions.FirstOrDefault(option =>
+                                        string.Equals(option.Id, AppearanceManager.UiFontId, StringComparison.OrdinalIgnoreCase))
+                                    ?? uiOptions.FirstOrDefault();
+
+            var technicalOptions = BuildTechnicalFontOptions();
+            var technicalCombo = this.FindControl<ComboBox>("TechnicalFontCombo")!;
+            technicalCombo.ItemsSource = technicalOptions;
+            technicalCombo.SelectedItem = technicalOptions.FirstOrDefault(option =>
+                                             string.Equals(option.Id, AppearanceManager.TechnicalFontId, StringComparison.OrdinalIgnoreCase))
+                                         ?? technicalOptions.FirstOrDefault();
+
+            _fontOptionsLanguage = Loc.Language;
+        }
+        finally
+        {
+            _loading = wasLoading;
+        }
+    }
+
+    private static IReadOnlyList<FontChoice> BuildUiFontOptions()
+    {
+        var options = new List<FontChoice>();
+        foreach (var choice in AppearanceManager.AvailableFonts)
+        {
+            var displayName = choice.Id == FontPreference.DefaultUiFontId
+                ? choice.DisplayName + " " + Loc.Get("fontDefaultSuffix")
+                : choice.DisplayName;
+            options.Add(choice with { DisplayName = displayName });
+        }
+
+        return options;
+    }
+
+    private static IReadOnlyList<FontChoice> BuildTechnicalFontOptions()
+    {
+        var options = new List<FontChoice>
+        {
+            new(FontPreference.FollowInterfaceFontId, Loc.Get("technicalFontFollowUi"),
+                IsMonospace: false, IsBundled: false),
+        };
+        var added = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (AppearanceManager.SystemMonospaceFont is { } systemMonospace)
+        {
+            added.Add(systemMonospace.Id);
+            options.Add(systemMonospace with { DisplayName = Loc.Get("systemMonospace") });
+        }
+
+        foreach (var choice in AppearanceManager.AvailableMonospaceFonts)
+        {
+            if (added.Add(choice.Id))
+            {
+                options.Add(choice);
+            }
+        }
+
+        return options;
+    }
+
+    private void Font_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _vm is null
+            || this.FindControl<ComboBox>("FontCombo")!.SelectedItem is not FontChoice choice)
+        {
+            return;
+        }
+
+        if (!string.Equals(choice.Id, _vm.UiFontSetting, StringComparison.OrdinalIgnoreCase))
+        {
+            _vm.SetUiFont(choice.Id);
+        }
+        UpdateFontStatus();
+    }
+
+    private void TechnicalFont_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _vm is null
+            || this.FindControl<ComboBox>("TechnicalFontCombo")!.SelectedItem is not FontChoice choice)
+        {
+            return;
+        }
+
+        if (!string.Equals(choice.Id, _vm.TechnicalFontSetting, StringComparison.OrdinalIgnoreCase))
+        {
+            _vm.SetTechnicalFont(choice.Id);
+        }
+        UpdateFontStatus();
+    }
+
+    private void ResetFont_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        _vm.SetUiFont(FontPreference.DefaultUiFontId);
+        RefreshFontCombos(force: true);
+        UpdateFontStatus();
+    }
+
+    private void ResetTechnicalFont_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        _vm.SetTechnicalFont(FontPreference.FollowInterfaceFontId);
+        RefreshFontCombos(force: true);
+        UpdateFontStatus();
+    }
+
+    private void UpdateFontStatus()
+    {
+        var block = this.FindControl<TextBlock>("SettingsFontStatus");
+        if (block is null)
+        {
+            return;
+        }
+
+        var messages = new List<string>();
+        if (AppearanceManager.FontDiscoveryFailed)
+        {
+            messages.Add(Loc.Get("fontDiscoveryFailed"));
+        }
+        if (AppearanceManager.UnavailableUiFontId is { } uiFont)
+        {
+            messages.Add(Loc.Format("fontUnavailable", FontPreference.DescribeFontId(uiFont)));
+        }
+        if (AppearanceManager.UnavailableTechnicalFontId is { } technicalFont)
+        {
+            messages.Add(Loc.Format("technicalFontUnavailable", FontPreference.DescribeFontId(technicalFont)));
+        }
+
+        block.Text = string.Join(Environment.NewLine, messages);
+        block.IsVisible = messages.Count > 0;
+        var resetTechnical = this.FindControl<Button>("ResetTechnicalFontButton");
+        if (resetTechnical is not null)
+        {
+            resetTechnical.IsVisible = AppearanceManager.UnavailableTechnicalFontId is not null;
+        }
     }
 
     private static void ApplyCornerStyle(bool rounded)
@@ -524,6 +726,9 @@ public partial class SettingsView : UserControl
     }
 
     private void CloseSettings_Click(object? sender, RoutedEventArgs e) => CloseSettings();
+
+    private void RunSetupWizard_Click(object? sender, RoutedEventArgs e)
+        => SetupWizardRequested?.Invoke(this, EventArgs.Empty);
 
     private void RoundedCorners_Changed(object? sender, RoutedEventArgs e)
     {
@@ -754,6 +959,39 @@ public partial class SettingsView : UserControl
         button.Content = Loc.Get("copyDiagnosticReport");
     }
 
+    private async void CopySettingsField_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string fieldName } button)
+        {
+            return;
+        }
+        var text = this.FindControl<TextBlock>(fieldName)?.Text;
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (string.IsNullOrEmpty(text) || clipboard is null)
+        {
+            return;
+        }
+
+        var data = new DataTransfer();
+        data.Add(DataTransferItem.CreateText(text));
+        await clipboard.SetDataAsync(data);
+        var label = CopyLabelFor(fieldName);
+        button.Classes.Add("copied");
+        ToolTip.SetTip(button, Loc.Get("copied"));
+        AutomationProperties.SetName(button, Loc.Get("copied"));
+        await Task.Delay(1200);
+        button.Classes.Remove("copied");
+        ToolTip.SetTip(button, Loc.Get(label));
+        AutomationProperties.SetName(button, Loc.Get(label));
+    }
+
+    private static string CopyLabelFor(string fieldName) => fieldName switch
+    {
+        "SettingsCurrentAppVersion" or "SettingsLatestAppVersion" or "SettingsAboutVersion"
+            => "copyVersion",
+        _ => "copyPath",
+    };
+
     private async void RestoreDefaults_Click(object? sender, RoutedEventArgs e)
     {
         if (_vm is null) return;
@@ -775,9 +1013,11 @@ public partial class SettingsView : UserControl
         this.FindControl<ToggleSwitch>("ConfirmSteamRestartToggle")!.IsChecked = true;
         this.FindControl<ComboBox>("ThemeCombo")!.SelectedIndex = 1;
         this.FindControl<ComboBox>("MotionCombo")!.SelectedIndex = 0;
+        this.FindControl<ComboBox>("DensityCombo")!.SelectedIndex = 0;
         this.FindControl<Slider>("UiScaleSlider")!.Value = UiScale.DefaultPercent;
         this.FindControl<ComboBox>("LanguageCombo")!.SelectedIndex = 0;
         _loading = false;
+        RefreshFontCombos(force: true);
         RefreshAll();
     }
 

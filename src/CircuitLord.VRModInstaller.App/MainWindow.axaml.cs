@@ -1,19 +1,27 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Automation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Avalonia.Media.Transformation;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using CircuitLord.VRModInstaller.Appearance;
+using CircuitLord.VRModInstaller.Core.Navigation;
 using CircuitLord.VRModInstaller.Localization;
 
 namespace CircuitLord.VRModInstaller;
@@ -31,15 +39,46 @@ public partial class MainWindow : Window
     private double _installerScrollOffset;
     private ScrollViewer? _logScrollViewer;
     private bool _followLogs = true;
+    private string _logFilter = string.Empty;
+    private List<string> _visibleLogs = new();
+    private bool _updatingDetailsExpander;
     private double _lastLogOffsetY;
+    private bool _gamePageOpen;
+    private bool _gameTransitionRunning;
+    private bool _gameTransitionOpening;
+    private CancellationTokenSource? _gameTransitionCts;
+    private long _gameTransitionVersion;
+    private bool _initializationComplete;
+    private bool _setupWizardPending;
+    private bool _setupWizardLeavingSettings;
 
     public MainWindow()
     {
         InitializeComponent();
         // Return keyboard focus to the title-bar action after the closing
-        // animation has removed the modal from the visual tree.
+        // animation has removed the modal from the visual tree. When Settings
+        // was only a stepping stone to the setup wizard, hand focus there.
         SettingsPanel.Closed += (_, _) =>
+        {
+            if (_setupWizardLeavingSettings)
+            {
+                _setupWizardLeavingSettings = false;
+                ShowSetupWizard(force: true);
+                return;
+            }
             this.FindControl<Button>("SettingsButton")?.Focus();
+        };
+        SettingsPanel.SetupWizardRequested += (_, _) =>
+        {
+            _setupWizardLeavingSettings = true;
+            SettingsPanel.Close();
+        };
+        SetupWizardPanel.Closed += (_, _) =>
+            this.FindControl<Button>("TitanfallCard")?.Focus();
+        HistoryPanel.Closed += (_, _) =>
+            this.FindControl<Button>("OpenHistoryButton")?.Focus();
+        ReleaseExplorerPanel.Closed += (_, _) =>
+            this.FindControl<Button>("BrowseReleasesButton")?.Focus();
         // Resolve the placement target explicitly so the flyout is anchored to
         // the release selector instead of falling back to the window centre.
         VersionPopup.PlacementTarget = this.FindControl<Button>("VersionPickerButton");
@@ -51,18 +90,32 @@ public partial class MainWindow : Window
         AppearanceManager.ScaleChanged += Appearance_Changed;
         AppearanceManager.MotionChanged += Appearance_Changed;
         AppearanceManager.Theme.Changed += Theme_Changed;
-        SizeChanged += (_, _) => ApplyScale();
+        SizeChanged += (_, _) =>
+        {
+            ApplyScale();
+            if (_gameTransitionRunning)
+            {
+                FinishGameTransitionNow();
+            }
+        };
         Closed += (_, _) =>
         {
+            HelpTip.CloseOpen();
+            CancelGameTransition();
             AppearanceManager.ScaleChanged -= Appearance_Changed;
             AppearanceManager.MotionChanged -= Appearance_Changed;
             AppearanceManager.Theme.Changed -= Theme_Changed;
             _vm.LogLines.CollectionChanged -= LogLines_CollectionChanged;
+            NotificationCenter.Close();
             DetachLogScrollViewer();
         };
         ApplyScale();
         ApplyMotionClasses();
         DataContext = _vm;
+        ApplyDensityClass();
+        ApplyRememberedDetailsState();
+        ApplyLogFilter();
+        NotificationCenter.Open(_vm);
         _vm.Changed += (_, _) => RefreshUi();
         _vm.LogLines.CollectionChanged += LogLines_CollectionChanged;
         var logsList = this.FindControl<ListBox>("LogsList")!;
@@ -79,12 +132,25 @@ public partial class MainWindow : Window
             // Show the notice immediately while backend initialization proceeds.
             ShowAttributionNotice();
             await _vm.InitializeAsync();
+            _initializationComplete = true;
             RefreshUi();
+            if (_setupWizardPending)
+            {
+                _setupWizardPending = false;
+                ShowSetupWizard();
+            }
         };
     }
 
     private void Appearance_Changed(object? sender, EventArgs e)
     {
+        if (_gameTransitionRunning)
+        {
+            // A scale or motion change invalidates measured coordinates. Settle
+            // on the destination rather than leaving an overlay mid-flight.
+            FinishGameTransitionNow();
+        }
+
         ApplyScale();
         ApplyMotionClasses();
     }
@@ -93,7 +159,13 @@ public partial class MainWindow : Window
     {
         // Brushes assigned from code-behind are not DynamicResource bindings;
         // re-apply them after the variant changes.
-        Avalonia.Threading.Dispatcher.UIThread.Post(RefreshUi);
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            RefreshUi();
+            SetupWizardPanel.RefreshAppearance();
+            HistoryPanel.RefreshAppearance();
+            ReleaseExplorerPanel.RefreshAppearance();
+        });
     }
 
     private void ApplyMotionClasses()
@@ -113,6 +185,7 @@ public partial class MainWindow : Window
         {
             popupScale.LayoutTransform = new ScaleTransform(factor, factor);
         }
+        NotificationCenter.ApplyScale();
 
         var popup = this.FindControl<Border>("VersionPopupPanel");
         if (popup is not null)
@@ -146,7 +219,30 @@ public partial class MainWindow : Window
     private void ContinueAttribution_Click(object? sender, RoutedEventArgs e)
     {
         this.FindControl<Border>("AttributionOverlay")!.IsVisible = false;
+        if (!_vm.SetupWizardCompleted)
+        {
+            if (_initializationComplete)
+            {
+                ShowSetupWizard();
+            }
+            else
+            {
+                // The notice is shown while the backend starts. Opening the
+                // wizard before that finishes would race its state refreshes.
+                _setupWizardPending = true;
+            }
+            return;
+        }
         this.FindControl<Button>("TitanfallCard")?.Focus();
+    }
+
+    private void ShowSetupWizard(bool force = false)
+    {
+        if (SetupWizardPanel.IsVisible || (!force && _vm.SetupWizardCompleted))
+        {
+            return;
+        }
+        SetupWizardPanel.Open(_vm);
     }
 
     private void OpenAttributionLink_Click(object? sender, RoutedEventArgs e)
@@ -163,6 +259,11 @@ public partial class MainWindow : Window
         {
             return;
         }
+        if (HelpTip.CloseOpen())
+        {
+            e.Handled = true;
+            return;
+        }
         var popup = this.FindControl<Popup>("VersionPopup");
         if (popup?.IsOpen == true)
         {
@@ -170,7 +271,27 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
+        if (NotificationCenter.HandleEscape())
+        {
+            e.Handled = true;
+            return;
+        }
+        if (SetupWizardPanel.HandleEscape())
+        {
+            e.Handled = true;
+            return;
+        }
         if (SettingsPanel.HandleEscape())
+        {
+            e.Handled = true;
+            return;
+        }
+        if (HistoryPanel.HandleEscape())
+        {
+            e.Handled = true;
+            return;
+        }
+        if (ReleaseExplorerPanel.HandleEscape())
         {
             e.Handled = true;
         }
@@ -185,10 +306,9 @@ public partial class MainWindow : Window
         installedBadge.BorderBrush = BrushFor(_vm.StableUpdateAvailable ? "Amber" : "Green");
         this.FindControl<TextBlock>("InstalledVersionBadgeText")!.Foreground =
             BrushFor(_vm.StableUpdateAvailable ? "Amber" : "Green");
-        this.FindControl<TextBlock>("ChannelValue")!.Text = _vm.InstalledChannelText;
-        // Not installed is already the primary state; repeating it under
-        // "Installed version" and in the hero adds no information.
-        this.FindControl<TextBlock>("ChannelValue")!.IsVisible = _vm.IsInstalled;
+        var channelValue = this.FindControl<TextBlock>("ChannelValue")!;
+        channelValue.Text = _vm.IsInstalled ? _vm.InstalledChannelText : Loc.Get("notInstalledHint");
+        channelValue.IsVisible = true;
 
         this.FindControl<TextBlock>("HeroInstalledVersion")!.Text = _vm.InstalledVersionText;
         this.FindControl<TextBlock>("HeroSelectedChannel")!.Text = _vm.SelectedChannelText;
@@ -216,6 +336,12 @@ public partial class MainWindow : Window
         this.FindControl<TextBlock>("SteamText")!.Text = _vm.SteamText;
         this.FindControl<TextBlock>("RuntimeText")!.Text = _vm.RuntimeText;
         this.FindControl<TextBlock>("StageText")!.Text = _vm.StageText;
+        var busyIndicator = this.FindControl<Border>("TitlebarBusyIndicator")!;
+        busyIndicator.IsVisible = _vm.Busy;
+        this.FindControl<TextBlock>("TitlebarBusyText")!.Text = _vm.StageText;
+        var busyLabel = Loc.Format("operationInProgress", _vm.StageText);
+        ToolTip.SetTip(busyIndicator, busyLabel);
+        AutomationProperties.SetName(busyIndicator, busyLabel);
         this.FindControl<TextBlock>("TitanfallStatus")!.Text = _vm.IsInstalled
             ? _vm.InstalledText
             : Loc.Get("readyStatus");
@@ -233,11 +359,13 @@ public partial class MainWindow : Window
         primary.IsEnabled = _vm.CanPrimaryAction && !_vm.Busy;
         this.FindControl<TextBlock>("PrimaryActionHint")!.Text = _vm.PrimaryActionHint;
         ToolTip.SetTip(primary, primary.IsEnabled ? null : _vm.PrimaryActionHint);
+        AutomationProperties.SetHelpText(primary, _vm.PrimaryActionHint);
         var launch = this.FindControl<Button>("HeroLaunchButton")!;
         launch.IsVisible = _vm.CanLaunch;
         launch.IsEnabled = _vm.CanLaunch && !_vm.Busy;
         this.FindControl<ProgressBar>("Progress")!.IsVisible = _vm.Busy;
         this.FindControl<Button>("UninstallButton")!.IsEnabled = _vm.CanUninstall && !_vm.Busy;
+        this.FindControl<Button>("BrowseReleasesButton")!.IsEnabled = _vm.Versions.Count > 0 && !_vm.Busy;
         this.FindControl<Button>("SteamButton")!.IsEnabled = _vm.HasSteamAccount && !_vm.Busy;
         this.FindControl<Button>("SteamRemoveButton")!.IsEnabled = _vm.HasSteamAccount && !_vm.Busy;
 
@@ -264,20 +392,110 @@ public partial class MainWindow : Window
         SetStatusText("DesktopInstalledStatus", _vm.DesktopEntryInstalled, "desktopEntryDetected", "desktopEntryMissingShort");
         SetStatusText("SteamShortcutStatusCompact", _vm.SteamShortcutInstalled, "steamShortcutInstalledShort", "steamShortcutMissingShort");
 
-        var logsList = this.FindControl<ListBox>("LogsList")!;
-        if (!ReferenceEquals(logsList.ItemsSource, _vm.LogLines))
-        {
-            logsList.ItemsSource = _vm.LogLines;
-        }
+        ApplyDensityClass();
+        ApplyRememberedDetailsState();
+        ApplyLogFilter();
         EnsureLogScrollViewer();
+    }
+
+    private void ApplyDensityClass()
+    {
+        var compact = _vm.IsCompactDensity;
+        if (compact && !Classes.Contains("density-compact"))
+        {
+            Classes.Add("density-compact");
+        }
+        else if (!compact)
+        {
+            Classes.Remove("density-compact");
+        }
+    }
+
+    private void ApplyRememberedDetailsState()
+    {
+        var expander = this.FindControl<Expander>("DetailsExpander");
+        if (expander is null || expander.IsExpanded == _vm.DetailsExpanded)
+        {
+            return;
+        }
+
+        _updatingDetailsExpander = true;
+        try
+        {
+            expander.IsExpanded = _vm.DetailsExpanded;
+        }
+        finally
+        {
+            _updatingDetailsExpander = false;
+        }
+    }
+
+    private async void CopyField_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string fieldName } button)
+        {
+            return;
+        }
+        var text = this.FindControl<TextBlock>(fieldName)?.Text;
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (string.IsNullOrEmpty(text) || clipboard is null)
+        {
+            return;
+        }
+
+        var data = new DataTransfer();
+        data.Add(DataTransferItem.CreateText(text));
+        await clipboard.SetDataAsync(data);
+        button.Classes.Add("copied");
+        ToolTip.SetTip(button, Loc.Get("copied"));
+        AutomationProperties.SetName(button, Loc.Get("copied"));
+        await Task.Delay(1200);
+        button.Classes.Remove("copied");
+        ToolTip.SetTip(button, Loc.Get("copyVersion"));
+        AutomationProperties.SetName(button, Loc.Get("copyVersion"));
+    }
+
+    private void LogSearch_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        _logFilter = this.FindControl<TextBox>("LogSearchBox")?.Text ?? string.Empty;
+        _followLogs = true;
+        ApplyLogFilter(follow: true);
+    }
+
+    private void ApplyLogFilter(bool follow = false)
+    {
+        var logsList = this.FindControl<ListBox>("LogsList");
+        var empty = this.FindControl<TextBlock>("LogsEmptyText");
+        if (logsList is null)
+        {
+            return;
+        }
+
+        var filter = _logFilter.Trim();
+        var filtered = filter.Length == 0
+            ? _vm.LogLines.ToList()
+            : _vm.LogLines.Where(line => line.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (!_visibleLogs.SequenceEqual(filtered))
+        {
+            _visibleLogs = filtered;
+            logsList.ItemsSource = _visibleLogs;
+            if (follow && _followLogs)
+            {
+                ScheduleLogScrollToLatest();
+            }
+        }
+
+        if (empty is not null)
+        {
+            empty.Text = _vm.LogLines.Count == 0 ? Loc.Get("noLogs") : Loc.Get("noLogMatches");
+            empty.IsVisible = _visibleLogs.Count == 0;
+        }
+        UpdateLogLatestButton();
     }
 
     private void LogLines_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (_followLogs)
-        {
-            ScheduleLogScrollToLatest();
-        }
+        ApplyLogFilter(follow: true);
     }
 
     private void LogsList_PointerWheelChanged(object? sender, PointerWheelEventArgs e)
@@ -478,46 +696,744 @@ public partial class MainWindow : Window
     private void Close_Click(object? sender, RoutedEventArgs e) => Close();
 
     private void SelectTitanfall_Click(object? sender, RoutedEventArgs e)
-    {
-        CloseVersionPicker();
-        var scroll = this.FindControl<ScrollViewer>("MainScroll")!;
-        _gameScrollOffset = scroll.Offset.Y;
-        this.FindControl<StackPanel>("GameSelect")!.IsVisible = false;
-        this.FindControl<StackPanel>("GameFooter")!.IsVisible = false;
-        this.FindControl<StackPanel>("InstallerView")!.IsVisible = true;
-        RefreshUi();
-        RestoreMainScroll(_installerScrollOffset);
-    }
+        => _ = OpenGamePageAsync();
 
     private void Back_Click(object? sender, RoutedEventArgs e)
-    {
-        CloseVersionPicker();
-        var scroll = this.FindControl<ScrollViewer>("MainScroll")!;
-        _installerScrollOffset = scroll.Offset.Y;
-        this.FindControl<StackPanel>("GameSelect")!.IsVisible = true;
-        this.FindControl<StackPanel>("GameFooter")!.IsVisible = true;
-        this.FindControl<StackPanel>("InstallerView")!.IsVisible = false;
-        RestoreMainScroll(_gameScrollOffset);
-    }
+        => _ = CloseGamePageAsync();
 
-    private void RestoreMainScroll(double offset)
+    private async Task OpenGamePageAsync()
     {
-        var scroll = this.FindControl<ScrollViewer>("MainScroll");
-        if (scroll is null)
+        HelpTip.CloseOpen();
+        if (_gameTransitionRunning || _gamePageOpen || SettingsPanel.IsVisible
+            || SetupWizardPanel.IsVisible || HistoryPanel.IsVisible
+            || ReleaseExplorerPanel.IsVisible
+            || this.FindControl<Border>("AttributionOverlay")?.IsVisible == true
+            || this.FindControl<Border>("ConfirmOverlay")?.IsVisible == true
+            || this.FindControl<Border>("ChangelogOverlay")?.IsVisible == true)
         {
             return;
         }
 
-        Avalonia.Threading.Dispatcher.UIThread.Post(
+        var gameScroll = this.FindControl<ScrollViewer>("GameScroll");
+        var installerScroll = this.FindControl<ScrollViewer>("InstallerScroll");
+        var footer = this.FindControl<StackPanel>("GameFooter");
+        var thumbnail = this.FindControl<Border>("TitanfallThumbnail");
+        var hero = this.FindControl<Border>("HeroArtwork");
+        if (gameScroll is null || installerScroll is null
+            || footer is null || thumbnail is null || hero is null)
+        {
+            return;
+        }
+
+        CloseVersionPicker();
+        _gameScrollOffset = gameScroll.Offset.Y;
+        _gamePageOpen = true;
+        _gameTransitionRunning = true;
+        _gameTransitionOpening = true;
+        var cts = new CancellationTokenSource();
+        _gameTransitionCts = cts;
+        var generation = ++_gameTransitionVersion;
+        var plan = GamePageTransitionPlan.For(AppearanceManager.AnimationsEnabled);
+        var groups = InstallerContentGroups();
+        var artStarted = false;
+        try
+        {
+            // The destination is laid out invisibly while the outgoing page
+            // remains interactive only until the transition starts.
+            gameScroll.IsHitTestVisible = false;
+            footer.IsHitTestVisible = false;
+            installerScroll.IsVisible = true;
+            installerScroll.Opacity = 0;
+            installerScroll.RenderTransform = IdentityTransform;
+            installerScroll.IsHitTestVisible = false;
+            PrepareContentGroups(groups, plan.AnimateContent);
+            RefreshUi();
+
+            if (!plan.AnimatePages)
+            {
+                await RestoreScrollAsync(installerScroll, _installerScrollOffset);
+                if (generation == _gameTransitionVersion && !cts.IsCancellationRequested)
+                {
+                    FinishOpenState();
+                }
+                return;
+            }
+
+            await RestoreScrollAsync(installerScroll, _installerScrollOffset);
+            await YieldToLayoutAsync();
+            if (generation != _gameTransitionVersion || cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (TryMeasureArtwork(
+                    thumbnail, gameScroll, hero, installerScroll,
+                    out var artworkStart, out var artworkTarget))
+            {
+                PreparePage(installerScroll, incoming: true);
+                PreparePage(gameScroll, incoming: false);
+                PreparePage(footer, incoming: false);
+                thumbnail.Opacity = 0;
+                BeginArtwork(artworkStart, artworkTarget, opening: true, plan.ArtworkDuration);
+                artStarted = true;
+            }
+            else
+            {
+                HideArtworkLayer();
+                PreparePage(installerScroll, incoming: true);
+                PreparePage(gameScroll, incoming: false);
+                PreparePage(footer, incoming: false);
+            }
+
+            AnimatePage(gameScroll, incoming: false, plan.PageOutDuration);
+            AnimatePage(installerScroll, incoming: true, plan.PageInDuration);
+            AnimatePage(footer, incoming: false, plan.PageOutDuration);
+            var contentReveal = RevealContentAsync(groups, plan, cts.Token);
+
+            // The page becomes usable as soon as it is fully opaque; content
+            // details may still be settling underneath it.
+            await Task.Delay(plan.PageInDuration, cts.Token);
+            installerScroll.IsHitTestVisible = true;
+            FocusAfterLayout(
+                this.FindControl<Button>("BackToGamesButton"),
+                installerScroll,
+                _installerScrollOffset);
+
+            var remainingArtwork = plan.ArtworkDuration - plan.PageInDuration;
+            if (remainingArtwork > TimeSpan.Zero)
+            {
+                await Task.Delay(remainingArtwork, cts.Token);
+            }
+            if (artStarted)
+            {
+                await FadeArtworkAsync(plan.OverlayFadeDuration, cts.Token);
+            }
+            await contentReveal;
+
+            if (generation == _gameTransitionVersion && !cts.IsCancellationRequested)
+            {
+                FinishOpenState(focusDestination: false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // A resize, close, or motion change settled the transition instead.
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Game page open transition failed: {ex.Message}");
+            if (generation == _gameTransitionVersion)
+            {
+                FinishGameTransitionNow();
+            }
+        }
+        finally
+        {
+            if (generation == _gameTransitionVersion)
+            {
+                if (ReferenceEquals(_gameTransitionCts, cts))
+                {
+                    _gameTransitionCts = null;
+                }
+                cts.Dispose();
+            }
+        }
+    }
+
+    private async Task CloseGamePageAsync()
+    {
+        HelpTip.CloseOpen();
+        if (_gameTransitionRunning || !_gamePageOpen)
+        {
+            return;
+        }
+
+        var gameScroll = this.FindControl<ScrollViewer>("GameScroll");
+        var installerScroll = this.FindControl<ScrollViewer>("InstallerScroll");
+        var footer = this.FindControl<StackPanel>("GameFooter");
+        var thumbnail = this.FindControl<Border>("TitanfallThumbnail");
+        var hero = this.FindControl<Border>("HeroArtwork");
+        if (gameScroll is null || installerScroll is null
+            || footer is null || thumbnail is null || hero is null)
+        {
+            return;
+        }
+
+        CloseVersionPicker();
+        _installerScrollOffset = installerScroll.Offset.Y;
+        _gamePageOpen = false;
+        _gameTransitionRunning = true;
+        _gameTransitionOpening = false;
+        var cts = new CancellationTokenSource();
+        _gameTransitionCts = cts;
+        var generation = ++_gameTransitionVersion;
+        var plan = GamePageTransitionPlan.For(AppearanceManager.AnimationsEnabled);
+        var groups = InstallerContentGroups();
+        var artStarted = false;
+        try
+        {
+            installerScroll.IsHitTestVisible = false;
+            gameScroll.IsVisible = true;
+            gameScroll.Opacity = 0;
+            gameScroll.RenderTransform = IdentityTransform;
+            gameScroll.IsHitTestVisible = false;
+            footer.IsVisible = true;
+            footer.Opacity = 0;
+            footer.RenderTransform = IdentityTransform;
+            footer.IsHitTestVisible = false;
+            ResetContentGroups(groups);
+
+            if (!plan.AnimatePages)
+            {
+                await RestoreScrollAsync(gameScroll, _gameScrollOffset);
+                if (generation == _gameTransitionVersion && !cts.IsCancellationRequested)
+                {
+                    FinishCloseState();
+                }
+                return;
+            }
+
+            await RestoreScrollAsync(gameScroll, _gameScrollOffset);
+            await YieldToLayoutAsync();
+            if (generation != _gameTransitionVersion || cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (TryMeasureArtwork(
+                    hero, installerScroll, thumbnail, gameScroll,
+                    out var artworkStart, out var artworkTarget))
+            {
+                PreparePage(gameScroll, incoming: true);
+                PreparePage(installerScroll, incoming: false);
+                PreparePage(footer, incoming: true);
+                thumbnail.Opacity = 0;
+                BeginArtwork(artworkStart, artworkTarget, opening: false, plan.ArtworkDuration);
+                artStarted = true;
+            }
+            else
+            {
+                HideArtworkLayer();
+                PreparePage(gameScroll, incoming: true);
+                PreparePage(installerScroll, incoming: false);
+                PreparePage(footer, incoming: true);
+            }
+
+            AnimatePage(installerScroll, incoming: false, plan.PageOutDuration);
+            AnimatePage(gameScroll, incoming: true, plan.PageInDuration);
+            AnimatePage(footer, incoming: true, plan.PageInDuration);
+
+            await Task.Delay(plan.PageInDuration, cts.Token);
+            gameScroll.IsHitTestVisible = true;
+
+            var remainingArtwork = plan.ArtworkDuration - plan.PageInDuration;
+            if (remainingArtwork > TimeSpan.Zero)
+            {
+                await Task.Delay(remainingArtwork, cts.Token);
+            }
+            if (artStarted)
+            {
+                await FadeArtworkAsync(plan.OverlayFadeDuration, cts.Token);
+            }
+
+            if (generation == _gameTransitionVersion && !cts.IsCancellationRequested)
+            {
+                FinishCloseState();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // A resize, close, or motion change settled the transition instead.
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Game page close transition failed: {ex.Message}");
+            if (generation == _gameTransitionVersion)
+            {
+                FinishGameTransitionNow();
+            }
+        }
+        finally
+        {
+            if (generation == _gameTransitionVersion)
+            {
+                if (ReferenceEquals(_gameTransitionCts, cts))
+                {
+                    _gameTransitionCts = null;
+                }
+                cts.Dispose();
+            }
+        }
+    }
+
+    private void FinishOpenState(bool focusDestination = true)
+    {
+        HideArtworkLayer();
+        var gameScroll = this.FindControl<ScrollViewer>("GameScroll");
+        var installerScroll = this.FindControl<ScrollViewer>("InstallerScroll");
+        var footer = this.FindControl<StackPanel>("GameFooter");
+        if (gameScroll is not null)
+        {
+            ResetPage(gameScroll);
+            gameScroll.IsVisible = false;
+            gameScroll.IsHitTestVisible = true;
+        }
+        if (installerScroll is not null)
+        {
+            ResetPage(installerScroll);
+            installerScroll.IsVisible = true;
+            installerScroll.IsHitTestVisible = true;
+            RestoreScrollOffset(installerScroll, _installerScrollOffset);
+        }
+        if (footer is not null)
+        {
+            ResetPage(footer);
+            footer.IsVisible = false;
+            footer.IsHitTestVisible = true;
+        }
+        ResetContentGroups(InstallerContentGroups());
+        _gamePageOpen = true;
+        _gameTransitionRunning = false;
+        if (focusDestination)
+        {
+            FocusAfterLayout(
+                this.FindControl<Button>("BackToGamesButton"),
+                installerScroll,
+                _installerScrollOffset);
+        }
+    }
+
+    private void FinishCloseState()
+    {
+        HideArtworkLayer();
+        var gameScroll = this.FindControl<ScrollViewer>("GameScroll");
+        var installerScroll = this.FindControl<ScrollViewer>("InstallerScroll");
+        var footer = this.FindControl<StackPanel>("GameFooter");
+        if (installerScroll is not null)
+        {
+            ResetPage(installerScroll);
+            installerScroll.IsVisible = false;
+            installerScroll.IsHitTestVisible = true;
+        }
+        if (gameScroll is not null)
+        {
+            ResetPage(gameScroll);
+            gameScroll.IsVisible = true;
+            gameScroll.IsHitTestVisible = true;
+            RestoreScrollOffset(gameScroll, _gameScrollOffset);
+        }
+        if (footer is not null)
+        {
+            ResetPage(footer);
+            footer.IsVisible = true;
+            footer.IsHitTestVisible = true;
+        }
+        ResetContentGroups(InstallerContentGroups());
+        _gamePageOpen = false;
+        _gameTransitionRunning = false;
+        FocusAfterLayout(
+            this.FindControl<Button>("TitanfallCard"),
+            gameScroll,
+            _gameScrollOffset);
+    }
+
+    private void FinishGameTransitionNow()
+    {
+        if (!_gameTransitionRunning)
+        {
+            return;
+        }
+
+        var opening = _gameTransitionOpening;
+        CancelGameTransition();
+        if (opening)
+        {
+            FinishOpenState();
+        }
+        else
+        {
+            FinishCloseState();
+        }
+    }
+
+    private void CancelGameTransition()
+    {
+        _gameTransitionVersion++;
+        _gameTransitionCts?.Cancel();
+        _gameTransitionCts?.Dispose();
+        _gameTransitionCts = null;
+    }
+
+    private IReadOnlyList<Control> InstallerContentGroups()
+    {
+        var names = new[]
+        {
+            "InstallerNav",
+            "HeroContent",
+            "InstalledVersionCard",
+            "LatestStableCard",
+            "LatestBetaCard",
+            "ReleaseSection",
+            "BackendSection",
+            "ReleaseNotesSection",
+            "InstallerDetailsSection",
+        };
+        var groups = new List<Control>(names.Length);
+        foreach (var name in names)
+        {
+            var group = this.FindControl<Control>(name);
+            if (group is not null)
+            {
+                groups.Add(group);
+            }
+        }
+        return groups;
+    }
+
+    private static void PrepareContentGroups(IReadOnlyList<Control> groups, bool animate)
+    {
+        foreach (var group in groups)
+        {
+            group.Transitions = null;
+            group.Opacity = animate ? 0 : 1;
+            group.RenderTransform = animate
+                ? TransformOperations.Parse("translate(0px, 8px)")
+                : IdentityTransform;
+        }
+    }
+
+    private static void ResetContentGroups(IReadOnlyList<Control> groups)
+    {
+        PrepareContentGroups(groups, animate: false);
+    }
+
+    private static async Task RevealContentAsync(
+        IReadOnlyList<Control> groups,
+        GamePageTransitionPlan plan,
+        CancellationToken token)
+    {
+        if (!plan.AnimateContent || groups.Count == 0)
+        {
+            return;
+        }
+
+        for (var index = 0; index < groups.Count; index++)
+        {
+            var delay = index == 0 ? plan.ContentStartDelay : plan.ContentStagger;
+            await Task.Delay(delay, token);
+            var group = groups[index];
+            group.Transitions = new Transitions
+            {
+                new DoubleTransition
+                {
+                    Property = Visual.OpacityProperty,
+                    Duration = plan.ContentRevealDuration,
+                    Easing = new CubicEaseOut(),
+                },
+                new TransformOperationsTransition
+                {
+                    Property = Visual.RenderTransformProperty,
+                    Duration = plan.ContentRevealDuration,
+                    Easing = new CubicEaseOut(),
+                },
+            };
+            group.Opacity = 1;
+            group.RenderTransform = IdentityTransform;
+        }
+        await Task.Delay(plan.ContentRevealDuration, token);
+    }
+
+    private static void PreparePage(Control page, bool incoming)
+    {
+        page.Transitions = null;
+        page.Opacity = incoming ? 0 : 1;
+        page.RenderTransform = incoming
+            ? TransformOperations.Parse("translate(0px, 8px)")
+            : IdentityTransform;
+    }
+
+    private static void AnimatePage(Control page, bool incoming, TimeSpan duration)
+    {
+        page.Transitions = new Transitions
+        {
+            new DoubleTransition
+            {
+                Property = Visual.OpacityProperty,
+                Duration = duration,
+                Easing = new CubicEaseOut(),
+            },
+            new TransformOperationsTransition
+            {
+                Property = Visual.RenderTransformProperty,
+                Duration = duration,
+                Easing = new CubicEaseOut(),
+            },
+        };
+        page.Opacity = incoming ? 1 : 0;
+        page.RenderTransform = incoming
+            ? IdentityTransform
+            : TransformOperations.Parse("translate(0px, -6px)");
+    }
+
+    private static void ResetPage(Control page)
+    {
+        page.Transitions = null;
+        page.Opacity = 1;
+        page.RenderTransform = IdentityTransform;
+    }
+
+    private bool TryMeasureArtwork(
+        Control source,
+        ScrollViewer sourceViewport,
+        Control target,
+        ScrollViewer targetViewport,
+        out Rect sourceBounds,
+        out Rect targetBounds)
+    {
+        sourceBounds = default;
+        targetBounds = default;
+        var layer = this.FindControl<Canvas>("GameTransitionLayer");
+        var image = this.FindControl<Image>("GameTransitionArtwork");
+        if (layer is null || image?.Source is null
+            || !IsUsable(source) || !IsUsable(target)
+            || !IsInViewport(source, sourceViewport)
+            || !IsInViewport(target, targetViewport))
+        {
+            return false;
+        }
+
+        var measuredSource = BoundsIn(source, layer);
+        var measuredTarget = BoundsIn(target, layer);
+        if (measuredSource is not { } from || measuredTarget is not { } to
+            || from.Width < 2 || from.Height < 2 || to.Width < 2 || to.Height < 2)
+        {
+            return false;
+        }
+
+        sourceBounds = from;
+        targetBounds = to;
+        return true;
+    }
+
+    private void BeginArtwork(Rect start, Rect target, bool opening, TimeSpan duration)
+    {
+        var layer = this.FindControl<Canvas>("GameTransitionLayer");
+        var clip = this.FindControl<Border>("GameTransitionArtworkClip");
+        if (layer is null || clip is null)
+        {
+            return;
+        }
+
+        layer.Transitions = null;
+        layer.IsVisible = true;
+        // On the way back the raw artwork has to take over from the hero's
+        // gradient/title stack, so fade it in over the outgoing hero instead
+        // of replacing that stack in a single frame.
+        layer.Opacity = opening ? 1 : 0;
+        clip.Transitions = null;
+        clip.Opacity = 1;
+        clip.CornerRadius = opening
+            ? CornerResource("CornerCardLeft")
+            : CornerResource("CornerCard");
+        SetArtworkBounds(clip, start);
+
+        var easing = new CubicEaseOut();
+        clip.Transitions = new Transitions
+        {
+            new DoubleTransition
+            {
+                Property = Canvas.LeftProperty,
+                Duration = duration,
+                Easing = easing,
+            },
+            new DoubleTransition
+            {
+                Property = Canvas.TopProperty,
+                Duration = duration,
+                Easing = easing,
+            },
+            new DoubleTransition
+            {
+                Property = Layoutable.WidthProperty,
+                Duration = duration,
+                Easing = easing,
+            },
+            new DoubleTransition
+            {
+                Property = Layoutable.HeightProperty,
+                Duration = duration,
+                Easing = easing,
+            },
+            new CornerRadiusTransition
+            {
+                Property = Border.CornerRadiusProperty,
+                Duration = duration,
+                Easing = easing,
+            },
+        };
+        SetArtworkBounds(clip, target);
+        clip.CornerRadius = opening
+            ? CornerResource("CornerCard")
+            : CornerResource("CornerCardLeft");
+
+        if (!opening)
+        {
+            layer.Transitions = new Transitions
+            {
+                new DoubleTransition
+                {
+                    Property = Visual.OpacityProperty,
+                    Duration = TimeSpan.FromMilliseconds(110),
+                    Easing = new CubicEaseOut(),
+                },
+            };
+            layer.Opacity = 1;
+        }
+    }
+
+    private async Task FadeArtworkAsync(TimeSpan duration, CancellationToken token)
+    {
+        var layer = this.FindControl<Canvas>("GameTransitionLayer");
+        if (layer is null || !layer.IsVisible)
+        {
+            return;
+        }
+
+        // Reveal the real artwork beneath the overlay before fading the
+        // overlay, so the handoff cannot show a blank frame.
+        var thumbnail = this.FindControl<Border>("TitanfallThumbnail");
+        if (thumbnail is not null)
+        {
+            thumbnail.Opacity = 1;
+        }
+
+        layer.Transitions = new Transitions
+        {
+            new DoubleTransition
+            {
+                Property = Visual.OpacityProperty,
+                Duration = duration,
+                Easing = new CubicEaseOut(),
+            },
+        };
+        layer.Opacity = 0;
+        await Task.Delay(duration, token);
+        HideArtworkLayer();
+    }
+
+    private void HideArtworkLayer()
+    {
+        var layer = this.FindControl<Canvas>("GameTransitionLayer");
+        var clip = this.FindControl<Border>("GameTransitionArtworkClip");
+        var thumbnail = this.FindControl<Border>("TitanfallThumbnail");
+        if (layer is not null)
+        {
+            layer.Transitions = null;
+            layer.IsVisible = false;
+            layer.Opacity = 1;
+        }
+        if (clip is not null)
+        {
+            clip.Transitions = null;
+            clip.Width = 0;
+            clip.Height = 0;
+            Canvas.SetLeft(clip, 0);
+            Canvas.SetTop(clip, 0);
+        }
+        if (thumbnail is not null)
+        {
+            thumbnail.Opacity = 1;
+        }
+    }
+
+    private static bool IsUsable(Control control)
+        => control.Bounds.Width > 1 && control.Bounds.Height > 1;
+
+    private static bool IsInViewport(Control control, ScrollViewer viewport)
+    {
+        var origin = control.TranslatePoint(new Point(0, 0), viewport);
+        if (origin is null)
+        {
+            return false;
+        }
+
+        var bounds = new Rect(origin.Value, control.Bounds.Size);
+        return bounds.Right > 0 && bounds.Bottom > 0
+            && bounds.X < viewport.Bounds.Width
+            && bounds.Y < viewport.Bounds.Height;
+    }
+
+    private static Rect? BoundsIn(Visual element, Visual ancestor)
+    {
+        var origin = element.TranslatePoint(new Point(0, 0), ancestor);
+        return origin is null ? null : new Rect(origin.Value, element.Bounds.Size);
+    }
+
+    private static void SetArtworkBounds(Border clip, Rect bounds)
+    {
+        Canvas.SetLeft(clip, bounds.X);
+        Canvas.SetTop(clip, bounds.Y);
+        clip.Width = bounds.Width;
+        clip.Height = bounds.Height;
+    }
+
+    private static CornerRadius CornerResource(string key)
+    {
+        var app = Application.Current;
+        if (app is not null
+            && app.TryFindResource(key, app.ActualThemeVariant, out var value)
+            && value is CornerRadius radius)
+        {
+            return radius;
+        }
+        return default;
+    }
+
+    private static async Task RestoreScrollAsync(ScrollViewer scroll, double offset)
+    {
+        await YieldToLayoutAsync();
+        RestoreScrollOffset(scroll, offset);
+        await YieldToLayoutAsync();
+    }
+
+    private static void RestoreScrollOffset(ScrollViewer scroll, double offset)
+    {
+        var max = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
+        scroll.SetCurrentValue(
+            ScrollViewer.OffsetProperty,
+            new Vector(scroll.Offset.X, Math.Clamp(offset, 0, max)));
+    }
+
+    private static async Task YieldToLayoutAsync()
+    {
+        await Dispatcher.UIThread.InvokeAsync(static () => { }, DispatcherPriority.Loaded);
+    }
+
+    private void FocusAfterLayout(Control? target, ScrollViewer? scroll, double offset)
+    {
+        if (target is null)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(
             () =>
             {
-                var max = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
-                scroll.SetCurrentValue(
-                    ScrollViewer.OffsetProperty,
-                    new Vector(scroll.Offset.X, Math.Clamp(offset, 0, max)));
+                if (!target.IsVisible)
+                {
+                    return;
+                }
+                target.Focus();
+                if (scroll is not null)
+                {
+                    RestoreScrollOffset(scroll, offset);
+                }
             },
-            Avalonia.Threading.DispatcherPriority.Loaded);
+            DispatcherPriority.Loaded);
     }
+
+    private static readonly TransformOperations IdentityTransform =
+        TransformOperations.Parse("translate(0px, 0px)");
 
     private void OpenSupport_Click(object? sender, RoutedEventArgs e) => OpenUrl(SupportUrl);
 
@@ -539,8 +1455,38 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OpenHistory_Click(object? sender, RoutedEventArgs e)
+    {
+        HelpTip.CloseOpen();
+        if (_gameTransitionRunning || SetupWizardPanel.IsVisible || SettingsPanel.IsVisible
+            || ReleaseExplorerPanel.IsVisible)
+        {
+            return;
+        }
+        CloseVersionPicker();
+        HistoryPanel.Open(_vm);
+    }
+
+    private void BrowseReleases_Click(object? sender, RoutedEventArgs e)
+    {
+        HelpTip.CloseOpen();
+        if (_gameTransitionRunning || SetupWizardPanel.IsVisible || SettingsPanel.IsVisible
+            || HistoryPanel.IsVisible)
+        {
+            return;
+        }
+        CloseVersionPicker();
+        ReleaseExplorerPanel.Open(_vm);
+    }
+
     private void OpenSettings_Click(object? sender, RoutedEventArgs e)
     {
+        HelpTip.CloseOpen();
+        if (_gameTransitionRunning || SetupWizardPanel.IsVisible)
+        {
+            return;
+        }
+
         CloseVersionPicker();
         _vm.RefreshLocalState();
         this.FindControl<SettingsView>("SettingsPanel")!.Open(_vm);
@@ -548,6 +1494,25 @@ public partial class MainWindow : Window
 
     private async void Install_Click(object? sender, RoutedEventArgs e)
     {
+        if (!_vm.CanInstall)
+        {
+            return;
+        }
+
+        var confirmed = await ConfirmAsync(
+            Loc.Get("confirmInstallTitle"),
+            Loc.Format(
+                "confirmInstallBody",
+                _vm.SelectedVersionTitle,
+                _vm.SelectedVersionNumberText,
+                _vm.InstalledVersionText,
+                _vm.InstallTargetText),
+            Loc.Get("install"));
+        if (!confirmed)
+        {
+            return;
+        }
+
         await _vm.InstallSelectedAsync();
         RefreshUi();
     }
@@ -644,6 +1609,7 @@ public partial class MainWindow : Window
 
     private void VersionPicker_Click(object? sender, RoutedEventArgs e)
     {
+        HelpTip.CloseOpen();
         var popup = this.FindControl<Popup>("VersionPopup")!;
         if (sender is Button target)
         {
@@ -758,7 +1724,7 @@ public partial class MainWindow : Window
 
     private void ChangelogExpand_Click(object? sender, RoutedEventArgs e)
     {
-        var offset = this.FindControl<ScrollViewer>("MainScroll")?.Offset.Y ?? 0;
+        var offset = this.FindControl<ScrollViewer>("InstallerScroll")?.Offset.Y ?? 0;
         _changelogExpanded = !_changelogExpanded;
         RefreshUi();
         RestoreMainOffset(offset);
@@ -766,8 +1732,12 @@ public partial class MainWindow : Window
 
     private void DetailsExpander_Toggled(object? sender, RoutedEventArgs e)
     {
-        var offset = this.FindControl<ScrollViewer>("MainScroll")?.Offset.Y ?? 0;
+        var offset = this.FindControl<ScrollViewer>("InstallerScroll")?.Offset.Y ?? 0;
         RestoreMainOffset(offset);
+        if (!_updatingDetailsExpander && sender is Expander expander)
+        {
+            _vm.SetDetailsExpanded(expander.IsExpanded);
+        }
     }
 
     private void RestoreMainOffset(double offset)
@@ -775,15 +1745,12 @@ public partial class MainWindow : Window
         Avalonia.Threading.Dispatcher.UIThread.Post(
             () =>
             {
-                var scroll = this.FindControl<ScrollViewer>("MainScroll");
+                var scroll = this.FindControl<ScrollViewer>("InstallerScroll");
                 if (scroll is null)
                 {
                     return;
                 }
-                var max = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
-                scroll.SetCurrentValue(
-                    ScrollViewer.OffsetProperty,
-                    new Vector(scroll.Offset.X, Math.Clamp(offset, 0, max)));
+                RestoreScrollOffset(scroll, offset);
             },
             DispatcherPriority.Loaded);
     }

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CircuitLord.VRModInstaller.Core.Appearance;
 using CircuitLord.VRModInstaller.Core.Updates;
 
 namespace CircuitLord.VRModInstaller.Core.Settings;
@@ -12,7 +13,10 @@ namespace CircuitLord.VRModInstaller.Core.Settings;
 /// </summary>
 public sealed class AppSettings
 {
-    public const int CurrentSchemaVersion = 5;
+    public const int CurrentSchemaVersion = 8;
+
+    public const string ComfortableDensity = "comfortable";
+    public const string CompactDensity = "compact";
 
     [JsonPropertyName("schemaVersion")]
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
@@ -41,6 +45,20 @@ public sealed class AppSettings
     /// <summary>System, Reduced or Full motion preference.</summary>
     [JsonPropertyName("motionPreference")]
     public string MotionPreference { get; set; } = "system";
+
+    /// <summary>Comfortable or Compact interface density.</summary>
+    [JsonPropertyName("layoutDensity")]
+    public string LayoutDensity { get; set; } = ComfortableDensity;
+
+    /// <summary>Stable identifier for the application-wide interface font.</summary>
+    [JsonPropertyName("uiFontFamily")]
+    public string UiFontFamily { get; set; } = FontPreference.DefaultUiFontId;
+
+    /// <summary>
+    /// Stable identifier for technical output, or <see cref="FontPreference.FollowInterfaceFontId"/>.
+    /// </summary>
+    [JsonPropertyName("technicalFontFamily")]
+    public string TechnicalFontFamily { get; set; } = FontPreference.FollowInterfaceFontId;
 
     [JsonPropertyName("checkForAppUpdates")]
     public bool CheckForAppUpdates { get; set; } = true;
@@ -83,6 +101,17 @@ public sealed class AppSettings
     [JsonPropertyName("showLaunchConfirmation")]
     public bool ShowLaunchConfirmation { get; set; } = true;
 
+    /// <summary>True once the first-run setup has been finished or explicitly skipped.</summary>
+    [JsonPropertyName("setupWizardCompleted")]
+    public bool SetupWizardCompleted { get; set; }
+
+    /// <summary>Whether the technical details panel is expanded.</summary>
+    [JsonPropertyName("detailsExpanded")]
+    public bool DetailsExpanded { get; set; }
+
+    public static string NormalizeLayoutDensity(string? density)
+        => density?.Trim().ToLowerInvariant() == CompactDensity ? CompactDensity : ComfortableDensity;
+
     /// <summary>
     /// Keeps older and hand-edited settings safe. Unknown values fall back to
     /// the documented defaults rather than escaping into the UI layer.
@@ -101,9 +130,12 @@ public sealed class AppSettings
             "full" => "full",
             _ => "system",
         };
+        LayoutDensity = NormalizeLayoutDensity(LayoutDensity);
         UiScale = Math.Clamp(UiScale, 80, 150);
         UiScale = (int)(Math.Round(UiScale / 5.0, MidpointRounding.AwayFromZero) * 5);
         UpdateChannel = ReleaseChannelPreference.Normalize(UpdateChannel);
+        UiFontFamily = FontPreference.NormalizeUiFont(UiFontFamily);
+        TechnicalFontFamily = FontPreference.NormalizeTechnicalFont(TechnicalFontFamily);
         if (string.IsNullOrWhiteSpace(Language))
         {
             Language = "en";

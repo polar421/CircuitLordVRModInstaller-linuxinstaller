@@ -13,9 +13,11 @@ using CircuitLord.VRModInstaller.Core.Appearance;
 using CircuitLord.VRModInstaller.Core.Backend;
 using CircuitLord.VRModInstaller.Core.Catalogue;
 using CircuitLord.VRModInstaller.Core.Desktop;
+using CircuitLord.VRModInstaller.Core.Game;
 using CircuitLord.VRModInstaller.Core.Logging;
 using CircuitLord.VRModInstaller.Core.Manifest;
 using CircuitLord.VRModInstaller.Core.Models;
+using CircuitLord.VRModInstaller.Core.Notifications;
 using CircuitLord.VRModInstaller.Core.Process;
 using CircuitLord.VRModInstaller.Core.Runtime;
 using CircuitLord.VRModInstaller.Core.Settings;
@@ -34,6 +36,7 @@ public sealed class VersionOption
     public string GroupTitle { get; init; } = "Pinned";
     public string KindLabel { get; init; } = "Fixed version";
     public string Description { get; init; } = string.Empty;
+    public string ReleaseDescription { get; init; } = string.Empty;
     public bool IsInstalled { get; init; }
     public bool IsSelected { get; init; }
     public bool IsUpToDate { get; init; }
@@ -64,9 +67,12 @@ public sealed class InstallerViewModel
     private readonly VersionCatalogueService _catalogueService;
     private readonly ManifestService _manifest;
     private readonly DesktopEntryManager _desktop;
+    private readonly TitanfallLocator _titanfallLocator;
     private readonly LauncherService _launcher;
     private readonly RuntimeService _runtime;
     private readonly SettingsStore _settingsStore;
+    private readonly NotificationStore _notificationStore;
+    private readonly List<AppNotification> _notifications;
     private readonly SteamLocator _steamLocator;
     private readonly ISteamProcessController _steamProcess;
     private readonly SteamShortcutManager _steamManager;
@@ -97,6 +103,7 @@ public sealed class InstallerViewModel
     private ReleaseCheckResult? _latestAppRelease;
     private BackendUpdateCheck? _backendUpdateCheck;
     private OpenXrRuntimeInfo? _runtimeInfo;
+    private Titanfall2Installation? _titanfallInstallation;
     private DesktopIntegrationStatus? _desktopStatus;
     private SteamShortcutStatus? _steamShortcutStatus;
     private IReadOnlyDictionary<string, string> _backendPaths =
@@ -127,17 +134,23 @@ public sealed class InstallerViewModel
             new OperationLoggerAccessor { Log = line => AddLog(line) });
         _manifest = new ManifestService(_paths);
         _desktop = new DesktopEntryManager(_paths);
+        _titanfallLocator = new TitanfallLocator(_paths);
         _launcher = new LauncherService(_paths);
         _runtime = new RuntimeService(_paths);
         _settingsStore = new SettingsStore(_paths);
+        _notificationStore = new NotificationStore(_paths);
+        _notifications = _notificationStore.Load().ToList();
         _steamLocator = new SteamLocator(_paths);
         _steamProcess = new SteamProcessController();
         _steamManager = new SteamShortcutManager(_paths, _steamProcess, line => AddLog(line));
         _appUpdater = new AppUpdateService(_paths);
         _settings = _settingsStore.Load();
+        ReportUnavailableFonts();
     }
 
     public event EventHandler? Changed;
+    /// <summary>Raised when activity is added or its read state changes.</summary>
+    public event EventHandler? NotificationsChanged;
     /// <summary>Raised after the detached updater helper is ready and the window should close.</summary>
     public event EventHandler? RestartRequested;
     public ObservableCollection<string> LogLines { get; } = new();
@@ -153,6 +166,11 @@ public sealed class InstallerViewModel
     public string ThemeSetting => _settings.Theme;
     public int UiScalePercent => _settings.UiScale;
     public string MotionSetting => _settings.MotionPreference;
+    public string LayoutDensity => _settings.LayoutDensity;
+    public bool IsCompactDensity => _settings.LayoutDensity == AppSettings.CompactDensity;
+    public bool DetailsExpanded => _settings.DetailsExpanded;
+    public string UiFontSetting => _settings.UiFontFamily;
+    public string TechnicalFontSetting => _settings.TechnicalFontFamily;
     public bool AutoCheckForAppUpdates => _settings.CheckForAppUpdates;
     public string UpdateChannelSetting => _settings.UpdateChannel;
     public bool IsBetaUpdateChannel => ReleaseChannelPreference.IncludesPrereleases(
@@ -296,6 +314,7 @@ public sealed class InstallerViewModel
     public string LatestBetaVersionText =>
         _catalogue?.FindByToken("beta")?.ResolvedVersion ?? Loc.Get("notAvailable");
     public string SelectedVersionTitle => SelectedVersion?.DisplayLabel ?? Loc.Get("chooseRelease");
+    public string SelectedVersionNumberText => SelectedVersion?.VersionText ?? Loc.Get("notAvailable");
     public string SelectedVersionMeta => SelectedVersion is null
         ? Loc.Get("chooseRelease")
         : SelectedVersion.KindLabel + " · " + SelectedVersion.VersionText;
@@ -334,6 +353,11 @@ public sealed class InstallerViewModel
         && IsSameVersion(ModVersion(_installedVersionRaw), LatestStableVersionText);
     public bool LatestBetaBadgeVisible => IsInstalled && IsOnBeta
         && IsSameVersion(ModVersion(_installedVersionRaw), LatestBetaVersionText);
+    public IReadOnlyList<InstallerOperationRecord> OperationHistory { get; private set; } =
+        Array.Empty<InstallerOperationRecord>();
+    public IReadOnlyList<AppNotification> Notifications => _notifications;
+    public int UnreadNotificationCount => _notifications.Count(notification => !notification.Read);
+    public bool OperationHistoryUnavailable => _historyUnavailable;
     public string InstallationHistoryText
     {
         get
@@ -411,10 +435,27 @@ public sealed class InstallerViewModel
     public bool IsSteamRunning => _steamInstallation is not null && _steamProcess.IsClientRunning(_steamInstallation);
     public bool HasSteamAccount => _steamAccount is not null;
     public bool BackendVerified => _backendState?.ValidationStatus == BackendValidationStatus.Validated;
-    public bool GameDetected => _backendPaths.TryGetValue("GAME_DIR", out var gameDir)
-        && !string.IsNullOrWhiteSpace(gameDir) && Directory.Exists(gameDir);
+    public bool GameDetected => _titanfallInstallation is not null;
+    public string TitanfallGameDirectory => _titanfallInstallation?.GameDirectory ?? string.Empty;
+    public string InstallTargetText => string.IsNullOrWhiteSpace(TitanfallGameDirectory)
+        ? Loc.Get("notDetected")
+        : TitanfallGameDirectory;
+    public string TitanfallGameExecutable => _titanfallInstallation?.ExecutablePath ?? string.Empty;
+    public string TitanfallDetectionSource => _titanfallInstallation?.Source ?? string.Empty;
     public bool OpenXrDetected => _runtimeInfo is not null
         && (_runtimeInfo.RuntimeName is not null || _runtimeInfo.SteamVrAvailable || _runtimeInfo.WiVrnAvailable || _runtimeInfo.MonadoAvailable);
+    public string OpenXrRuntimeName => _runtimeInfo?.RuntimeName ?? string.Empty;
+    public string OpenXrRuntimePath => _runtimeInfo?.RuntimePath ?? string.Empty;
+    public bool WiVrnAvailable => _runtimeInfo?.WiVrnAvailable == true;
+    public bool SteamVrAvailable => _runtimeInfo?.SteamVrAvailable == true;
+    public bool MonadoAvailable => _runtimeInfo?.MonadoAvailable == true;
+    public bool HasLauncher => _launcher.LauncherExists;
+    public bool PreflightHasRun => _lastPreflightAt is not null;
+    public bool PreflightSucceeded => _lastPreflightAt is not null && _lastPreflightSucceeded;
+    public string? SelectedReleaseToken => _settings.SelectedToken;
+    public bool SetupWizardCompleted => _settings.SetupWizardCompleted;
+    public bool StableReleaseAvailable => Versions.Any(v => v.Token == "latest");
+    public bool BetaReleaseAvailable => Versions.Any(v => v.Token == "beta");
     public bool DesktopEntryInstalled => _desktopStatus?.State == DesktopIntegrationState.Installed;
     public bool StableUpdateAvailable => IsInstalled
         && IsNewer(LatestStableVersionText, ModVersion(_installedVersionRaw));
@@ -579,6 +620,8 @@ public sealed class InstallerViewModel
         {
             if (_backendState is null || _backendState.ValidationStatus != BackendValidationStatus.Validated)
             {
+                _lastPreflightAt = null;
+                _lastPreflightSucceeded = false;
                 PreflightText = Loc.Get("preflightNothingRun");
                 return;
             }
@@ -654,7 +697,9 @@ public sealed class InstallerViewModel
 
             SetStage("stageStartingInstaller");
             var operationId = Guid.NewGuid().ToString("N");
-            var command = _adapter.CreateInstall(backend, token, force: IsInstalled, refreshProton: false);
+            var operationKind = DetermineInstallOperationKind();
+            var command = _adapter.CreateInstall(
+                backend, token, force: IsInstalled, refreshProton: false, operationKind: operationKind);
             var logPath = _logger.CreateOperationLog(operationId, command, backend.CommitHash);
             AddLog($"{display} → {command.QuotedCommandLine}");
 
@@ -666,7 +711,8 @@ public sealed class InstallerViewModel
                 RequestedDisplayName = display,
                 LogPath = logPath,
                 BackendCommit = backend.CommitHash,
-                OldVersion = InstalledText,
+                OldVersion = ModVersion(_installedVersionRaw),
+                Channel = SelectedVersion?.GroupKey,
             };
 
             var result = await _runner.RunAsync(
@@ -686,12 +732,18 @@ public sealed class InstallerViewModel
             _logger.Complete(logPath, result, installed);
             record.ExitCode = result.ExitCode;
             record.FinishedAt = DateTimeOffset.Now;
-            record.NewVersion = installed;
+            record.NewVersion = ModVersion(installed) ?? installed;
+            record.Duration = result.Duration;
             record.Result = result.Succeeded ? "Succeeded" : "Failed";
             _logger.RecordOperation(record);
 
             if (!result.Succeeded)
             {
+                AddNotification(
+                    NotificationKinds.InstallFailed,
+                    display,
+                    result.ExitCode.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                RefreshLocalState();
                 SetStage("stageInstallFinished", result.ExitCode);
                 return;
             }
@@ -702,6 +754,9 @@ public sealed class InstallerViewModel
             _settings.SelectedToken = token;
             _settingsStore.Save(_settings);
 
+            AddNotification(
+                NotificationKinds.InstallCompleted,
+                record.NewVersion ?? installed ?? display);
             SetStage(desktopStatus.State == DesktopIntegrationState.Installed
                 ? "stageInstalledDesktop"
                 : "stageInstalledDesktopAttention");
@@ -731,6 +786,17 @@ public sealed class InstallerViewModel
             var command = _adapter.CreateUninstall(_backendState);
             var operationId = Guid.NewGuid().ToString("N");
             var logPath = _logger.CreateOperationLog(operationId, command, _backendState.CommitHash);
+            var record = new InstallerOperationRecord
+            {
+                OperationId = operationId,
+                Kind = BackendOperationKind.Uninstall,
+                RequestedToken = _installedToken ?? string.Empty,
+                RequestedDisplayName = InstalledChannelText,
+                LogPath = logPath,
+                BackendCommit = _backendState.CommitHash,
+                OldVersion = ModVersion(_installedVersionRaw),
+                Channel = ChannelKeyFromToken(_installedToken),
+            };
 
             var result = await _runner.RunAsync(
                 command.ExecutablePath, command.Arguments, command.WorkingDirectory,
@@ -743,6 +809,11 @@ public sealed class InstallerViewModel
                 cancellationToken: _lifetime.Token);
 
             _logger.Complete(logPath, result, _backend.ReadInstalledVersion());
+            record.ExitCode = result.ExitCode;
+            record.FinishedAt = DateTimeOffset.Now;
+            record.Duration = result.Duration;
+            record.Result = result.Succeeded ? "Succeeded" : "Failed";
+            _logger.RecordOperation(record);
             RefreshLocalState();
             SetStage(result.Succeeded ? "stageUninstalled" : "stageUninstallFailed", result.Succeeded ? Array.Empty<object?>() : new object?[] { result.ExitCode });
         }
@@ -775,6 +846,7 @@ public sealed class InstallerViewModel
 
         _desktopStatus = status;
         DesktopText = DescribeDesktop(status);
+        NotifyWiVrnDesktopIssue(status);
         SetStage(status.State == DesktopIntegrationState.Installed
             ? "desktopInstalledValidated"
             : "desktopNeedsAttention");
@@ -798,6 +870,7 @@ public sealed class InstallerViewModel
         var status = _desktop.Install(File.ReadAllText(backend.DesktopTemplatePath));
         _desktopStatus = status;
         DesktopText = DescribeDesktop(status);
+        NotifyWiVrnDesktopIssue(status);
         SetStage(status.State == DesktopIntegrationState.Installed
             ? "desktopGameReinstalled"
             : "desktopGameNeedsAttention");
@@ -826,6 +899,29 @@ public sealed class InstallerViewModel
             return false;
         }
         return true;
+    }
+
+    /// <summary>Reads the tail of one operation's log for the dedicated history report.</summary>
+    public string ReadOperationLog(InstallerOperationRecord record)
+    {
+        if (string.IsNullOrWhiteSpace(record.LogPath))
+        {
+            return Loc.Get("historyLogMissing");
+        }
+        try
+        {
+            if (!File.Exists(record.LogPath))
+            {
+                return Loc.Get("historyLogMissing");
+            }
+            var lines = File.ReadLines(record.LogPath).TakeLast(1200).ToList();
+            var text = string.Join('\n', lines).Trim();
+            return text.Length == 0 ? Loc.Get("historyLogMissing") : text;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return Loc.Format("logReadFailed", ex.Message);
+        }
     }
 
     public string GetLatestLogText()
@@ -859,6 +955,8 @@ public sealed class InstallerViewModel
             SelectedToken = _settings.SelectedToken,
             SelectedSteamInstallationId = _settings.SelectedSteamInstallationId,
             SelectedSteamAccountId = _settings.SelectedSteamAccountId,
+            // First-run completion is app state, not a visual preference.
+            SetupWizardCompleted = _settings.SetupWizardCompleted,
         };
         _updateCheckGeneration++;
         _latestAppRelease = null;
@@ -869,6 +967,8 @@ public sealed class InstallerViewModel
         AppearanceManager.SetTheme(ThemePreference.Dark);
         AppearanceManager.SetScale(UiScale.DefaultPercent);
         AppearanceManager.SetMotion(MotionPreference.System);
+        AppearanceManager.SetUiFont(FontPreference.DefaultUiFontId);
+        AppearanceManager.SetTechnicalFont(FontPreference.FollowInterfaceFontId);
         Loc.Use("en");
         RelocalizeAfterLanguageChange();
         SavePreferences();
@@ -911,6 +1011,10 @@ public sealed class InstallerViewModel
             _settings.LastSteamIntegrationAt = DateTimeOffset.Now;
             _settings.LastSteamIntegrationResult = result.Message;
             SavePreferences();
+        }
+        if (result.Shortcut is ShortcutOutcome.Added or ShortcutOutcome.Updated or ShortcutOutcome.AlreadyCorrect)
+        {
+            AddNotification(NotificationKinds.SteamIntegrationCompleted);
         }
         SetStage(result.Restart == RestartOutcome.Verified
             ? "stageSteamUpdated"
@@ -1016,7 +1120,16 @@ public sealed class InstallerViewModel
     /// <summary>Persists the exact backend token, never the dropdown ordinal.</summary>
     public void SelectVersion(VersionOption? option)
     {
-        if (option is null || option.Token == SelectedVersion?.Token)
+        if (option is null)
+        {
+            return;
+        }
+
+        // Saving is separate from changing the in-memory selection: the first
+        // catalogue entry is preselected, but the user still needs the wizard's
+        // explicit Stable/Beta choice persisted on first run.
+        var selectionChanged = !string.Equals(option.Token, SelectedVersion?.Token, StringComparison.Ordinal);
+        if (!selectionChanged && string.Equals(option.Token, _settings.SelectedToken, StringComparison.Ordinal))
         {
             return;
         }
@@ -1026,13 +1139,83 @@ public sealed class InstallerViewModel
         {
             _settingsStore.Save(_settings);
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             AddLog("Could not save the selection: " + ex.Message);
         }
         RefreshChangelog();
         UpdatePrimaryAction();
         RaiseChanged();
+    }
+
+    /// <summary>Selects a moving release channel from the currently validated catalogue.</summary>
+    public bool SelectReleaseToken(string token)
+    {
+        var option = Versions.FirstOrDefault(v => string.Equals(v.Token, token, StringComparison.Ordinal));
+        if (option is null)
+        {
+            return false;
+        }
+        SelectVersion(option);
+        return true;
+    }
+
+    public void MarkSetupWizardCompleted()
+    {
+        if (_settings.SetupWizardCompleted)
+        {
+            return;
+        }
+        _settings.SetupWizardCompleted = true;
+        SavePreferences();
+        RaiseChanged();
+    }
+
+    /// <summary>
+    /// Re-runs backend cloning/validation from the first-run wizard without
+    /// repeating application update checks or discarding the current catalogue.
+    /// </summary>
+    public async Task<bool> EnsureBackendForSetupAsync()
+    {
+        if (!TryEnter(nameof(EnsureBackendForSetupAsync), out var reason))
+        {
+            AddLog(reason);
+            return BackendVerified;
+        }
+
+        try
+        {
+            SetStage("stageCheckingBackend");
+            _backendState = await _backend.EnsureAsync(_lifetime.Token);
+            BackendText = BuildBackendText(_backendState);
+            if (BackendVerified)
+            {
+                await RefreshCatalogueAsync();
+                await LoadManifestAsync();
+            }
+            else if (_catalogue is null)
+            {
+                CatalogueText = Loc.Get("catalogueUnavailable");
+            }
+            RefreshLocalState();
+            SetStage(BackendVerified ? "stageReady" : "stageBackendSetupFailed");
+            return BackendVerified;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            AddLog("Backend setup failed: " + ex.Message);
+            SetStage("stageBackendSetupFailed");
+            RefreshLocalState();
+            return false;
+        }
+        finally
+        {
+            Exit();
+        }
     }
 
     public void SetRoundedCorners(bool enabled)
@@ -1075,6 +1258,31 @@ public sealed class InstallerViewModel
         RaiseChanged();
     }
 
+    public void SetLayoutDensity(string density)
+    {
+        var normalized = AppSettings.NormalizeLayoutDensity(density);
+        if (string.Equals(_settings.LayoutDensity, normalized, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _settings.LayoutDensity = normalized;
+        SavePreferences();
+        RaiseChanged();
+    }
+
+    public void SetDetailsExpanded(bool expanded)
+    {
+        if (_settings.DetailsExpanded == expanded)
+        {
+            return;
+        }
+
+        _settings.DetailsExpanded = expanded;
+        SavePreferences();
+        RaiseChanged();
+    }
+
     public void SetMotion(string motion)
     {
         var preference = MotionPreferenceNames.Parse(motion);
@@ -1086,6 +1294,30 @@ public sealed class InstallerViewModel
 
         _settings.MotionPreference = setting;
         AppearanceManager.SetMotion(preference);
+        SavePreferences();
+        RaiseChanged();
+    }
+
+    public void SetUiFont(string fontId)
+    {
+        if (!AppearanceManager.SetUiFont(fontId))
+        {
+            return;
+        }
+
+        _settings.UiFontFamily = AppearanceManager.UiFontId;
+        SavePreferences();
+        RaiseChanged();
+    }
+
+    public void SetTechnicalFont(string fontId)
+    {
+        if (!AppearanceManager.SetTechnicalFont(fontId))
+        {
+            return;
+        }
+
+        _settings.TechnicalFontFamily = AppearanceManager.TechnicalFontId;
         SavePreferences();
         RaiseChanged();
     }
@@ -1147,8 +1379,10 @@ public sealed class InstallerViewModel
         GroupKey = GroupKeyFor(entry),
         KindLabel = entry.IsPinnedRelease ? Loc.Get("fixedVersion") : Loc.Get("channel"),
         // Moving channels already have a localized group hint. Pinned
-        // descriptions are backend-provided technical text.
+        // descriptions are backend-provided technical text. The explorer also
+        // exposes the raw catalogue description for every release.
         Description = entry.IsPinnedRelease ? entry.Description ?? string.Empty : string.Empty,
+        ReleaseDescription = entry.Description ?? string.Empty,
     };
 
     private static string LocalizedDisplayLabel(VersionCatalogueEntry entry)
@@ -1250,6 +1484,10 @@ public sealed class InstallerViewModel
             else if (check.UpdateAvailable)
             {
                 SetBackendUpdateStatus("backendUpdateAvailable", Short(check.RemoteCommit));
+                AddNotification(
+                    NotificationKinds.HelperUpdateAvailable,
+                    detail: Short(check.RemoteCommit),
+                    dedupeKey: "helper-update:" + check.RemoteCommit);
             }
             else
             {
@@ -1430,17 +1668,23 @@ public sealed class InstallerViewModel
     public void RefreshLocalState()
     {
         _backendPaths = ReadPathsEnv(_paths.BackendPathsFile);
+        var configuredGameDirectory = _backendPaths.TryGetValue("GAME_DIR", out var gameDirectory)
+            ? gameDirectory
+            : null;
+        _titanfallInstallation = _titanfallLocator.Detect(configuredGameDirectory);
         _installedVersionRaw = _backend.ReadInstalledVersion();
         _installedToken = _backend.ReadSelectionToken();
         try
         {
             var history = _logger.ReadHistory();
+            OperationHistory = history;
             _lastOperation = history.FirstOrDefault();
             _lastSuccessfulInstall = history.FirstOrDefault(IsSuccessfulInstallRecord);
             _historyUnavailable = false;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            OperationHistory = Array.Empty<InstallerOperationRecord>();
             _lastOperation = null;
             _lastSuccessfulInstall = null;
             _historyUnavailable = true;
@@ -1466,6 +1710,7 @@ public sealed class InstallerViewModel
         DetectSteam();
         var runtime = _runtime.Inspect();
         _runtimeInfo = runtime;
+        NotifyWiVrnDesktopIssue(desktop);
         RuntimeText = DescribeRuntime(runtime)
             + (runtime.WiVrnRunning ? " · WiVRn " + Loc.Get("running") : string.Empty)
             + (runtime.MonadoRunning ? " · Monado " + Loc.Get("running") : string.Empty)
@@ -1477,9 +1722,129 @@ public sealed class InstallerViewModel
             AddLog("An earlier Steam transaction still owes a restart (" + pending.TransactionId + ").");
         }
 
+        EvaluateReleaseNotifications();
         RefreshChangelog();
         UpdatePrimaryAction();
         RaiseChanged();
+    }
+
+    private void EvaluateReleaseNotifications()
+    {
+        if (!IsInstalled || _catalogue is null || _catalogue.IsFromCache)
+        {
+            return;
+        }
+
+        var installed = ModVersion(_installedVersionRaw);
+        if (string.IsNullOrWhiteSpace(installed))
+        {
+            return;
+        }
+
+        var stable = _catalogue.FindByToken("latest")?.ResolvedVersion;
+        if (!string.IsNullOrWhiteSpace(stable) && IsNewer(stable, installed))
+        {
+            AddNotification(
+                NotificationKinds.StableReleaseAvailable,
+                stable,
+                dedupeKey: "mod-stable:" + stable);
+        }
+
+        var beta = _catalogue.FindByToken("beta")?.ResolvedVersion;
+        if (!string.IsNullOrWhiteSpace(beta) && IsNewer(beta, installed))
+        {
+            AddNotification(
+                NotificationKinds.BetaReleaseAvailable,
+                beta,
+                dedupeKey: "mod-beta:" + beta);
+        }
+    }
+
+    private void NotifyWiVrnDesktopIssue(DesktopIntegrationStatus status)
+    {
+        if (status.State == DesktopIntegrationState.Installed
+            || _runtimeInfo?.WiVrnAvailable != true)
+        {
+            return;
+        }
+
+        AddNotification(
+            NotificationKinds.WiVrnDesktopEntryIssue,
+            detail: status.State.ToString(),
+            dedupeKey: "wivrn-desktop:" + status.State);
+    }
+
+    public void MarkNotificationRead(string id)
+    {
+        var notification = _notifications.FirstOrDefault(item =>
+            string.Equals(item.Id, id, StringComparison.Ordinal));
+        if (notification is null || notification.Read)
+        {
+            return;
+        }
+
+        notification.Read = true;
+        SaveNotifications();
+        NotificationsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void MarkAllNotificationsRead()
+    {
+        var changed = false;
+        foreach (var notification in _notifications.Where(item => !item.Read))
+        {
+            notification.Read = true;
+            changed = true;
+        }
+        if (!changed)
+        {
+            return;
+        }
+
+        SaveNotifications();
+        NotificationsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void AddNotification(
+        string kind,
+        string? version = null,
+        string? detail = null,
+        string? dedupeKey = null)
+    {
+        if (!string.IsNullOrWhiteSpace(dedupeKey)
+            && _notifications.Any(item => string.Equals(item.DedupeKey, dedupeKey, StringComparison.Ordinal)))
+        {
+            return;
+        }
+
+        _notifications.Insert(0, new AppNotification
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Kind = kind,
+            CreatedAt = DateTimeOffset.Now,
+            Version = version,
+            Detail = detail,
+            DedupeKey = dedupeKey,
+        });
+        if (_notifications.Count > NotificationStore.MaxEntries)
+        {
+            _notifications.RemoveAt(_notifications.Count - 1);
+        }
+
+        SaveNotifications();
+        NotificationsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void SaveNotifications()
+    {
+        try
+        {
+            _notificationStore.Save(_notifications);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AddLog("Could not save notifications: " + ex.Message);
+        }
     }
 
     private void DetectSteam()
@@ -1584,6 +1949,7 @@ public sealed class InstallerViewModel
                         GroupTitle = definition.Title,
                         KindLabel = Loc.Get(definition.Key == "pinned" ? "fixedVersion" : "channel"),
                         Description = v.Description,
+                        ReleaseDescription = v.ReleaseDescription,
                         IsInstalled = installed,
                         IsSelected = string.Equals(selectedToken, v.Token, StringComparison.Ordinal),
                         IsUpToDate = installed && definition.Key == "stable" && !StableUpdateAvailable,
@@ -1650,7 +2016,31 @@ public sealed class InstallerViewModel
 
     private static bool IsSuccessfulInstallRecord(InstallerOperationRecord record) =>
         string.Equals(record.Result, "Succeeded", StringComparison.Ordinal)
-        && record.Kind is BackendOperationKind.Install or BackendOperationKind.Update or BackendOperationKind.Reinstall;
+        && record.Kind is BackendOperationKind.Install or BackendOperationKind.Update
+            or BackendOperationKind.Reinstall or BackendOperationKind.Repair;
+
+    private BackendOperationKind DetermineInstallOperationKind()
+    {
+        if (!IsInstalled)
+        {
+            return BackendOperationKind.Install;
+        }
+        if (IsInstallationIncomplete)
+        {
+            return BackendOperationKind.Repair;
+        }
+        return SelectedVersion is not null && !IsSameRelease(SelectedVersion)
+            ? BackendOperationKind.Update
+            : BackendOperationKind.Reinstall;
+    }
+
+    private static string? ChannelKeyFromToken(string? token) => token switch
+    {
+        "latest" => "stable",
+        "beta" => "beta",
+        null or "" => null,
+        _ => "pinned",
+    };
 
     private bool IsVerifiedInstallRecord()
     {
@@ -1668,6 +2058,39 @@ public sealed class InstallerViewModel
 
     private static string OperationDateText(InstallerOperationRecord? record) =>
         (record?.FinishedAt ?? record?.StartedAt ?? DateTimeOffset.Now).ToLocalTime().ToString("g");
+
+    /// <summary>
+    /// Exact changelog notes for one catalogue version. Unlike the main
+    /// changelog selector, this never falls back to another release: a release
+    /// browser must not label stable notes as belonging to a pinned build.
+    /// </summary>
+    public string? GetReleaseChangelog(string? version, int maxCharacters = 420)
+    {
+        var product = _manifestSnapshot?.Titanfall2Vr;
+        if (product is null)
+        {
+            return null;
+        }
+
+        var change = ReleaseNotesSelector.FindForVersion(product, version);
+        if (change is null)
+        {
+            return null;
+        }
+
+        var notes = change.Notes.Trim();
+        if (notes.Length == 0)
+        {
+            return null;
+        }
+
+        var text = (change.Date is null ? string.Empty : change.Date + " · ") + notes;
+        if (maxCharacters <= 0 || text.Length <= maxCharacters)
+        {
+            return text;
+        }
+        return text[..maxCharacters].TrimEnd() + "…";
+    }
 
     private static string FormatChangelog(IReadOnlyList<ManifestChange> changes, int maxEntries)
     {
@@ -1959,6 +2382,24 @@ public sealed class InstallerViewModel
         {
         }
         return values;
+    }
+
+    private void ReportUnavailableFonts()
+    {
+        if (AppearanceManager.FontDiscoveryFailed)
+        {
+            AddLog(Loc.Get("fontDiscoveryFailed"));
+        }
+
+        if (AppearanceManager.UnavailableUiFontId is { } uiFont)
+        {
+            AddLog(Loc.Format("fontUnavailable", FontPreference.DescribeFontId(uiFont)));
+        }
+
+        if (AppearanceManager.UnavailableTechnicalFontId is { } technicalFont)
+        {
+            AddLog(Loc.Format("technicalFontUnavailable", FontPreference.DescribeFontId(technicalFont)));
+        }
     }
 
     private void RaiseChanged() => Avalonia.Threading.Dispatcher.UIThread.Post(() => Changed?.Invoke(this, EventArgs.Empty));

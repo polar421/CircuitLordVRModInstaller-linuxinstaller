@@ -54,6 +54,19 @@ public class ReleaseNotesSelectorTests
         Assert.False(selection.HasNotes);
     }
 
+    [Fact]
+    public void ExactReleaseLookupDoesNotFallBackToAnotherVersion()
+    {
+        var product = Product(Change("1.0.25", "Stable notes"));
+
+        var stable = ReleaseNotesSelector.FindForVersion(product, "v1.0.25");
+        var beta = ReleaseNotesSelector.FindForVersion(product, "1.0.27");
+
+        Assert.NotNull(stable);
+        Assert.Contains("Stable notes", stable.Notes);
+        Assert.Null(beta);
+    }
+
     private static TitanfallManifestProduct Product(params ManifestChange[] changes) => new()
     {
         Id = "Titanfall2VR",

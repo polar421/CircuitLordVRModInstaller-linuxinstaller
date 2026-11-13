@@ -1,0 +1,157 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:CircuitLord.VRModInstaller.Localization"
+             x:Class="CircuitLord.VRModInstaller.HistoryView"
+             Focusable="True"
+             KeyDown="History_KeyDown">
+
+  <Border Background="{DynamicResource Bg}">
+    <Grid RowDefinitions="Auto,Auto,*" Margin="18,8,18,16">
+
+      <Grid Grid.Row="0">
+        <Grid Name="HistoryListHeader" ColumnDefinitions="Auto,*">
+          <Button Name="HistoryBackButton" Classes="ghost" Padding="10,6" VerticalAlignment="Center"
+                  Click="CloseHistory_Click" ToolTip.Tip="{loc:Tr Key=historyBackToInstaller}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Path Data="M 6,0 L 0,6 L 6,12" Width="7" Height="12" Stretch="None"
+                    Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.4"
+                    VerticalAlignment="Center" />
+              <TextBlock Text="{loc:Tr Key=historyBackToInstaller}" FontSize="11.5" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <StackPanel Grid.Column="1" Spacing="2" Margin="14,0,0,0" VerticalAlignment="Center">
+            <TextBlock Text="{loc:Tr Key=installationHistory}" Classes="h1" />
+            <TextBlock Text="{loc:Tr Key=historySubtitle}" Classes="small" />
+          </StackPanel>
+        </Grid>
+
+        <Grid Name="HistoryDetailHeader" IsVisible="False" ColumnDefinitions="Auto,*">
+          <Button Name="HistoryBackToHistoryButton" Classes="ghost" Padding="10,6" VerticalAlignment="Center"
+                  Click="BackToHistory_Click" ToolTip.Tip="{loc:Tr Key=historyBackToHistory}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Path Data="M 6,0 L 0,6 L 6,12" Width="7" Height="12" Stretch="None"
+                    Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.4"
+                    VerticalAlignment="Center" />
+              <TextBlock Text="{loc:Tr Key=historyBackToHistory}" FontSize="11.5" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <StackPanel Grid.Column="1" Spacing="2" Margin="14,0,0,0" VerticalAlignment="Center">
+            <TextBlock Text="{loc:Tr Key=historyReport}" Classes="h1" />
+            <TextBlock Name="HistoryDetailMeta" Classes="small" />
+          </StackPanel>
+        </Grid>
+      </Grid>
+
+      <WrapPanel Name="HistoryFilters" Grid.Row="1" Orientation="Horizontal" Margin="0,14,0,10">
+        <Button Content="{loc:Tr Key=historyAll}" Tag="all" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+        <Button Content="{loc:Tr Key=install}" Tag="install" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+        <Button Content="{loc:Tr Key=update}" Tag="update" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+        <Button Content="{loc:Tr Key=reinstall}" Tag="reinstall" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+        <Button Content="{loc:Tr Key=repair}" Tag="repair" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+        <Button Content="{loc:Tr Key=uninstall}" Tag="uninstall" Classes="filter" Margin="0,0,6,6" Click="Filter_Click" />
+      </WrapPanel>
+
+      <Grid Grid.Row="2">
+        <ScrollViewer Name="HistoryListScroll" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      ScrollViewer.IsScrollChainingEnabled="False">
+          <StackPanel Spacing="8">
+            <StackPanel Name="HistoryListPanel" Spacing="8" />
+            <Border Name="HistoryEmptyState" Classes="card" IsVisible="False" Padding="18,22" Margin="0">
+              <TextBlock Name="HistoryEmptyText" Classes="small" TextAlignment="Center"
+                         HorizontalAlignment="Center" TextWrapping="Wrap" />
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer Name="HistoryDetailScroll" IsVisible="False" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      ScrollViewer.IsScrollChainingEnabled="False">
+          <StackPanel Spacing="10">
+
+            <Border Classes="card" Padding="16,14" Margin="0">
+              <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="3">
+                    <TextBlock Name="HistoryDetailType" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock Name="HistoryDetailDate" Classes="small" />
+                  </StackPanel>
+                  <Border Grid.Column="1" Name="HistoryDetailStatusPill" Classes="status-pill"
+                          VerticalAlignment="Center">
+                    <TextBlock Name="HistoryDetailStatusText" Classes="status-pill-text" />
+                  </Border>
+                </Grid>
+
+                <Border Height="1" Background="{DynamicResource Stroke}" />
+
+                <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                      RowSpacing="8">
+                  <TextBlock Text="{loc:Tr Key=historyDate}" Classes="small" />
+                  <TextBlock Grid.Column="1" Name="HistoryDetailDateValue" FontSize="12"
+                             Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+
+                  <TextBlock Grid.Row="1" Text="{loc:Tr Key=historyPreviousVersion}" Classes="small" />
+                  <TextBlock Grid.Row="1" Grid.Column="1" Name="HistoryDetailPreviousVersion" FontSize="12"
+                             Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+
+                  <TextBlock Grid.Row="2" Text="{loc:Tr Key=historyNewVersion}" Classes="small" />
+                  <TextBlock Grid.Row="2" Grid.Column="1" Name="HistoryDetailNewVersion" FontSize="12"
+                             Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+
+                  <TextBlock Grid.Row="3" Text="{loc:Tr Key=selectedChannel}" Classes="small" />
+                  <TextBlock Grid.Row="3" Grid.Column="1" Name="HistoryDetailChannel" FontSize="12"
+                             Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+
+                  <TextBlock Grid.Row="4" Text="{loc:Tr Key=historyOperationType}" Classes="small" />
+                  <TextBlock Grid.Row="4" Grid.Column="1" Name="HistoryDetailOperationType" FontSize="12"
+                             Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+
+                  <TextBlock Grid.Row="5" Text="{loc:Tr Key=historyResult}" Classes="small" />
+                  <TextBlock Grid.Row="5" Grid.Column="1" Name="HistoryDetailResult" FontSize="12"
+                             Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+
+                  <TextBlock Grid.Row="6" Text="{loc:Tr Key=backendCommit}" Classes="small" />
+                  <TextBlock Grid.Row="6" Grid.Column="1" Name="HistoryDetailBackendCommit" FontSize="12"
+                             FontFamily="{DynamicResource UiTechnicalFont}"
+                             Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+
+                  <TextBlock Grid.Row="7" Text="{loc:Tr Key=duration}" Classes="small" />
+                  <TextBlock Grid.Row="7" Grid.Column="1" Name="HistoryDetailDuration" FontSize="12"
+                             Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+
+                  <TextBlock Grid.Row="8" Text="{loc:Tr Key=exitCode}" Classes="small" />
+                  <TextBlock Grid.Row="8" Grid.Column="1" Name="HistoryDetailExitCode" FontSize="12"
+                             Foreground="{DynamicResource Text}" TextWrapping="Wrap" />
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <Border Classes="card" Padding="16,14" Margin="0">
+              <StackPanel Spacing="7">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{loc:Tr Key=log}" Classes="h2" />
+                  <TextBlock Grid.Column="1" Name="HistoryDetailLogFile" Classes="small"
+                             VerticalAlignment="Center" />
+                </Grid>
+                <SelectableTextBlock Name="HistoryDetailLogPath" Classes="small"
+                                     FontFamily="{DynamicResource UiTechnicalFont}" TextWrapping="Wrap" />
+                <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
+                        CornerRadius="{DynamicResource CornerInner}">
+                  <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto"
+                                HorizontalScrollBarVisibility="Disabled"
+                                ScrollViewer.IsScrollChainingEnabled="False">
+                    <SelectableTextBlock Name="HistoryDetailLogText" FontFamily="{DynamicResource UiTechnicalFont}"
+                                         FontSize="10.5" Foreground="{DynamicResource TextDim}"
+                                         TextWrapping="Wrap" LineHeight="16" Margin="10" />
+                  </ScrollViewer>
+                </Border>
+              </StackPanel>
+            </Border>
+
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+
+    </Grid>
+  </Border>
+</UserControl>

@@ -59,6 +59,8 @@ public enum BackendOperationKind
     RefreshProton,
     Uninstall,
     BackendUpdate,
+    // Appended to keep the persisted numeric values of earlier history entries stable.
+    Repair,
 }
 
 /// <summary>Outcome of a backend process, including the raw exit code.</summary>
@@ -325,4 +327,6 @@ public sealed class InstallerOperationRecord
     public string Result { get; set; } = "Running";
     public string? OldVersion { get; set; }
     public string? NewVersion { get; set; }
+    public string? Channel { get; set; }
+    public TimeSpan? Duration { get; set; }
 }

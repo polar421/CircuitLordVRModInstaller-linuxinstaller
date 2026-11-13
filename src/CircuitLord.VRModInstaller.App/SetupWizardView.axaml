@@ -1,0 +1,270 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:CircuitLord.VRModInstaller.Localization"
+             xmlns:local="using:CircuitLord.VRModInstaller"
+             x:Class="CircuitLord.VRModInstaller.SetupWizardView"
+             Focusable="True" IsVisible="False">
+
+  <UserControl.Styles>
+    <Style Selector="Button.release-choice">
+      <Setter Property="Background" Value="{DynamicResource Bg}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Stroke}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerCard}" />
+      <Setter Property="Padding" Value="14,12" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.release-choice:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Hover}" />
+    </Style>
+    <Style Selector="Button.release-choice.selected">
+      <Setter Property="Background" Value="{DynamicResource AccentFill}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+    </Style>
+    <Style Selector="Button.release-choice.selected:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentFill}" />
+    </Style>
+    <Style Selector="Border.wizard-phase-dot">
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Name="WizardOverlay" Background="{DynamicResource OverlayStrong}"
+          KeyboardNavigation.TabNavigation="Cycle">
+    <Border Name="WizardDialog" MaxWidth="620" MaxHeight="680" Margin="12"
+            Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
+            CornerRadius="{DynamicResource CornerCard}"
+            HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+      <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- header and phase markers -->
+        <StackPanel Grid.Row="0" Spacing="10" Margin="22,18,22,8">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentFill}"
+                    BorderBrush="{DynamicResource AccentBorder}" BorderThickness="1">
+              <Image Source="avares://CircuitLordVRModInstaller/Assets/app-256.png"
+                     Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="10,0,12,0" VerticalAlignment="Center" Spacing="1">
+              <TextBlock Text="{loc:Tr Key=wizardTitle}" FontSize="14" FontWeight="SemiBold" />
+              <TextBlock Name="WizardStepText" Text="{loc:Tr Key=wizardStepOf}" Classes="small" />
+            </StackPanel>
+            <Button Grid.Column="2" Name="WizardCloseButton" Content="×" Classes="ghost"
+                    Width="30" Height="30" Padding="0" FontSize="18" VerticalAlignment="Top"
+                    HorizontalContentAlignment="Center" Click="Close_Click" />
+          </Grid>
+
+          <Grid Height="44">
+            <Border Height="1" Background="{DynamicResource Stroke}" VerticalAlignment="Top"
+                    Margin="42,9,42,0" />
+            <Grid ColumnDefinitions="*,*,*">
+              <StackPanel Grid.Column="0" Spacing="3" HorizontalAlignment="Center">
+                <Border Name="Phase1Dot" Classes="wizard-phase-dot">
+                  <TextBlock Name="Phase1Number" Text="1" FontSize="9" FontWeight="SemiBold"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Name="Phase1Label" Text="{loc:Tr Key=wizardPhaseWelcome}"
+                           FontSize="10.5" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                <TextBlock Name="Phase1Hint" Text="{loc:Tr Key=wizardPhaseWelcomeHint}"
+                           FontSize="9" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Spacing="3" HorizontalAlignment="Center">
+                <Border Name="Phase2Dot" Classes="wizard-phase-dot">
+                  <TextBlock Name="Phase2Number" Text="2" FontSize="9" FontWeight="SemiBold"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Name="Phase2Label" Text="{loc:Tr Key=wizardPhaseSetup}"
+                           FontSize="10.5" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                <TextBlock Name="Phase2Hint" Text="{loc:Tr Key=wizardPhaseSetupHint}"
+                           FontSize="9" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Spacing="3" HorizontalAlignment="Center">
+                <Border Name="Phase3Dot" Classes="wizard-phase-dot">
+                  <TextBlock Name="Phase3Number" Text="3" FontSize="9" FontWeight="SemiBold"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Name="Phase3Label" Text="{loc:Tr Key=wizardPhaseLaunch}"
+                           FontSize="10.5" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                <TextBlock Name="Phase3Hint" Text="{loc:Tr Key=wizardPhaseLaunchHint}"
+                           FontSize="9" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" />
+              </StackPanel>
+            </Grid>
+          </Grid>
+
+          <ProgressBar Name="WizardProgress" Minimum="0" Maximum="9" Value="1" Height="2" />
+        </StackPanel>
+
+        <!-- step body -->
+        <ScrollViewer Grid.Row="1" Name="WizardScroll" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled" Margin="22,4,34,0"
+                      ScrollViewer.IsScrollChainingEnabled="False">
+          <StackPanel Spacing="12" Margin="0,0,10,12">
+
+            <StackPanel Name="WizardHeroPanel" Spacing="10" HorizontalAlignment="Center">
+              <Border Width="56" Height="56" CornerRadius="14" Background="{DynamicResource AccentFill}"
+                      BorderBrush="{DynamicResource AccentBorder}" BorderThickness="1"
+                      HorizontalAlignment="Center">
+                <Image Source="avares://CircuitLordVRModInstaller/Assets/app-256.png"
+                       Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+            </StackPanel>
+
+            <StackPanel Spacing="5">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Name="WizardEyebrow" FontSize="10.5" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Accent}" VerticalAlignment="Center" />
+                <Border Name="WizardOptionalBadge" Classes="accent-pill" IsVisible="False"
+                        VerticalAlignment="Center">
+                  <TextBlock Text="{loc:Tr Key=wizardOptional}" Classes="pill-text" />
+                </Border>
+              </StackPanel>
+              <TextBlock Name="WizardStepTitle" FontSize="22" FontWeight="Bold" TextWrapping="Wrap" />
+              <TextBlock Name="WizardDescription" FontSize="12.5" Foreground="{DynamicResource TextDim}"
+                         TextWrapping="Wrap" LineHeight="19" />
+            </StackPanel>
+
+            <!-- welcome features -->
+            <StackPanel Name="WizardWelcomePanel" Spacing="7">
+              <Border Background="{DynamicResource Elevated}" BorderBrush="{DynamicResource Stroke}"
+                      BorderThickness="1" CornerRadius="{DynamicResource CornerInner}" Padding="12,10">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource Accent}"
+                          VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{loc:Tr Key=wizardWelcomeFeature1}"
+                             FontSize="12" TextWrapping="Wrap" />
+                </Grid>
+              </Border>
+              <Border Background="{DynamicResource Elevated}" BorderBrush="{DynamicResource Stroke}"
+                      BorderThickness="1" CornerRadius="{DynamicResource CornerInner}" Padding="12,10">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource Accent}"
+                          VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{loc:Tr Key=wizardWelcomeFeature2}"
+                             FontSize="12" TextWrapping="Wrap" />
+                </Grid>
+              </Border>
+              <Border Background="{DynamicResource Elevated}" BorderBrush="{DynamicResource Stroke}"
+                      BorderThickness="1" CornerRadius="{DynamicResource CornerInner}" Padding="12,10">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource Accent}"
+                          VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{loc:Tr Key=wizardWelcomeFeature3}"
+                             FontSize="12" TextWrapping="Wrap" />
+                </Grid>
+              </Border>
+            </StackPanel>
+
+            <!-- current step status -->
+            <Border Name="WizardStatusCard" Background="{DynamicResource Bg}"
+                    BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
+                    CornerRadius="{DynamicResource CornerInner}" Padding="12,10">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                <Border Name="WizardStatusDot" Width="7" Height="7" CornerRadius="4"
+                        VerticalAlignment="Top" Margin="0,5,0,0" />
+                <StackPanel Grid.Column="1" Spacing="3">
+                  <TextBlock Name="WizardStatusTitle" FontSize="12.5" FontWeight="SemiBold"
+                             TextWrapping="Wrap" />
+                  <TextBlock Name="WizardStatusDetail" FontSize="11.5" Foreground="{DynamicResource TextDim}"
+                             TextWrapping="Wrap" LineHeight="17" />
+                </StackPanel>
+              </Grid>
+            </Border>
+
+            <!-- contextual action(s) -->
+            <StackPanel Name="WizardActionsPanel" Orientation="Horizontal" Spacing="8"
+                        HorizontalAlignment="Right">
+              <Button Name="GameActionButton" Content="{loc:Tr Key=checkNow}" Classes="ghost"
+                      FontSize="11.5" Padding="10,4" IsVisible="False" Click="GameAction_Click" />
+              <Button Name="BackendActionButton" Content="{loc:Tr Key=runBackendCheck}" Classes="ghost"
+                      FontSize="11.5" Padding="10,4" IsVisible="False" Click="BackendAction_Click" />
+              <Button Name="DependenciesActionButton" Content="{loc:Tr Key=runChecks}" Classes="ghost"
+                      FontSize="11.5" Padding="10,4" IsVisible="False" Click="DependenciesAction_Click" />
+              <Button Name="RuntimeActionButton" Content="{loc:Tr Key=checkNow}" Classes="ghost"
+                      FontSize="11.5" Padding="10,4" IsVisible="False" Click="RuntimeAction_Click" />
+              <Button Name="WiVrnActionButton" Content="{loc:Tr Key=wizardSetupWiVrn}" Classes="ghost"
+                      FontSize="11.5" Padding="10,4" IsVisible="False" Click="WiVrnAction_Click" />
+              <Button Name="SteamActionButton" Content="{loc:Tr Key=addToSteam}" Classes="ghost"
+                      FontSize="11.5" Padding="10,4" IsVisible="False" Click="SteamAction_Click" />
+            </StackPanel>
+
+            <TextBlock Name="WizardActionHint" FontSize="11" Foreground="{DynamicResource Muted}"
+                       TextWrapping="Wrap" IsVisible="False" />
+
+            <!-- preflight output -->
+            <Border Name="WizardTechnicalPanel" Background="{DynamicResource Bg}"
+                    BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
+                    CornerRadius="{DynamicResource CornerInner}" Padding="10,8" IsVisible="False">
+              <StackPanel Spacing="4">
+                <TextBlock Text="{loc:Tr Key=lastPreflight}" FontSize="10.5"
+                           FontWeight="SemiBold" Foreground="{DynamicResource TextDim}" />
+                <ScrollViewer MaxHeight="128" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              ScrollViewer.IsScrollChainingEnabled="False">
+                  <TextBlock Name="WizardTechnicalOutput" FontFamily="{DynamicResource UiTechnicalFont}"
+                             FontSize="10.5" TextWrapping="Wrap" LineHeight="15" />
+                </ScrollViewer>
+              </StackPanel>
+            </Border>
+
+            <!-- release choice -->
+            <StackPanel Name="WizardReleasePanel" Spacing="6" IsVisible="False">
+              <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Right">
+                <TextBlock Text="{loc:Tr Key=helpChannelsTitle}" Classes="small" VerticalAlignment="Center" />
+                <local:HelpTip Name="WizardReleaseHelp" TipPlacement="BottomEdgeAlignedRight"
+                               Title="{loc:Tr Key=helpChannelsTitle}"
+                               Body="{loc:Tr Key=helpChannelsBody}" />
+              </StackPanel>
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Name="StableChoiceButton" Classes="release-choice" HorizontalAlignment="Stretch"
+                        Click="StableChoice_Click">
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="{loc:Tr Key=stableLabel}" FontSize="14" FontWeight="SemiBold" />
+                    <TextBlock Name="StableChoiceVersion" FontSize="11.5"
+                               Foreground="{DynamicResource TextDim}" />
+                    <TextBlock Text="{loc:Tr Key=stableReleasesHint}" Classes="small" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Button>
+                <Button Grid.Column="1" Name="BetaChoiceButton" Classes="release-choice" HorizontalAlignment="Stretch"
+                        Click="BetaChoice_Click">
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="{loc:Tr Key=betaReleases}" FontSize="14" FontWeight="SemiBold" />
+                    <TextBlock Name="BetaChoiceVersion" FontSize="11.5"
+                               Foreground="{DynamicResource TextDim}" />
+                    <TextBlock Text="{loc:Tr Key=betaReleasesHint}" Classes="small" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Button>
+              </Grid>
+            </StackPanel>
+
+            <!-- readiness summary -->
+            <StackPanel Name="WizardSummaryPanel" Spacing="8" IsVisible="False">
+              <TextBlock Text="{loc:Tr Key=wizardReadinessTitle}" FontSize="12.5"
+                         FontWeight="SemiBold" />
+              <StackPanel Name="WizardSummaryRows" Spacing="4" />
+            </StackPanel>
+
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- footer -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="22,10,22,16">
+          <Button Name="WizardSkipSetupButton" Content="{loc:Tr Key=wizardSkipSetup}" Classes="link"
+                  FontSize="11" Click="SkipSetup_Click" />
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+            <Button Name="WizardBackButton" Content="{loc:Tr Key=wizardBack}" Classes="ghost"
+                    FontSize="11.5" Padding="10,4" Click="Back_Click" />
+            <Button Name="WizardSkipStepButton" Content="{loc:Tr Key=wizardSkipStep}" Classes="ghost"
+                    FontSize="11.5" Padding="10,4" Click="SkipStep_Click" />
+            <Button Name="WizardPrimaryButton" Content="{loc:Tr Key=continueLabel}" Classes="primary"
+                    MinWidth="104" Click="Primary_Click" />
+          </StackPanel>
+        </Grid>
+
+      </Grid>
+    </Border>
+  </Border>
+</UserControl>

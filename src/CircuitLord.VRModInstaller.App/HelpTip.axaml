@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:CircuitLord.VRModInstaller.Localization"
+             x:Class="CircuitLord.VRModInstaller.HelpTip">
+
+  <Grid Width="18" Height="18" VerticalAlignment="Center">
+    <Button Name="HelpButton" Classes="help" Content="?" Click="Toggle_Click" />
+    <Popup Name="HelpPopup" PlacementTarget="{Binding #HelpButton}"
+           Placement="BottomEdgeAlignedLeft" IsLightDismissEnabled="True"
+           HorizontalOffset="-4" VerticalOffset="5">
+      <LayoutTransformControl Name="HelpPopupScale">
+        <Border Name="HelpPopupPanel" Classes="popup" Width="300">
+          <StackPanel Margin="13,11,11,12" Spacing="5">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Name="HelpTitle" FontSize="12.5" FontWeight="SemiBold"
+                         TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <Button Grid.Column="1" Content="×" Classes="ghost" Width="24" Height="24"
+                      Padding="0" FontSize="15" HorizontalContentAlignment="Center"
+                      Click="Close_Click" ToolTip.Tip="{loc:Tr Key=close}" />
+            </Grid>
+            <TextBlock Name="HelpBody" Classes="small" FontSize="11.5"
+                       TextWrapping="Wrap" LineHeight="17" />
+          </StackPanel>
+        </Border>
+      </LayoutTransformControl>
+    </Popup>
+  </Grid>
+</UserControl>

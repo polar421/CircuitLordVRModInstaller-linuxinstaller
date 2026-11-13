@@ -2,10 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
-using Avalonia;
 using Avalonia.Data;
 using Avalonia.Markup.Xaml;
-using Avalonia.Media;
 using CircuitLord.VRModInstaller.Core.Localization;
 
 namespace CircuitLord.VRModInstaller.Localization;
@@ -32,7 +30,6 @@ public static class Loc
         var normalized = TranslationCatalog.Normalize(language);
         TranslationCatalog.Use(normalized);
         ApplyCulture(normalized);
-        ApplyFont(normalized);
         Notifier.RaiseChanged();
         LanguageChanged?.Invoke(null, EventArgs.Empty);
     }
@@ -45,22 +42,6 @@ public static class Loc
     public static string NormalizeLanguage(string? language) => TranslationCatalog.Normalize(language);
 
     public static bool IsSupported(string? language) => TranslationCatalog.IsSupported(language);
-
-    private static void ApplyFont(string language)
-    {
-        if (Application.Current is null)
-        {
-            return;
-        }
-
-        var family = language switch
-        {
-            "ja" => "avares://CircuitLordVRModInstaller/Assets/Fonts#Noto Sans CJK JP",
-            "zh-Hans" => "avares://CircuitLordVRModInstaller/Assets/Fonts#Noto Sans CJK SC",
-            _ => "avares://CircuitLordVRModInstaller/Assets/Fonts#Liberation Serif",
-        };
-        Application.Current.Resources["UiFont"] = new FontFamily(family);
-    }
 
     private static void ApplyCulture(string language)
     {

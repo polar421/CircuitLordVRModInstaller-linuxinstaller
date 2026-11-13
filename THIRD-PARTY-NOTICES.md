@@ -47,9 +47,10 @@ typography of the reference build.
 - License: SIL Open Font License 1.1 (`src/CircuitLord.VRModInstaller.App/Assets/Fonts/NOTO-OFL.txt`)
 - Copyright (c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
 
-The Japanese and Simplified Chinese faces are bundled unmodified as Avalonia resources so those
-locales render without relying on fonts installed on the host. They are selected only for `ja` and
-`zh-Hans`; the other catalogs use Liberation Serif.
+The Japanese and Simplified Chinese faces are bundled unmodified as Avalonia resources so Japanese
+and Simplified Chinese text renders without relying on fonts installed on the host. They are used as
+fallback fonts for characters the selected interface font does not contain; Japanese prefers the JP
+face and Simplified Chinese prefers the SC face, with the other CJK face following.
 
 ## Avalonia
 
