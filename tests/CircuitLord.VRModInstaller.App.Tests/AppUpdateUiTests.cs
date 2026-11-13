@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -111,13 +112,13 @@ public sealed class AppUpdateUiTests : HeadlessUiTest
 
     private static void AssertInstalledAppRuns(string path)
     {
-        var start = new System.Diagnostics.ProcessStartInfo(path)
+        var start = new ProcessStartInfo(path)
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        using var process = System.Diagnostics.Process.Start(start)!;
+        using var process = Process.Start(start)!;
         var output = process.StandardOutput.ReadToEnd();
         var error = process.StandardError.ReadToEnd();
         process.WaitForExit();

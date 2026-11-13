@@ -7,7 +7,7 @@ dotnet test CircuitLord.VRModInstaller.Linux.slnx
 dotnet build CircuitLord.VRModInstaller.Linux.slnx
 ```
 
-## Automated (168 tests, all passing on 2026-11-13)
+## Automated (174 tests, all passing on 2026-11-13)
 
 The solution includes the Core service/unit tests and Avalonia headless UI tests.
 Both run in the release workflows.
@@ -20,7 +20,9 @@ Both run in the release workflows.
 | Release browser | Semantic ordering including `1.0.10` over `1.0.9` and prerelease precedence; local search over version, name, channel, token, description and changelog; Stable/Beta/Pinned/Installed/Selected filters; pinned tokens stay out of moving channels; additional backend channels; cached entries and removed entries remain distinguishable |
 | Titanfall 2 tabs | Overview default selection; arrow movement and wrap-around in both directions; Home/End selection; one change event per real selection; state survives visiting another destination |
 | Settings tabs | General is the default destination; all four Settings destinations can be selected; arrow wrap-around and Home/End order; one change event per real selection; independent per-tab state survives a round-trip |
-| Settings UI (headless) | The real `SettingsView` opens on General; pointer and keyboard selection switch all four panes; each pane retains its own scroll offset; all ten language changes update tab labels and preserve the active pane; Restore Defaults requires confirmation, supports cancellation, keeps Settings open, and persists only preference defaults while preserving release selection and first-run state; the compact 560 px / 150% footer geometry is checked directly |
+| Settings UI (headless) | The real `SettingsView` opens on General; pointer and keyboard selection switch all four panes; each pane retains its own scroll offset; all ten language changes update tab labels and preserve the active pane; Restore Defaults requires confirmation, supports cancellation, keeps Settings open, and persists only preference defaults while preserving release selection and first-run state; the compact 560 px / 150% footer geometry is checked in all ten languages |
+| Setup wizard UI (headless) | The Steam step shows distinct description and status guidance and does not repeat it as an action hint |
+| Layout matrix (headless) | Settings and setup wizard checked at 80/100/125/150% in Dark, Light and System across all ten languages for clipping and overflow |
 | Desktop entry | Exact `Categories=Game;X-WiVRn-VR;`, XDG destination, Exec target, `Terminal=false`, repair after regeneration, missing launcher, spaces in path |
 | VDF | Round trip, unknown-field preservation, idempotent upsert, same-name conflict refusal, owned-only removal |
 | Steam transaction | Running → shutdown → backup → write → verify → reopen; refusal to restart; shutdown timeout writes nothing; write failure still reopens; reopen failure = recovery required; initially-closed stays closed |
@@ -28,7 +30,7 @@ Both run in the release workflows.
 | Localization | Ten complete catalogs (606 keys each), placeholder preservation, English fallback, unsupported-locale normalization, technical identifiers, unused-key detection, culture-aware formatting |
 | Operation history | Channel, duration and version round-trip; older entries without those fields still load; persisted numeric operation kinds stay compatible after adding Repair |
 | Notifications | Structured activity round-trip through the notifications file; corrupt files are ignored without losing the rest of the app |
-| Installer updater | Release archive/checksum discovery; installed-copy detection including symlinks; SHA-256 validation; safe extraction; verified package staging; mismatched archive rejection |
+| Installer updater | Release archive/checksum discovery; installed-copy detection including symlinks; SHA-256 validation; safe extraction; verified package staging; mismatched archive, missing assets and missing downloads leave the installed app runnable |
 
 ## Packaging (verified 2026-11-12)
 
@@ -161,8 +163,8 @@ and command interfaces, not exercised on a live desktop in this environment.
 - Real Steam client shutdown/relaunch and library recognition.
 - Real WiVRn discovery of the desktop entry.
 - OpenXR runtime JSON parsing (service is implemented; no test yet).
-- GUI interaction tests beyond the headless Settings scenarios above (install, Steam and other
-  screens still rely on focused service tests and manual checks).
+- GUI interaction tests beyond the headless Settings layout/navigation and setup-wizard guidance
+  scenarios (install, Steam and other screens still rely on focused service tests and manual checks).
 
 ## Manual acceptance still required
 

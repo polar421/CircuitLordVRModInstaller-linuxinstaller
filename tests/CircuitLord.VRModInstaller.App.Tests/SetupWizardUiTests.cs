@@ -27,13 +27,15 @@ public sealed class SetupWizardUiTests : HeadlessUiTest
                 HeadlessUi.Pump(240);
 
                 var primary = view.FindControl<Button>("WizardPrimaryButton")!;
-                for (var i = 0; i < 6; i++)
+                var title = view.FindControl<TextBlock>("WizardStepTitle")!;
+                var expectedTitle = Loc.Get("wizardSteamTitle");
+                for (var step = 0; step < 9 && title.Text != expectedTitle; step++)
                 {
                     primary.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     HeadlessUi.Pump(80);
                 }
 
-                Assert.Contains("Steam", view.FindControl<TextBlock>("WizardStepTitle")!.Text);
+                Assert.Equal(expectedTitle, title.Text);
                 var description = view.FindControl<TextBlock>("WizardDescription")!.Text;
                 var statusDetail = view.FindControl<TextBlock>("WizardStatusDetail")!.Text;
                 var actionHint = view.FindControl<TextBlock>("WizardActionHint")!;
