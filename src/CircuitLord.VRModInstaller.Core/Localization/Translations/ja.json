@@ -144,7 +144,6 @@
   "thirdPartyAttribution": "第三者の帰属",
   "thirdPartyText": "CircuitLord のオリジナル インストーラー、Monkellie の tf2vr-linux、Avalonia、NWayland、Liberation Serif, Noto Sans CJK。詳細については、サードパーティの通知を参照してください。",
   "thirdPartyNotices": "第三者からの通知",
-  "restoreDefaults": "デフォルトに戻す",
   "restoreDefaultsDescription": "アプリケーションの設定のみをリセットします。 MOD、ゲーム、バックエンド、ショートカット、デスクトップ エントリ、ランタイム、ログはそのまま残ります。",
   "restoreDefaultsButton": "デフォルトに戻す",
   "runtimeInfoTitle": "ランタイム情報",

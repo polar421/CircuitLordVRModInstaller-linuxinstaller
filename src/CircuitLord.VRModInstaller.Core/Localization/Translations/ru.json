@@ -144,7 +144,6 @@
   "thirdPartyAttribution": "Сторонняя атрибуция",
   "thirdPartyText": "Оригинальный установщик CircuitLord, tf2vr-linux от Monkellie, Avalonia, NWayland и Liberation Serif, Noto Sans CJK; подробности см. в уведомлениях третьих лиц.",
   "thirdPartyNotices": "Уведомления третьих лиц",
-  "restoreDefaults": "Восстановить настройки по умолчанию",
   "restoreDefaultsDescription": "Сбрасывает только настройки приложения. Мод, игра, серверная часть, ярлыки, записи на рабочем столе, время выполнения и журналы остаются нетронутыми.",
   "restoreDefaultsButton": "Восстановить настройки по умолчанию",
   "runtimeInfoTitle": "Информация о времени выполнения",

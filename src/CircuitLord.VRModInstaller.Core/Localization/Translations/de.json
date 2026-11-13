@@ -144,7 +144,6 @@
   "thirdPartyAttribution": "Drittanbieter",
   "thirdPartyText": "CircuitLords Original-Installer, Monkellies tf2vr-linux, Avalonia, NWayland und Liberation Serif, Noto Sans CJK; Details in den Drittanbieter-Hinweisen.",
   "thirdPartyNotices": "Drittanbieter-Hinweise",
-  "restoreDefaults": "Standardeinstellungen",
   "restoreDefaultsDescription": "Setzt nur Anwendungseinstellungen zurück. Mod, Spiel, Backend, Verknüpfungen, Desktop-Einträge, Runtime und Protokolle bleiben unangetastet.",
   "restoreDefaultsButton": "Standardeinstellungen wiederherstellen",
   "runtimeInfoTitle": "Runtime-Informationen",

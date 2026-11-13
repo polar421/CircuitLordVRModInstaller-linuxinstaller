@@ -144,7 +144,6 @@
   "thirdPartyAttribution": "Atribución de terceros",
   "thirdPartyText": "El instalador original de CircuitLord, tf2vr-linux de Monkellie, Avalonia, NWayland y Liberation Serif, Noto Sans CJK; consulte los avisos de terceros para obtener más detalles.",
   "thirdPartyNotices": "Avisos de terceros",
-  "restoreDefaults": "Restaurar valores predeterminados",
   "restoreDefaultsDescription": "Restablece únicamente las preferencias de la aplicación. El mod, el juego, el backend, los accesos directos, las entradas del escritorio, el tiempo de ejecución y los registros no se modifican.",
   "restoreDefaultsButton": "Restaurar valores predeterminados",
   "runtimeInfoTitle": "Información de tiempo de ejecución",

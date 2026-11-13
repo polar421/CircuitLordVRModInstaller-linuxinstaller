@@ -144,7 +144,6 @@
   "thirdPartyAttribution": "第三方归因",
   "thirdPartyText": "CircuitLord 的原始安装程序、Monkellie 的 tf2vr-linux、Avalonia、NWayland 和 Liberation Serif, Noto Sans CJK；详情请参阅第三方通知。",
   "thirdPartyNotices": "第三方通知",
-  "restoreDefaults": "恢复默认值",
   "restoreDefaultsDescription": "仅重置应用程序首选项。模组、游戏、后端、快捷方式、桌面条目、运行时和日志均保持不变。",
   "restoreDefaultsButton": "恢复默认设置",
   "runtimeInfoTitle": "运行时信息",

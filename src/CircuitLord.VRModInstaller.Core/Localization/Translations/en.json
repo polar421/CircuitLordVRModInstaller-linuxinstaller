@@ -144,7 +144,6 @@
   "thirdPartyAttribution": "Third-party attribution",
   "thirdPartyText": "CircuitLord's original installer, Monkellie's tf2vr-linux, Avalonia, NWayland, Liberation Serif and Noto Sans CJK; see the third-party notices for details.",
   "thirdPartyNotices": "Third-party notices",
-  "restoreDefaults": "Restore Defaults",
   "restoreDefaultsDescription": "Resets application preferences only. The mod, game, backend, shortcuts, desktop entries, runtime and logs are left untouched.",
   "restoreDefaultsButton": "Restore defaults",
   "runtimeInfoTitle": "Runtime information",
