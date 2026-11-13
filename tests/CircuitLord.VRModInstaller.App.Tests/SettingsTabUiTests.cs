@@ -65,27 +65,33 @@ public sealed class SettingsTabUiTests : HeadlessUiTest
     });
 
     [Fact]
-    public Task RestoreDefaultsRemainsUnclippedAtCompactWidthAndMaximumScale() => Dispatch(() =>
+    public Task RestoreDefaultsRemainsUnclippedForEveryLanguageAtCompactWidthAndMaximumScale() => Dispatch(() =>
     {
         try
         {
-            using var ui = new SettingsUiHost(
-                Home,
-                settings =>
-                {
-                    settings.UiScale = 150;
-                    settings.Language = "de";
-                },
-                width: 560,
-                height: 520);
+            foreach (var language in Languages)
+            {
+                using var ui = new SettingsUiHost(
+                    Home,
+                    settings =>
+                    {
+                        settings.UiScale = 150;
+                        settings.Language = language;
+                    },
+                    width: 560,
+                    height: 520);
 
-            Assert.Equal(150, AppearanceManager.ScalePercent);
-            Assert.Equal(560, ui.Window.Bounds.Width);
-            AssertRestoreDefaultsLayout(ui, "560px window at 150% scale, German");
+                Assert.Equal(150, AppearanceManager.ScalePercent);
+                Assert.Equal(560, ui.Window.Bounds.Width);
+                AssertRestoreDefaultsLayout(
+                    ui,
+                    $"560px window at 150% scale, {language}");
+            }
         }
         finally
         {
             Loc.Use("en");
+            AppearanceManager.SetScale(100);
         }
     });
 
