@@ -80,7 +80,7 @@ public sealed class InstallerViewModel
     private readonly SteamShortcutManager _steamManager;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly SemaphoreSlim _operationLock = new(1, 1);
-    private readonly ReleaseChecker _releaseChecker = new();
+    private readonly ReleaseChecker _releaseChecker;
     private readonly AppUpdateService _appUpdater;
     private static readonly Version CurrentVersion =
         typeof(InstallerViewModel).Assembly.GetName().Version ?? new Version(1, 0, 0);
@@ -127,7 +127,9 @@ public sealed class InstallerViewModel
     private SteamAccount? _steamAccount;
     private VersionCatalogue? _catalogue;
 
-    public InstallerViewModel()
+    public InstallerViewModel(
+        AppUpdateService? appUpdater = null,
+        ReleaseChecker? releaseChecker = null)
     {
         _logger = new OperationLogger(_paths);
         _backend = new BackendManager(_paths, _runner);
@@ -146,7 +148,8 @@ public sealed class InstallerViewModel
         _steamLocator = new SteamLocator(_paths);
         _steamProcess = new SteamProcessController();
         _steamManager = new SteamShortcutManager(_paths, _steamProcess, line => AddLog(line));
-        _appUpdater = new AppUpdateService(_paths);
+        _releaseChecker = releaseChecker ?? new ReleaseChecker();
+        _appUpdater = appUpdater ?? new AppUpdateService(_paths);
         _settings = _settingsStore.Load();
         ReportUnavailableFonts();
     }

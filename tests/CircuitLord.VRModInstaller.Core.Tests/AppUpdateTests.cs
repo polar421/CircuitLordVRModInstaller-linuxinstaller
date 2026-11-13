@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Formats.Tar;
 using System.IO;
 using System.IO.Compression;
@@ -44,12 +45,7 @@ public class AppUpdateTests
     public async Task PreparesAVerifiedReleasePackage()
     {
         using var env = new TempEnv();
-        var installed = AppUpdateService.InstalledExecutablePath(env.Paths);
-        Directory.CreateDirectory(Path.GetDirectoryName(installed)!);
-        File.WriteAllText(installed, "old binary");
-        File.SetUnixFileMode(
-            installed,
-            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        var installed = CreateInstalledApp(env);
 
         const string packageName = "circuitlord-vrmodinstaller-1.0.2-linux-x64";
         var packageRoot = Path.Combine(env.Root, "fixture", packageName);
@@ -86,11 +82,8 @@ public class AppUpdateTests
             env.Paths,
             http: http,
             currentProcessPath: () => installed);
-        var release = new ReleaseCheckResult(
-            true,
+        var release = Release(
             "v1.0.2",
-            "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.2",
-            null,
             new ReleaseAsset(packageName + ".tar.gz", "https://example.test/update.tar.gz", archiveBytes.Length),
             new ReleaseAsset(packageName + ".tar.gz.sha256", "https://example.test/update.tar.gz.sha256", 116));
 
@@ -105,30 +98,106 @@ public class AppUpdateTests
     }
 
     [Fact]
-    public async Task RejectsAnArchiveThatDoesNotMatchItsPublishedChecksum()
+    public async Task RejectsAnArchiveThatDoesNotMatchItsPublishedChecksumWithoutTouchingTheInstalledApp()
     {
         using var env = new TempEnv();
-        var installed = AppUpdateService.InstalledExecutablePath(env.Paths);
-        Directory.CreateDirectory(Path.GetDirectoryName(installed)!);
-        File.WriteAllText(installed, "old binary");
+        await AssertPrepareFailsWithoutBreakingInstalledAppAsync<InvalidDataException>(
+            env,
+            new AssetHandler(
+                Encoding.UTF8.GetBytes("not a tarball"),
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  release.tar.gz\n"),
+            Release(
+                "v1.0.2",
+                new ReleaseAsset("release.tar.gz", "https://example.test/update.tar.gz", 13),
+                new ReleaseAsset("release.tar.gz.sha256", "https://example.test/update.tar.gz.sha256", 116)),
+            "checksum");
 
-        using var http = new HttpClient(new AssetHandler(
-            Encoding.UTF8.GetBytes("not a tarball"),
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  release.tar.gz\n"));
+        Assert.False(File.Exists(Path.Combine(env.Paths.AppCache, "updates", "v1.0.2", "apply-update.sh")));
+    }
+
+    [Fact]
+    public async Task RejectsAReleaseWithoutUpdateAssetsWithoutTouchingTheInstalledApp()
+    {
+        using var env = new TempEnv();
+        await AssertPrepareFailsWithoutBreakingInstalledAppAsync<InvalidOperationException>(
+            env,
+            new StatusHandler(HttpStatusCode.BadRequest),
+            Release("v1.0.3"),
+            "Linux update archive");
+    }
+
+    [Fact]
+    public async Task ReportsAMissingRemoteAssetWithoutTouchingTheInstalledApp()
+    {
+        using var env = new TempEnv();
+        await AssertPrepareFailsWithoutBreakingInstalledAppAsync<HttpRequestException>(
+            env,
+            new StatusHandler(HttpStatusCode.NotFound),
+            Release(
+                "v1.0.3",
+                new ReleaseAsset("release.tar.gz", "https://example.test/update.tar.gz", 13),
+                new ReleaseAsset("release.tar.gz.sha256", "https://example.test/update.tar.gz.sha256", 116)),
+            "404");
+    }
+
+    private static ReleaseCheckResult Release(
+        string tag,
+        ReleaseAsset? archive = null,
+        ReleaseAsset? checksum = null) =>
+        new(
+            true,
+            tag,
+            $"https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/{tag}",
+            null,
+            archive,
+            checksum);
+
+    private static async Task AssertPrepareFailsWithoutBreakingInstalledAppAsync<TException>(
+        TempEnv env,
+        HttpMessageHandler handler,
+        ReleaseCheckResult release,
+        string expectedMessage)
+        where TException : Exception
+    {
+        var installed = CreateInstalledApp(env);
+        using var http = new HttpClient(handler);
         var service = new AppUpdateService(
             env.Paths,
             http: http,
             currentProcessPath: () => installed);
-        var release = new ReleaseCheckResult(
-            true,
-            "v1.0.2",
-            "https://github.com/polar421/CircuitLordVRModInstaller-linuxinstaller/releases/tag/v1.0.2",
-            null,
-            new ReleaseAsset("release.tar.gz", "https://example.test/update.tar.gz", 13),
-            new ReleaseAsset("release.tar.gz.sha256", "https://example.test/update.tar.gz.sha256", 116));
-
-        await Assert.ThrowsAsync<InvalidDataException>(
+        var error = await Assert.ThrowsAsync<TException>(
             () => service.PrepareAsync(release, null, CancellationToken.None));
+
+        Assert.Contains(expectedMessage, error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("old-app-ok", RunInstalledApp(installed));
+    }
+
+    private static string CreateInstalledApp(TempEnv env)
+    {
+        var installed = AppUpdateService.InstalledExecutablePath(env.Paths);
+        Directory.CreateDirectory(Path.GetDirectoryName(installed)!);
+        File.WriteAllText(installed, "#!/usr/bin/env bash\nprintf 'old-app-ok\\n'\n");
+        File.SetUnixFileMode(
+            installed,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        return installed;
+    }
+
+    private static string RunInstalledApp(string path)
+    {
+        var start = new ProcessStartInfo(path)
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        using var process = System.Diagnostics.Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        Assert.Equal(0, process.ExitCode);
+        Assert.True(string.IsNullOrEmpty(error), error);
+        return output.Trim();
     }
 
     private static string Sha256(string path)
@@ -136,6 +205,18 @@ public class AppUpdateTests
         using var stream = File.OpenRead(path);
         using var sha = SHA256.Create();
         return Convert.ToHexString(sha.ComputeHash(stream)).ToLowerInvariant();
+    }
+
+    private sealed class StatusHandler : HttpMessageHandler
+    {
+        private readonly HttpStatusCode _status;
+
+        public StatusHandler(HttpStatusCode status) => _status = status;
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(_status));
     }
 
     private sealed class AssetHandler : HttpMessageHandler

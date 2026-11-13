@@ -14,7 +14,8 @@ internal sealed class SettingsUiHost : IDisposable
         TemporaryHome home,
         Action<AppSettings>? configure = null,
         int width = 800,
-        int height = 740)
+        int height = 740,
+        Func<InstallerViewModel>? createViewModel = null)
     {
         var paths = home.Paths;
         var store = new SettingsStore(paths);
@@ -35,7 +36,7 @@ internal sealed class SettingsUiHost : IDisposable
         Loc.Use(settings.Language);
         AppearanceManager.Initialize(settings);
 
-        ViewModel = new InstallerViewModel();
+        ViewModel = createViewModel?.Invoke() ?? new InstallerViewModel();
         View = new SettingsView();
         // Mirror MainWindow's RootScale so scale-dependent layout is exercised
         // by the headless Settings tests too.
