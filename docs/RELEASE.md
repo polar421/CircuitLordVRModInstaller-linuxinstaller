@@ -20,8 +20,8 @@ dotnet test CircuitLord.VRModInstaller.Linux.slnx -c Release
 packaging/build-release.sh
 
 # 3. Inspect the result
-sha256sum -c artifacts/circuitlord-vrmodinstaller-1.0.9-beta.1-linux-x64.tar.gz.sha256
-tar -tzf artifacts/circuitlord-vrmodinstaller-1.0.9-beta.1-linux-x64.tar.gz | head
+(cd artifacts && sha256sum -c circuitlord-vrmodinstaller-1.0.9-beta.2-linux-x64.tar.gz.sha256)
+tar -tzf artifacts/circuitlord-vrmodinstaller-1.0.9-beta.2-linux-x64.tar.gz | head
 ```
 
 `build-release.sh` reads the version from the application project, so bumping `<Version>` in
@@ -36,7 +36,7 @@ Both archives contain the same source; only their packaged version and file name
 # Stable-labelled archive: 1.0.5
 VERSION_OVERRIDE=1.0.5 packaging/build-release.sh
 
-# Beta/newest archive: the project's current version (1.0.9-beta.1)
+# Beta/newest archive: the project's current version (1.0.9-beta.2)
 packaging/build-release.sh
 ```
 
@@ -46,7 +46,7 @@ version in the project file. Use the override only for deliberate channel builds
 ## What the archive contains
 
 ```
-circuitlord-vrmodinstaller-1.0.9-beta.1-linux-x64/
+circuitlord-vrmodinstaller-1.0.9-beta.2-linux-x64/
   app/                                   self-contained publish (no .NET runtime needed)
     CircuitLordVRModInstaller            native ELF apphost
     *.dll, libSkiaSharp.so, …            Avalonia and .NET runtime files
@@ -68,15 +68,15 @@ script fails if it finds `*.zip`, `*.pak`, `*.vpk`, `*.exe`, `BepInEx*`, `Norths
 ## Install and uninstall
 
 ```bash
-tar -xzf circuitlord-vrmodinstaller-1.0.9-beta.1-linux-x64.tar.gz
-./circuitlord-vrmodinstaller-1.0.9-beta.1-linux-x64/install.sh
+tar -xzf circuitlord-vrmodinstaller-1.0.9-beta.2-linux-x64.tar.gz
+./circuitlord-vrmodinstaller-1.0.9-beta.2-linux-x64/install.sh
 
 # later
-./circuitlord-vrmodinstaller-1.0.9-beta.1-linux-x64/install.sh --uninstall
+./circuitlord-vrmodinstaller-1.0.9-beta.2-linux-x64/install.sh --uninstall
 ```
 
 Before writing anything, `install.sh` verifies every packaged file against the archive's
-`SHA256SUMS` (237 entries for the current 1.0.9-beta.1 build) and prints `Verified <n> files against
+`SHA256SUMS` (237 entries for the current 1.0.9-beta.2 build) and prints `Verified <n> files against
 SHA256SUMS`. It aborts with a non-zero exit and a clear message if a checksum mismatches, if the list contains an absolute
 or `..` path, or if `SHA256SUMS` is missing or empty. Nothing is created in the home directory on
 those failure paths.
@@ -136,15 +136,15 @@ pushed. The workflow runs `packaging/build-release.sh` and uploads the archive a
 The tag name is the release title and the tag annotation is the release body, so write the notes
 in the tag message. Prerelease status is derived from the tag:
 
-- tags with a suffix (anything after a hyphen, e.g. `v1.0.9-beta.1`, `v1.0.8-rc.1`) publish as
+- tags with a suffix (anything after a hyphen, e.g. `v1.0.9-beta.2`, `v1.0.8-rc.1`) publish as
   **prereleases**;
 - plain version tags (`v1.0.8`) publish as **normal releases**.
 
 Lightweight tags are rejected with a clear error. Example:
 
 ```bash
-git tag -a v1.0.9-beta.1 -m "What changed in this beta"
-git push origin v1.0.9-beta.1
+git tag -a v1.0.9-beta.2 -m "What changed in this beta"
+git push origin v1.0.9-beta.2
 ```
 
 ### Publishing from a release branch
@@ -155,16 +155,16 @@ version and notes, then creates the GitHub Release and its tag with the reposito
 live in `.github/release-notes/v<version>.md`.
 
 ```bash
-git branch release/v1.0.9-beta.1
-git push origin release/v1.0.9-beta.1
+git branch release/v1.0.9-beta.2
+git push origin release/v1.0.9-beta.2
 ```
 
-## Verified for 1.0.9 beta 1
+## Verified for 1.0.9 beta 2
 
 | Check | Result |
 |---|---|
 | `dotnet build -c Release` | succeeds, 0 warnings |
-| `dotnet test -c Release` | 140/140 pass |
+| `dotnet test -c Release` | 167/167 pass |
 | Local package build and checksum | archive produced; `.sha256` verified |
 | Archive contents guard | no game/mod payload |
 
